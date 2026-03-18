@@ -1,0 +1,21 @@
+---
+import MainLayout from '../layouts/MainLayout.astro';
+---
+
+<MainLayout title="Página no encontrada">
+  <section class="hero min-h-[70vh]">
+    <div class="hero-content text-center">
+      <div class="max-w-lg">
+        <div class="text-9xl font-bold text-primary mb-4">404</div>
+        <h1 class="text-3xl font-bold mb-4">Página no encontrada</h1>
+        <p class="text-base-content/70 mb-8">
+          Lo sentimos, la página que busca no existe o ha sido movida.
+        </p>
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+          <a href="/" class="btn btn-primary">Volver al Inicio</a>
+          <a href="/contact" class="btn btn-outline btn-primary">Contáctenos</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</MainLayout>

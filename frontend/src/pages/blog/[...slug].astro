@@ -1,0 +1,97 @@
+---
+import MainLayout from '../../layouts/MainLayout.astro';
+import { getCollection, render } from 'astro:content';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('blog');
+  return posts.map(post => ({
+    params: { slug: post.id },
+    props: { post },
+  }));
+}
+
+const { post } = Astro.props;
+const { Content } = await render(post);
+
+function formatDate(date: Date) {
+  return date.toLocaleDateString('es-ES', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+}
+---
+
+<MainLayout title={post.data.title} description={post.data.summary}>
+  <!-- Hero -->
+  <section class="hero min-h-[30vh] bg-gradient-to-br from-primary/10 via-base-100 to-secondary/10">
+    <div class="hero-content text-center">
+      <div class="max-w-3xl">
+        <div class="flex items-center justify-center gap-2 text-sm text-base-content/50 mb-4">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <time datetime={post.data.date.toISOString()}>
+            {formatDate(post.data.date)}
+          </time>
+        </div>
+        <h1 class="text-3xl md:text-5xl font-bold mb-4">
+          {post.data.title}
+        </h1>
+        <div class="flex items-center justify-center gap-3">
+          <div class="avatar placeholder">
+            <div class="bg-primary/10 text-primary rounded-full w-10 h-10">
+              <span>{post.data.author.charAt(0)}</span>
+            </div>
+          </div>
+          <span class="font-medium">{post.data.author}</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contenido -->
+  <section class="py-12">
+    <div class="container mx-auto px-4">
+      <div class="max-w-3xl mx-auto">
+        <article class="prose prose-lg max-w-none">
+          <Content />
+        </article>
+        
+        <!-- Tags -->
+        {post.data.tags && post.data.tags.length > 0 && (
+          <div class="flex flex-wrap gap-2 mt-8 pt-8 border-t border-base-300">
+            {post.data.tags.map(tag => (
+              <span class="badge badge-outline">{tag}</span>
+            ))}
+          </div>
+        )}
+        
+        <!-- Navegación -->
+        <div class="flex justify-between items-center mt-12 pt-8 border-t border-base-300">
+          <a href="/blog" class="btn btn-ghost btn-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Volver al Blog
+          </a>
+          <a href="/contact" class="btn btn-primary btn-sm">
+            ¿Tiene preguntas?
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+</MainLayout>
+
+<style>
+  .prose h1 { font-size: 1.875rem; font-weight: 700; margin-bottom: 1.5rem; }
+  .prose h2 { font-size: 1.5rem; font-weight: 700; margin-top: 2rem; margin-bottom: 1rem; }
+  .prose h3 { font-size: 1.25rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.75rem; }
+  .prose p { margin-bottom: 1rem; color: rgba(var(--base-content-rgb, 0, 0, 0), 0.8); }
+  .prose ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1rem; }
+  .prose li { margin-bottom: 0.5rem; }
+  .prose strong { font-weight: 600; }
+  .prose hr { margin-top: 2rem; margin-bottom: 2rem; border-color: var(--fallback-bc,oklch(var(--b3))); }
+  .prose em { font-style: italic; }
+</style>

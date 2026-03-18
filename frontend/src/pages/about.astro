@@ -1,0 +1,242 @@
+---
+import MainLayout from '../layouts/MainLayout.astro';
+
+const team = [
+  {
+    name: "Ricardo A. Sanjur A.",
+    role: "Ingeniero Civil, Maestría en SIG",
+    description: "Director técnico con más de 25 años de experiencia en levantamientos topográficos y sistemas de información geográfica.",
+    image: "/images/rsanjur.jpg"
+  },
+  {
+    name: "Eysbel Gomez de Sanjur",
+    role: "Licenciada en Contabilidad",
+    description: "Gerente administrativa, responsable de la gestión financiera y operaciones de la empresa desde hace más de 15 años.",
+    image: "/images/eysbel-150x150.jpg"
+  },
+  {
+    name: "Ricardo A. Sanjur G.",
+    role: "Ingeniero en Sistemas Computacionales",
+    description: "Especialista en procesamiento de datos geoespaciales, desarrollo de sistemas GIS y automatización de flujos de trabajo.",
+    image: "/images/Ricardo-Amado-2-150x150.png"
+  },
+  {
+    name: "Ricardo A. Sanjur S.",
+    role: "Técnico Topógrafo, Fundador",
+    description: "Fundador de Topografía Especializada S.A. en 1970. Pionero de la topografía moderna en Chiriquí con más de 55 años de trayectoria.",
+    image: "/images/rass.jpg"
+  }
+];
+---
+
+<MainLayout title="Nosotros" description="Conozca a Topografía Especializada S.A. - Tres generaciones de experiencia en topografía, geodesia y geomática en David, Chiriquí, Panamá.">
+  
+  <!-- Hero -->
+  <section class="relative h-[50vh] min-h-[400px] overflow-hidden">
+    <div class="absolute inset-0">
+      <img src="/images/homeheader-1.jpg" alt="Sobre Nosotros" class="w-full h-full object-cover" />
+      <div class="absolute inset-0 bg-black/70"></div>
+    </div>
+    <div class="relative z-10 h-full flex items-end pb-16">
+      <div class="container mx-auto px-4 text-center">
+        <div class="badge badge-primary badge-outline mb-4">Sobre Nosotros</div>
+        <h1 class="text-4xl md:text-5xl font-bold text-white mb-4">
+          Tres Generaciones de <span class="text-primary">Excelencia</span>
+        </h1>
+        <p class="text-lg text-white/80 max-w-2xl mx-auto">
+      </div>
+    </div>
+  </section>
+
+  <!-- Historia -->
+  <section class="py-20">
+    <div class="container mx-auto px-4">
+      <div class="flex flex-col lg:flex-row items-center gap-12">
+        <div class="flex-1">
+          <h2 class="text-3xl font-bold mb-6">Nuestra Historia</h2>
+          <div class="space-y-4 text-base-content/70">
+            <p>
+              Topografía Especializada S.A. fue fundada en 1970 por el Ing. Ricardo A. Sanjur S., 
+              quien comenzó sus operaciones en David, Chiriquí, con un teodolito y una visión clara: 
+              ofrecer servicios topográficos de la más alta calidad.
+            </p>
+            <p>
+              A lo largo de más de cinco décadas, la empresa ha evolucionado junto con la tecnología, 
+              incorporando desde estaciones totales digitales hasta sistemas GNSS de última generación 
+              y drones para levantamientos aéreos.
+            </p>
+            <p>
+              Hoy, la empresa continúa bajo la dirección de la segunda y tercera generación de la 
+              familia Sanjur, combinando la experiencia tradicional con las herramientas tecnológicas 
+              más modernas del mercado.
+            </p>
+          </div>
+        </div>
+        <div class="flex-1">
+          <div class="stats shadow lg:stats-vertical">
+            <div class="stat">
+              <div class="stat-figure text-primary">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div class="stat-title">Fundación</div>
+              <div class="stat-value text-primary">1970</div>
+              <div class="stat-desc">Más de 55 años</div>
+            </div>
+            <div class="stat">
+              <div class="stat-figure text-secondary">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+              <div class="stat-title">Oficinas</div>
+              <div class="stat-value text-secondary">1</div>
+              <div class="stat-desc">David, Chiriquí</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Misión y Visión -->
+  <section class="py-20 bg-base-200">
+    <div class="container mx-auto px-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div class="card bg-base-100 shadow-xl">
+          <div class="card-body">
+            <h2 class="card-title text-2xl text-primary mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Misión
+            </h2>
+            <p class="text-base-content/80">
+              Brindar servicios de topografía, geodesia y geomática con los más altos estándares de 
+              precisión y profesionalismo, utilizando tecnología de vanguardia y formando profesionales 
+              comprometidos con la exactitud geográfica que exige el desarrollo de Panamá.
+            </p>
+          </div>
+        </div>
+        <div class="card bg-base-100 shadow-xl">
+          <div class="card-body">
+            <h2 class="card-title text-2xl text-secondary mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              Visión
+            </h2>
+            <p class="text-base-content/80">
+              Ser la empresa líder en servicios geoespaciales en Chiriquí y Panamá, reconocida por 
+              la calidad de sus levantamientos, la innovación tecnológica y el compromiso con el 
+              desarrollo territorial sostenible del país.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Valores -->
+  <section class="py-20">
+    <div class="container mx-auto px-4">
+      <div class="text-center mb-12">
+        <h2 class="text-3xl md:text-4xl font-bold mb-4">Nuestros Valores</h2>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="card bg-base-100 border border-base-300 hover:border-primary transition-colors">
+          <div class="card-body items-center text-center">
+            <div class="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+            </div>
+            <h3 class="card-title">Precisión</h3>
+            <p class="text-sm text-base-content/70">Cada medición es verificada y certificada</p>
+          </div>
+        </div>
+        <div class="card bg-base-100 border border-base-300 hover:border-secondary transition-colors">
+          <div class="card-body items-center text-center">
+            <div class="w-16 h-16 rounded-full bg-secondary/10 flex items-center justify-center mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 class="card-title">Puntualidad</h3>
+            <p class="text-sm text-base-content/70">Respetamos los plazos acordados</p>
+          </div>
+        </div>
+        <div class="card bg-base-100 border border-base-300 hover:border-accent transition-colors">
+          <div class="card-body items-center text-center">
+            <div class="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
+            </div>
+            <h3 class="card-title">Honestidad</h3>
+            <p class="text-sm text-base-content/70">Transparencia en cada proceso</p>
+          </div>
+        </div>
+        <div class="card bg-base-100 border border-base-300 hover:border-info transition-colors">
+          <div class="card-body items-center text-center">
+            <div class="w-16 h-16 rounded-full bg-info/10 flex items-center justify-center mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-info" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+              </svg>
+            </div>
+            <h3 class="card-title">Innovación</h3>
+            <p class="text-sm text-base-content/70">Tecnología de vanguardia</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Equipo -->
+  <section class="py-20 bg-base-200">
+    <div class="container mx-auto px-4">
+      <div class="text-center mb-12">
+        <h2 class="text-3xl md:text-4xl font-bold mb-4">Nuestro Equipo</h2>
+        <p class="text-base-content/70 max-w-2xl mx-auto">
+          Profesionales comprometidos con la excelencia y la precisión en cada proyecto.
+        </p>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {team.map(member => (
+          <div class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow overflow-hidden">
+            <figure class="h-64 overflow-hidden">
+              <img 
+                src={member.image} 
+                alt={member.name}
+                class="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                loading="lazy"
+              />
+            </figure>
+            <div class="card-body text-center">
+              <h3 class="card-title text-lg justify-center">{member.name}</h3>
+              <p class="text-sm text-primary font-medium">{member.role}</p>
+              <p class="text-sm text-base-content/70 mt-2">{member.description}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="py-20 bg-primary text-primary-content">
+    <div class="container mx-auto px-4 text-center">
+      <h2 class="text-3xl md:text-4xl font-bold mb-6">¿Listo para trabajar con nosotros?</h2>
+      <p class="text-primary-content/80 max-w-2xl mx-auto mb-8">
+        Contáctenos hoy mismo y descubra por qué miles de clientes confían en Topografía Especializada S.A.
+      </p>
+      <div class="flex flex-col sm:flex-row gap-4 justify-center">
+        <a href="/services" class="btn btn-secondary btn-lg">Ver Servicios</a>
+        <a href="/contact" class="btn btn-outline btn-lg border-primary-content text-primary-content hover:bg-primary-content hover:text-primary">Contáctenos</a>
+      </div>
+    </div>
+  </section>
+</MainLayout>

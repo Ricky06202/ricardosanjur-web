@@ -1,0 +1,80 @@
+---
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = "Topografía Especializada S.A. - Más de 55 años de experiencia en topografía, geodesia y geomática en David, Chiriquí, Panamá." } = Astro.props;
+---
+
+<!doctype html>
+<html lang="es" data-theme="corporate">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <meta name="generator" content={Astro.generator} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title} | Topografía Especializada S.A.</title>
+  </head>
+  <body class="min-h-screen flex flex-col bg-base-100">
+    <header class="sticky top-0 z-50 bg-base-100/95 backdrop-blur shadow-md">
+      <nav class="navbar container mx-auto px-4">
+        <div class="navbar-start">
+          <div class="dropdown">
+            <div tabindex="0" role="button" class="btn btn-ghost lg:hidden">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16" />
+              </svg>
+            </div>
+            <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
+              <li><a href="/">Inicio</a></li>
+              <li><a href="/about">Nosotros</a></li>
+              <li><a href="/services">Servicios</a></li>
+              <li><a href="/blog">Blog</a></li>
+              <li><a href="/contact">Contacto</a></li>
+            </ul>
+          </div>
+          <a href="/" class="flex items-center gap-3">
+            <img src="/images/logo-sin-fondopng-con-www.png" alt="Topografía Especializada" class="h-12 w-auto" />
+            <span class="text-xl font-bold text-primary hidden sm:inline">Topografía Especializada</span>
+          </a>
+        </div>
+        <div class="navbar-center hidden lg:flex">
+          <ul class="menu menu-horizontal px-1 gap-1">
+            <li><a href="/" class="font-medium px-4 py-2 rounded-lg hover:bg-primary/10 transition-colors">Inicio</a></li>
+            <li><a href="/about" class="font-medium px-4 py-2 rounded-lg hover:bg-primary/10 transition-colors">Nosotros</a></li>
+            <li><a href="/services" class="font-medium px-4 py-2 rounded-lg hover:bg-primary/10 transition-colors">Servicios</a></li>
+            <li><a href="/blog" class="font-medium px-4 py-2 rounded-lg hover:bg-primary/10 transition-colors">Blog</a></li>
+            <li><a href="/contact" class="font-medium px-4 py-2 rounded-lg hover:bg-primary/10 transition-colors">Contacto</a></li>
+          </ul>
+        </div>
+        <div class="navbar-end">
+          <a href="/services" class="btn btn-primary btn-sm">Solicitar Cotización</a>
+        </div>
+      </nav>
+    </header>
+
+    <main class="flex-1">
+      <slot />
+    </main>
+
+    <footer class="footer footer-center p-8 bg-base-100 border-t border-base-300 mt-12">
+      <aside>
+        <div class="flex items-center gap-3 mb-4">
+          <img src="/images/logo-sin-fondopng-con-www.png" alt="Topografía Especializada" class="h-10 w-auto" />
+          <span class="text-lg font-bold text-primary">Topografía Especializada</span>
+        </div>
+        <p class="text-sm text-base-content/80">
+          © 2024 Topografía Especializada S.A. | Calle B Sur y Segunda Oeste, Diagonal al Colegio Sucre
+        </p>
+        <p class="text-sm text-base-content/80">David, Chiriquí, Panamá</p>
+        <p class="text-xs opacity-70 mt-2">Tel: +507 6671-4646 | gerencia@ricardosanjur.com</p>
+      </aside>
+    </footer>
+  </body>
+</html>
+
+<style is:global>
+  @import "../styles/global.css";
+</style>

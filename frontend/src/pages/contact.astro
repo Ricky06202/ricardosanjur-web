@@ -1,0 +1,215 @@
+---
+import MainLayout from '../layouts/MainLayout.astro';
+---
+
+<MainLayout title="Contacto" description="Contáctenos - Topografía Especializada S.A. Ubicación, teléfono y correo electrónico en David, Chiriquí, Panamá.">
+  
+  <!-- Hero -->
+  <section class="relative h-[40vh] min-h-[350px] overflow-hidden">
+    <div class="absolute inset-0">
+      <img src="/images/Daniel-y-Yo.jpg" alt="Contáctenos" class="w-full h-full object-cover" />
+      <div class="absolute inset-0 bg-black/70"></div>
+    </div>
+    <div class="relative z-10 h-full flex items-end pb-12">
+      <div class="container mx-auto px-4 text-center">
+        <div class="badge badge-primary badge-outline mb-4">Contáctenos</div>
+        <h1 class="text-4xl md:text-5xl font-bold text-white mb-4">
+          Estamos aquí para <span class="text-primary">ayudarle</span>
+        </h1>
+      </div>
+    </div>
+  </section>
+
+  <!-- Info y Formulario -->
+  <section class="py-20">
+    <div class="container mx-auto px-4">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+        
+        <!-- Información de Contacto -->
+        <div>
+          <h2 class="text-2xl font-bold mb-8">Información de Contacto</h2>
+          
+          <div class="space-y-6">
+            <div class="flex items-start gap-4">
+              <div class="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+              <div>
+                <h3 class="font-semibold text-lg">Dirección</h3>
+                <p class="text-base-content/70">
+                  Calle B Sur y Segunda Oeste, Diagonal al Colegio Sucre,<br/>
+                  a un Costado de Naturgy<br/>
+                  David, Chiriquí, Panamá
+                </p>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-4">
+              <div class="w-12 h-12 rounded-lg bg-secondary/10 flex items-center justify-center flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                </svg>
+              </div>
+              <div>
+                <h3 class="font-semibold text-lg">Teléfono</h3>
+                <p class="text-base-content/70">
+                  <a href="tel:+50766714646" class="link link-primary">+507 6671-4646</a>
+                </p>
+                <p class="text-sm text-base-content/50 mt-1">Lunes a Viernes: 8:00 AM - 5:00 PM</p>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-4">
+              <div class="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div>
+                <h3 class="font-semibold text-lg">Correo Electrónico</h3>
+                <p class="text-base-content/70">
+                  <a href="mailto:gerencia@ricardosanjur.com" class="link link-primary">gerencia@ricardosanjur.com</a>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mapa Estático -->
+          <div class="mt-8">
+            <h3 class="font-semibold text-lg mb-4">Ubicación</h3>
+            <div class="card bg-base-100 shadow-xl overflow-hidden">
+              <figure class="h-64 bg-base-200">
+                <a href="https://www.google.com/maps/search/Calle+B+Sur+y+Segunda+Oeste+Diagonal+al+Colegio+Sucre+David+Chiriqui+Panama" 
+                   target="_blank" 
+                   rel="noopener noreferrer"
+                   class="w-full h-full flex items-center justify-center hover:bg-base-300 transition-colors">
+                  <div class="text-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-base-content/30 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <p class="text-sm text-base-content/50">Ver en Google Maps</p>
+                    <p class="text-xs text-base-content/30 mt-1">David, Chiriquí, Panamá</p>
+                  </div>
+                </a>
+              </figure>
+            </div>
+          </div>
+        </div>
+
+        <!-- Formulario de Contacto -->
+        <div>
+          <h2 class="text-2xl font-bold mb-8">Envíenos un Mensaje</h2>
+          
+          <form class="card bg-base-100 shadow-xl" id="contactForm">
+            <div class="card-body space-y-4">
+              <div class="form-control">
+                <label class="label"><span class="label-text">Nombre Completo *</span></label>
+                <input type="text" name="nombre" class="input input-bordered" required placeholder="Ing. Juan Pérez" />
+              </div>
+
+              <div class="form-control">
+                <label class="label"><span class="label-text">Correo Electrónico *</span></label>
+                <input type="email" name="email" class="input input-bordered" required placeholder="juan@ejemplo.com" />
+              </div>
+
+              <div class="form-control">
+                <label class="label"><span class="label-text">Teléfono</span></label>
+                <input type="tel" name="telefono" class="input input-bordered" placeholder="+507 6000-0000" />
+              </div>
+
+              <div class="form-control">
+                <label class="label"><span class="label-text">Tema *</span></label>
+                <select name="tema" class="select select-bordered" required>
+                  <option value="">Seleccione un tema</option>
+                  <option value="cotizacion">Solicitud de Cotización</option>
+                  <option value="consulta">Consulta General</option>
+                  <option value="soporte">Soporte Técnico</option>
+                  <option value="queja">Queja o Reclamo</option>
+                  <option value="otro">Otro</option>
+                </select>
+              </div>
+
+              <div class="form-control">
+                <label class="label"><span class="label-text">Mensaje *</span></label>
+                <textarea name="mensaje" class="textarea textarea-bordered h-32" required placeholder="¿En qué podemos ayudarle?"></textarea>
+              </div>
+
+              <div class="form-control mt-4">
+                <button type="submit" class="btn btn-primary btn-lg">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
+                  Enviar Mensaje
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Mapa Completo -->
+  <section class="py-10 bg-base-200">
+    <div class="container mx-auto px-4">
+      <div class="text-center mb-6">
+        <h2 class="text-2xl font-bold">Cómo Llegar</h2>
+        <p class="text-base-content/70">Estamos ubicados en el corazón de David, Chiriquí</p>
+      </div>
+      <div class="card bg-base-100 shadow-xl overflow-hidden">
+        <div class="aspect-video bg-base-200 flex items-center justify-center">
+          <div class="text-center p-8">
+            <div class="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+              </svg>
+            </div>
+            <p class="text-lg font-medium mb-2">Topografía Especializada S.A.</p>
+            <p class="text-base-content/70 mb-4">Calle B Sur y Segunda Oeste, Diagonal al Colegio Sucre</p>
+            <a href="https://www.google.com/maps/search/Calle+B+Sur+y+Segunda+Oeste+Diagonal+al+Colegio+Sucre+David+Chiriqui+Panama" 
+               target="_blank" 
+               rel="noopener noreferrer"
+               class="btn btn-primary">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+              Abrir en Google Maps
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</MainLayout>
+
+<script>
+  const form = document.getElementById('contactForm') as HTMLFormElement;
+  
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(form);
+    
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        body: JSON.stringify(Object.fromEntries(formData)),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        alert('¡Mensaje enviado exitosamente! Nos pondremos en contacto pronto.');
+        form.reset();
+      } else {
+        alert('Hubo un error. Por favor intente nuevamente.');
+      }
+    } catch (error) {
+      alert('Error de conexión. Por favor intente más tarde.');
+    }
+  });
+</script>
