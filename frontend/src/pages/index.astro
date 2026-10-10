@@ -2,329 +2,282 @@
 import MainLayout from '../layouts/MainLayout.astro';
 
 const heroImages = [
-  "/images/Daniel-y-Yo.jpg",
-  "/images/20250130_121614.jpg",
   "/images/20240821_163941.jpg",
+  "/images/20250130_121614.jpg",
   "/images/20240824_125553-1.jpg",
-  "/images/20241125_101126.jpg",
-  "/images/20241229_150306.jpg",
-  "/images/20240908_110742.jpg"
 ];
 
 const metrics = [
-  { value: "55+", label: "Años de Experiencia", icon: "🗺️" },
-  { value: "2,500+", label: "Proyectos Entregados", icon: "📋" },
-  { value: "15,000+", label: "Hectáreas Medidas", icon: "📐" },
-  { value: "1,000+", label: "Clientes Satisfechos", icon: "👥" }
+  { value: 55, suffix: "+", label: "Años de experiencia" },
+  { value: 2500, suffix: "+", label: "Proyectos entregados" },
+  { value: 15000, suffix: "+", label: "Hectáreas medidas" },
+  { value: 1000, suffix: "+", label: "Clientes satisfechos" },
+];
+
+const capabilities = [
+  "GNSS RTK", "Estación Total", "Vuelo con Drones", "Curvas de Nivel",
+  "Catastro", "Sistemas de Información Geográfica", "Replanteo", "Geodesia",
+  "Ortofotos / MDT", "Peritajes",
 ];
 
 const services = [
   {
     title: "Topografía de Obras Civiles",
-    description: "Levantamientos topográficos para construcción de carreteras, puentes, edificaciones e infraestructura vial.",
-    image: "/images/Home7-2.jpg"
-  },
-  {
-    title: "Planos Topográficos",
-    description: "Elaboración de planos con curvas de nivel, puntos de control y detalles planimétricos precisos.",
-    image: "/images/Home3-2.jpg"
+    description: "Levantamientos y replanteo para carreteras, puentes, edificaciones e infraestructura vial.",
+    image: "/images/20250130_121614.jpg",
+    tag: "Obra",
   },
   {
     title: "Geodesia y GNSS",
-    description: "Mediciones geodésicas de alta precisión utilizando tecnología GPS/GNSS de última generación.",
-    image: "/images/20240821_163941.jpg"
-  },
-  {
-    title: "Catastro y SIG",
-    description: "Sistemas de Información Geográfica y gestión catastral para una mejor administración territorial.",
-    image: "/images/20241125_101126.jpg"
+    description: "Mediciones geodésicas de alta precisión con tecnología GPS/GNSS RTK de última generación.",
+    image: "/images/20240821_163941.jpg",
+    tag: "GNSS",
   },
   {
     title: "Vuelo con Drones",
-    description: "Levantamientos aéreos con drones para generación de modelos digitales de terreno y ortofotos.",
-    image: "/images/20241229_150306.jpg"
+    description: "Levantamiento aéreo para modelos digitales de terreno, ortofotos y cálculo de volúmenes.",
+    image: "/images/176070209_204156991250335_7340951298165577398_n.jpg",
+    tag: "Dron",
+  },
+  {
+    title: "Planos Topográficos",
+    description: "Planos con curvas de nivel, puntos de control y detalle planimétrico preciso.",
+    image: "/images/imageye___-_305715561_489067489342767_4814350727418359153_n.jpeg",
+    tag: "Planos",
+  },
+  {
+    title: "Catastro y SIG",
+    description: "Sistemas de Información Geográfica y gestión catastral para administrar el territorio.",
+    image: "/images/161274447_3623318507793664_4342023233341068761_n.jpg",
+    tag: "SIG",
   },
   {
     title: "Peritajes Topográficos",
     description: "Dictámenes periciales para juicios de propiedad, linderos y conflictos territoriales.",
-    image: "/images/20240908_110742.jpg"
-  }
+    image: "/images/20240824_125553-1.jpg",
+    tag: "Peritaje",
+  },
+];
+
+const steps = [
+  { n: "01", t: "Levantamiento", d: "Coordinamos la visita y capturamos los datos en campo con GNSS, estación total o dron." },
+  { n: "02", t: "Procesamiento", d: "Post-proceso, ajuste de redes y gabinete. Control de calidad de cada punto." },
+  { n: "03", t: "Entregables", d: "Planos, curvas de nivel, ortofotos, modelos digitales y reportes según el proyecto." },
+  { n: "04", t: "Acompañamiento", d: "Soporte técnico durante la ejecución de la obra y atención directa." },
 ];
 ---
 
 <MainLayout title="Inicio">
-  <!-- Hero con Slider -->
-  <section class="relative h-[80vh] min-h-[600px] overflow-hidden">
+  <!-- ================= HERO ================= -->
+  <section class="relative flex min-h-[92vh] items-center overflow-hidden">
     <div id="hero-slider" class="absolute inset-0">
       {heroImages.map((img, i) => (
-        <div 
-          class="absolute inset-0 transition-opacity duration-1000 ease-in-out"
-          style={`opacity: ${i === 0 ? 1 : 0}`}
-          data-slide={i}
-        >
-          <img 
-            src={img} 
-            alt={`Topografía Especializada ${i + 1}`}
-            class="w-full h-full object-cover"
-            loading={i === 0 ? "eager" : "lazy"}
-          />
+        <div class="absolute inset-0 transition-opacity duration-[1400ms] ease-in-out" style={`opacity: ${i === 0 ? 1 : 0}`} data-slide={i}>
+          <img src={img} alt="Topografía en campo" class="h-full w-full object-cover" loading={i === 0 ? "eager" : "lazy"} />
         </div>
       ))}
     </div>
-    <div class="absolute inset-0 bg-black/75 z-[1]"></div>
-    
-    <div class="relative z-10 h-full flex items-center">
-      <div class="container mx-auto px-4">
-        <div class="max-w-3xl">
-          <h1 class="text-4xl md:text-6xl font-bold text-white mb-6 leading-tight animate-fade-in">
-            Expertos en <span class="text-primary">Topografía</span> desde 1970
-          </h1>
-          <p class="text-lg md:text-xl text-white/90 mb-8 max-w-2xl">
-            Más de cinco décadas brindando servicios de topografía, geodesia y geomática con precisión, 
-            compromiso y la más alta tecnología en David, Chiriquí y todo Panamá.
-          </p>
-          <div class="flex flex-col sm:flex-row gap-4">
-            <a href="/services" class="btn btn-primary btn-lg">Nuestros Servicios</a>
-            <a href="/contact" class="btn btn-outline btn-lg border-white text-white hover:bg-white hover:text-primary">Contáctenos</a>
-          </div>
+    <div class="absolute inset-0 bg-gradient-to-br from-[#05070f] via-[#05070f]/85 to-[#0a2fd6]/40"></div>
+    <div class="grid-bg absolute inset-0 opacity-60"></div>
+    <div class="pointer-events-none absolute -top-24 right-[-10%] h-[520px] w-[520px] rounded-full bg-primary/25 blur-[130px]"></div>
+    <div class="pointer-events-none absolute bottom-[-20%] left-[-10%] h-[420px] w-[420px] rounded-full bg-secondary/15 blur-[120px]"></div>
+
+    <div class="relative mx-auto w-full max-w-7xl px-4 py-24 sm:px-6">
+      <div class="max-w-3xl">
+        <div class="animate-fade-up inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 backdrop-blur">
+          <span class="relative flex h-2 w-2"><span class="absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span><span class="relative inline-flex h-2 w-2 rounded-full bg-primary"></span></span>
+          <span class="font-mono text-[11px] uppercase tracking-[0.22em] text-base-content/80">Desde 1970 · David, Chiriquí · Panamá</span>
         </div>
-      </div>
-    </div>
 
-    <!-- Slider indicators -->
-    <div class="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex gap-2">
-      {heroImages.map((_, i) => (
-        <button 
-          class="w-3 h-3 rounded-full transition-all slider-dot"
-          data-slide={i}
-          aria-label={`Ir a imagen ${i + 1}`}
-        />
-      ))}
-    </div>
-  </section>
+        <h1 class="animate-fade-up mt-6 font-display text-4xl font-bold leading-[1.05] sm:text-6xl lg:text-7xl" style="animation-delay:.08s">
+          <span class="text-gradient">Precisión</span> que<br />construye el territorio.
+        </h1>
 
-  <!-- Metrics Section -->
-  <section class="py-16 bg-base-200">
-    <div class="container mx-auto px-4">
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-        {metrics.map(metric => (
-          <div class="card bg-base-100 shadow-sm hover:shadow-lg transition-shadow">
-            <div class="card-body items-center text-center py-8">
-              <span class="text-4xl mb-2">{metric.icon}</span>
-              <h2 class="card-title text-3xl font-bold text-primary">{metric.value}</h2>
-              <p class="text-sm text-base-content/70">{metric.label}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  </section>
-
-  <!-- Services Preview con Imágenes -->
-  <section class="py-20">
-    <div class="container mx-auto px-4">
-      <div class="text-center mb-12">
-        <h2 class="text-3xl md:text-4xl font-bold mb-4">Servicios Profesionales</h2>
-        <p class="text-base-content/70 max-w-2xl mx-auto">
-          Ofrecemos soluciones integrales en topografía y geomática adaptadas a las necesidades de cada proyecto.
+        <p class="animate-fade-up mt-6 max-w-xl text-lg text-base-content/75" style="animation-delay:.16s">
+          Topografía, geodesia y geomática de alta precisión. Más de cinco décadas midiendo Panamá con
+          la tecnología más avanzada: GNSS RTK, estación total y drones.
         </p>
-      </div>
-      
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {services.map(service => (
-          <div class="card bg-base-100 border border-base-300 hover:border-primary hover:shadow-xl transition-all duration-300 overflow-hidden group">
-            <figure class="h-48 overflow-hidden">
-              <img 
-                src={service.image} 
-                alt={service.title}
-                class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                loading="lazy"
-              />
-            </figure>
-            <div class="card-body">
-              <h3 class="card-title text-xl">{service.title}</h3>
-              <p class="text-base-content/70">{service.description}</p>
-              <div class="card-actions justify-end mt-4">
-                <a href="/services" class="btn btn-primary btn-sm">Más información</a>
-              </div>
-            </div>
-          </div>
-        ))}
+
+        <div class="animate-fade-up mt-9 flex flex-col gap-3 sm:flex-row" style="animation-delay:.24s">
+          <a href="/contact" class="btn btn-primary btn-lg rounded-full px-8">Solicitar cotización</a>
+          <a href="/services" class="btn btn-lg rounded-full border border-white/15 bg-white/5 px-8 text-white backdrop-blur hover:border-primary/60 hover:bg-white/10">Ver servicios</a>
+        </div>
       </div>
 
-      <div class="text-center mt-10">
-        <a href="/services" class="btn btn-outline btn-primary btn-lg">
-          Ver Todos los Servicios
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-          </svg>
-        </a>
+      <!-- HUD card -->
+      <div class="glass animate-float absolute bottom-18 right-6 hidden max-w-[230px] rounded-2xl p-5 md:block">
+        <p class="font-mono text-[10px] uppercase tracking-[0.2em] text-primary">Sistema activo</p>
+        <p class="mt-2 font-display text-3xl font-bold">±8 mm</p>
+        <p class="text-xs text-base-content/70">Precisión horizontal GNSS RTK</p>
+        <div class="mt-3 h-px w-full bg-white/10"></div>
+        <p class="mt-3 font-mono text-[10px] uppercase tracking-widest text-base-content/50">WGS‑84 · UTM 17N</p>
       </div>
+    </div>
+
+    <div class="absolute bottom-8 left-1/2 z-20 flex -translate-x-1/2 gap-2">
+      {heroImages.map((_, i) => (
+        <button class="h-1.5 rounded-full bg-white/30 transition-all duration-300 slider-dot data-[active=true]:w-8 data-[active=true]:bg-primary" style="width:1.5rem" data-slide={i} aria-label={`Imagen ${i + 1}`} />
+      ))}
     </div>
   </section>
 
-  <!-- About Preview -->
-  <section class="py-20 bg-base-200">
-    <div class="container mx-auto px-4">
-      <div class="flex flex-col lg:flex-row items-center gap-12">
-        <div class="flex-1">
-          <div class="badge badge-primary badge-outline mb-4">Sobre Nosotros</div>
-          <h2 class="text-3xl md:text-4xl font-bold mb-6">
-            Tres Generaciones de <span class="text-primary">Experiencia y Compromiso</span>
-          </h2>
-          <p class="text-base-content/70 mb-6">
-            Fundada en 1970 por el Ing. Ricardo A. Sanjur S., Topografía Especializada S.A. ha crecido 
-            de la mano de su familia, manteniendo los valores de precisión, honestidad y servicio al cliente 
-            que nos han caracterizado por más de 55 años.
+  <!-- ================= MARQUEE de capacidades ================= -->
+  <section class="hud-line relative overflow-hidden border-y border-white/5 bg-base-200/40 py-4">
+    <div class="flex w-max animate-marquee gap-10 whitespace-nowrap pr-10">
+      {[...capabilities, ...capabilities].map((c) => (
+        <span class="flex items-center gap-3 font-mono text-xs uppercase tracking-[0.25em] text-base-content/55">
+          <span class="h-1.5 w-1.5 rounded-full bg-primary"></span>{c}
+        </span>
+      ))}
+    </div>
+  </section>
+
+  <!-- ================= MÉTRICAS ================= -->
+  <section class="mx-auto max-w-7xl px-4 py-20 sm:px-6">
+    <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
+      {metrics.map((m, i) => (
+        <div class="reveal glass rounded-2xl p-6 text-center" style={`transition-delay:${i * 60}ms`}>
+          <p class="font-display text-4xl font-bold text-white sm:text-5xl">
+            <span class="counter" data-target={m.value}>0</span><span class="text-primary">{m.suffix}</span>
           </p>
-          <ul class="space-y-3 mb-8">
-            <li class="flex items-center gap-3">
-              <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                </svg>
-              </div>
-              <span>Equipo multidisciplinario de profesionales</span>
-            </li>
-            <li class="flex items-center gap-3">
-              <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                </svg>
-              </div>
-              <span>Equipamiento de última generación</span>
-            </li>
-            <li class="flex items-center gap-3">
-              <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                </svg>
-              </div>
-              <span>Compromiso con la precisión y puntualidad</span>
-            </li>
-          </ul>
-          <a href="/about" class="btn btn-primary">Conocer Más</a>
+          <p class="mt-2 font-mono text-[11px] uppercase tracking-widest text-base-content/55">{m.label}</p>
         </div>
-        <div class="flex-1">
-          <div class="card bg-base-100 shadow-xl overflow-hidden rounded-2xl">
-            <figure class="h-64 bg-white m-4">
-              <img src="/images/rs-topo-3.png" alt="Ricardo Sanjur" class="w-full h-full object-contain rounded-xl" loading="lazy" />
-            </figure>
-            <div class="card-body">
-              <h3 class="card-title text-2xl mb-4">¿Por qué elegirnos?</h3>
-              <div class="space-y-4">
-                <div class="flex items-start gap-4">
-                  <div class="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h4 class="font-semibold">Garantía de Precisión</h4>
-                    <p class="text-sm text-base-content/70">Mediciones verificadas y certificadas</p>
-                  </div>
-                </div>
-                <div class="flex items-start gap-4">
-                  <div class="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h4 class="font-semibold">Puntualidad</h4>
-                    <p class="text-sm text-base-content/70">Entrega en los plazos acordados</p>
-                  </div>
-                </div>
-                <div class="flex items-start gap-4">
-                  <div class="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h4 class="font-semibold">Atención Personalizada</h4>
-                    <p class="text-sm text-base-content/70">Asesoría directa con nuestros expertos</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+      ))}
+    </div>
+  </section>
+
+  <!-- ================= SERVICIOS ================= -->
+  <section class="mx-auto max-w-7xl px-4 py-16 sm:px-6">
+    <div class="reveal flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <p class="font-mono text-xs uppercase tracking-[0.25em] text-primary">/ Servicios</p>
+        <h2 class="mt-3 font-display text-3xl font-bold sm:text-4xl">Soluciones topográficas <span class="text-gradient">de punta a punta</span></h2>
+      </div>
+      <a href="/services" class="font-mono text-xs uppercase tracking-widest text-base-content/60 transition-colors hover:text-primary">Ver todos →</a>
+    </div>
+
+    <div class="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {services.map((s, i) => (
+        <article class="reveal group relative overflow-hidden rounded-3xl border border-white/8 bg-base-200" style={`transition-delay:${i * 50}ms`}>
+          <div class="relative h-52 overflow-hidden">
+            <img src={s.image} alt={s.title} class="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy" />
+            <div class="absolute inset-0 bg-gradient-to-t from-base-200 via-base-200/30 to-transparent"></div>
+            <span class="absolute left-4 top-4 rounded-full border border-white/15 bg-black/40 px-3 py-1 font-mono text-[10px] uppercase tracking-widest text-primary backdrop-blur">{s.tag}</span>
           </div>
+          <div class="p-6">
+            <h3 class="font-display text-lg font-semibold text-white">{s.title}</h3>
+            <p class="mt-2 text-sm text-base-content/65">{s.description}</p>
+          </div>
+          <div class="pointer-events-none absolute inset-0 rounded-3xl ring-1 ring-inset ring-transparent transition group-hover:ring-primary/40"></div>
+        </article>
+      ))}
+    </div>
+  </section>
+
+  <!-- ================= TECNOLOGÍA ================= -->
+  <section class="relative overflow-hidden border-y border-white/5 bg-base-200/40">
+    <div class="grid-bg pointer-events-none absolute inset-0 opacity-40"></div>
+    <div class="relative mx-auto grid max-w-7xl items-center gap-12 px-4 py-24 sm:px-6 lg:grid-cols-2">
+      <div class="reveal relative">
+        <div class="glow-blue overflow-hidden rounded-3xl">
+          <img src="/images/20241125_101126.jpg" alt="Equipos de topografía" class="w-full object-cover" loading="lazy" />
         </div>
+        <div class="glass absolute -bottom-6 -right-4 rounded-2xl p-4 sm:right-6">
+          <p class="font-mono text-[10px] uppercase tracking-widest text-primary">Tecnología</p>
+          <p class="mt-1 font-display text-xl font-bold">GNSS · Total · Dron</p>
+        </div>
+      </div>
+      <div class="reveal">
+        <p class="font-mono text-xs uppercase tracking-[0.25em] text-primary">/ Tecnología</p>
+        <h2 class="mt-3 font-display text-3xl font-bold sm:text-4xl">Instrumentos de <span class="text-gradient">alta precisión</span></h2>
+        <p class="mt-5 text-base-content/70">
+          Combinamos equipos geodésicos de última generación con procesamiento profesional en gabinete
+          para entregar resultados confiables, trazables y listos para obra.
+        </p>
+        <ul class="mt-8 grid gap-3 sm:grid-cols-2">
+          {["Receptores GNSS RTK", "Estación total robótica", "Drones fotogramétricos", "Software SIG y CAD", "Redes de control geodésico", "Procesamiento y control de calidad"].map((f) => (
+            <li class="flex items-center gap-3 rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3 text-sm">
+              <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">✓</span>{f}
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   </section>
 
-  <!-- CTA Section -->
-  <section class="py-20 bg-primary text-primary-content">
-    <div class="container mx-auto px-4 text-center">
-      <h2 class="text-3xl md:text-4xl font-bold mb-6">¿Necesita una cotización?</h2>
-      <p class="text-primary-content/80 max-w-2xl mx-auto mb-8">
-        Contáctenos hoy mismo y recibirá una evaluación personalizada de su proyecto sin compromiso.
-      </p>
-      <div class="flex flex-col sm:flex-row gap-4 justify-center">
-        <a href="/services" class="btn btn-secondary btn-lg">Solicitar Cotización</a>
-        <a href="tel:+50766714646" class="btn btn-outline btn-lg border-primary-content text-primary-content hover:bg-primary-content hover:text-primary">
-          Llamar: +507 6671-4646
-        </a>
+  <!-- ================= PROCESO ================= -->
+  <section class="mx-auto max-w-7xl px-4 py-24 sm:px-6">
+    <div class="reveal text-center">
+      <p class="font-mono text-xs uppercase tracking-[0.25em] text-primary">/ Cómo trabajamos</p>
+      <h2 class="mt-3 font-display text-3xl font-bold sm:text-4xl">Un proceso <span class="text-gradient">claro y medible</span></h2>
+    </div>
+    <div class="mt-14 grid gap-6 md:grid-cols-4">
+      {steps.map((s, i) => (
+        <div class="reveal relative rounded-2xl border border-white/8 bg-base-200 p-6" style={`transition-delay:${i * 70}ms`}>
+          <span class="font-display text-5xl font-bold text-primary/25">{s.n}</span>
+          <h3 class="mt-3 font-display text-lg font-semibold text-white">{s.t}</h3>
+          <p class="mt-2 text-sm text-base-content/65">{s.d}</p>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <!-- ================= CTA ================= -->
+  <section class="mx-auto max-w-7xl px-4 pb-24 sm:px-6">
+    <div class="reveal glow-blue relative overflow-hidden rounded-[2rem] border border-primary/30 bg-gradient-to-br from-primary/25 via-base-200 to-base-200 p-10 sm:p-16">
+      <div class="grid-bg pointer-events-none absolute inset-0 opacity-40"></div>
+      <div class="relative flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 class="font-display text-3xl font-bold sm:text-4xl">¿Tenés un proyecto en mente?</h2>
+          <p class="mt-3 max-w-xl text-base-content/75">Contanos qué necesitás medir y te preparamos una cotización sin compromiso.</p>
+        </div>
+        <div class="flex flex-col gap-3 sm:flex-row">
+          <a href="/contact" class="btn btn-primary btn-lg rounded-full px-8">Cotizar ahora</a>
+          <a href="tel:+50766714646" class="btn btn-lg rounded-full border border-white/15 bg-white/5 px-8 text-white backdrop-blur hover:bg-white/10">Llamar</a>
+        </div>
       </div>
     </div>
   </section>
 </MainLayout>
 
 <script>
-  // Preload images
-  const heroImages = [
-    "/images/Daniel-y-Yo.jpg",
-    "/images/20250130_121614.jpg",
-    "/images/20240821_163941.jpg",
-    "/images/20240824_125553-1.jpg",
-    "/images/20241125_101126.jpg",
-    "/images/20241229_150306.jpg",
-    "/images/20240908_110742.jpg"
-  ];
-  
-  heroImages.forEach(src => {
-    const img = new Image();
-    img.src = src;
-  });
-
-  const slides = document.querySelectorAll('#hero-slider > div[data-slide]');
-  const dots = document.querySelectorAll('.slider-dot');
-  let currentSlide = 0;
-
-  function showSlide(index: number) {
-    const total = slides.length;
-    const normalizedIndex = ((index % total) + total) % total;
-    
-    slides.forEach((slide, i) => {
-      (slide as HTMLElement).style.opacity = i === normalizedIndex ? '1' : '0';
+  // Slider de fondo
+  const slides = Array.from(document.querySelectorAll<HTMLElement>("[data-slide]")).filter((el) => el.tagName !== "BUTTON");
+  const dots = Array.from(document.querySelectorAll<HTMLButtonElement>(".slider-dot"));
+  let idx = 0;
+  function go(n: number) {
+    idx = (n + slides.length) % slides.length;
+    slides.forEach((s, i) => (s.style.opacity = i === idx ? "1" : "0"));
+    dots.forEach((d, i) => d.dataset.active = String(i === idx));
+  }
+  dots.forEach((d, i) => d.addEventListener("click", () => go(i)));
+  if (slides.length > 1) {
+    let t = setInterval(() => go(idx + 1), 6000);
+    document.addEventListener("visibilitychange", () => {
+      clearInterval(t);
+      if (!document.hidden) t = setInterval(() => go(idx + 1), 6000);
     });
-    
-    dots.forEach((dot, i) => {
-      dot.classList.toggle('bg-white', i === normalizedIndex);
-      dot.classList.toggle('bg-white/50', i !== normalizedIndex);
-      dot.classList.toggle('scale-125', i === normalizedIndex);
-    });
-    currentSlide = normalizedIndex;
+    go(0);
   }
 
-  dots.forEach((dot, i) => {
-    dot.classList.add('bg-white/50');
-    dot.addEventListener('click', () => showSlide(i));
-  });
-
-  showSlide(0);
-
-  setInterval(() => {
-    showSlide(currentSlide + 1);
-  }, 5000);
+  // Contadores
+  const counters = document.querySelectorAll<HTMLElement>(".counter");
+  const cio = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      const el = e.target as HTMLElement;
+      const target = Number(el.dataset.target || "0");
+      const start = performance.now();
+      const dur = 1400;
+      const step = (now: number) => {
+        const p = Math.min(1, (now - start) / dur);
+        const eased = 1 - Math.pow(1 - p, 3);
+        el.textContent = Math.round(target * eased).toLocaleString("es-PA");
+        if (p < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+      cio.unobserve(el);
+    }
+  }, { threshold: 0.4 });
+  counters.forEach((c) => cio.observe(c));
 </script>
-<style>
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  .animate-fade-in {
-    animation: fadeIn 1s ease-out;
-  }
-</style>

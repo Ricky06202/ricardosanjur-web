@@ -4,53 +4,76 @@ interface Props {
   description?: string;
 }
 
-const { title, description = "Topografía Especializada S.A. - Más de 55 años de experiencia en topografía, geodesia y geomática en David, Chiriquí, Panamá." } = Astro.props;
+const { title, description = "Topografía Especializada S.A. — Más de 55 años de experiencia en topografía, geodesia, GNSS y geomática en David, Chiriquí y todo Panamá." } = Astro.props;
+
+const nav = [
+  { href: "/", label: "Inicio" },
+  { href: "/services", label: "Servicios" },
+  { href: "/about", label: "Nosotros" },
+  { href: "/blog", label: "Blog" },
+  { href: "/contact", label: "Contacto" },
+];
+const path = Astro.url.pathname;
+const isActive = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
 ---
 
 <!doctype html>
-<html lang="es" data-theme="corporate">
+<html lang="es" data-theme="topoblue">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={description} />
     <meta name="generator" content={Astro.generator} />
+    <meta name="theme-color" content="#05070f" />
+    <meta property="og:title" content={`${title} | Topografía Especializada`} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>{title} | Topografía Especializada S.A.</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <title>{title} | Topografía Especializada</title>
   </head>
-  <body class="min-h-screen flex flex-col bg-base-100">
-    <header class="sticky top-0 z-50 bg-base-100/95 backdrop-blur shadow-md">
-      <nav class="navbar container mx-auto px-4">
-        <div class="navbar-start">
-          <div class="dropdown">
-            <div tabindex="0" role="button" class="btn btn-ghost lg:hidden">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16" />
-              </svg>
-            </div>
-            <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
-              <li><a href="/">Inicio</a></li>
-              <li><a href="/about">Nosotros</a></li>
-              <li><a href="/services">Servicios</a></li>
-              <li><a href="/blog">Blog</a></li>
-              <li><a href="/contact">Contacto</a></li>
-            </ul>
+  <body class="min-h-screen flex flex-col bg-base-100 text-base-content antialiased">
+    <header class="sticky top-0 z-50 border-b border-white/5 bg-[#05070f]/80 backdrop-blur-xl">
+      <nav class="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6">
+        <a href="/" class="flex shrink-0 items-center gap-3" aria-label="Inicio">
+          <img src="/images/logo-sin-fondopng-con-www.png" alt="Topografía Especializada" class="h-20 w-auto -my-2 drop-shadow-[0_0_18px_rgba(43,92,255,0.45)]" />
+          <span class="hidden font-display text-sm font-bold leading-tight sm:block">
+            TOPOGRAFÍA<br /><span class="text-primary">ESPECIALIZADA</span>
+          </span>
+        </a>
+
+        <div class="ml-auto hidden items-center gap-1 lg:flex">
+          {
+            nav.map((n) => (
+              <a
+                href={n.href}
+                class:list={[
+                  "rounded-full px-4 py-2 font-mono text-xs uppercase tracking-widest transition-colors",
+                  isActive(n.href) ? "bg-primary/15 text-primary" : "text-base-content/70 hover:text-white",
+                ]}
+              >
+                {n.label}
+              </a>
+            ))
+          }
+        </div>
+
+        <a href="/contact" class="btn btn-primary btn-sm ml-auto rounded-full lg:ml-0">
+          Cotizar
+        </a>
+
+        <div class="dropdown dropdown-end lg:hidden">
+          <div tabindex="0" role="button" class="btn btn-ghost btn-sm btn-square">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16" /></svg>
           </div>
-          <a href="/" class="flex items-center gap-3">
-            <img src="/images/logo-sin-fondopng-con-www.png" alt="Topografía Especializada" class="h-12 w-auto" />
-            <span class="text-xl font-bold text-primary hidden sm:inline">Topografía Especializada</span>
-          </a>
-        </div>
-        <div class="navbar-center hidden lg:flex">
-          <ul class="menu menu-horizontal px-1 gap-1">
-            <li><a href="/" class="font-medium px-4 py-2 rounded-lg hover:bg-primary/10 transition-colors">Inicio</a></li>
-            <li><a href="/about" class="font-medium px-4 py-2 rounded-lg hover:bg-primary/10 transition-colors">Nosotros</a></li>
-            <li><a href="/services" class="font-medium px-4 py-2 rounded-lg hover:bg-primary/10 transition-colors">Servicios</a></li>
-            <li><a href="/blog" class="font-medium px-4 py-2 rounded-lg hover:bg-primary/10 transition-colors">Blog</a></li>
-            <li><a href="/contact" class="font-medium px-4 py-2 rounded-lg hover:bg-primary/10 transition-colors">Contacto</a></li>
+          <ul tabindex="0" class="menu dropdown-content z-[1] mt-3 w-56 rounded-box border border-white/10 bg-base-200 p-2 shadow-2xl">
+            {nav.map((n) => (<li><a href={n.href} class={isActive(n.href) ? "text-primary" : ""}>{n.label}</a></li>))}
           </ul>
-        </div>
-        <div class="navbar-end">
-          <a href="/services" class="btn btn-primary btn-sm">Solicitar Cotización</a>
         </div>
       </nav>
     </header>
@@ -59,19 +82,51 @@ const { title, description = "Topografía Especializada S.A. - Más de 55 años 
       <slot />
     </main>
 
-    <footer class="footer footer-center p-8 bg-base-100 border-t border-base-300 mt-12">
-      <aside>
-        <div class="flex items-center gap-3 mb-4">
-          <img src="/images/logo-sin-fondopng-con-www.png" alt="Topografía Especializada" class="h-10 w-auto" />
-          <span class="text-lg font-bold text-primary">Topografía Especializada</span>
+    <footer class="relative mt-24 border-t border-white/5">
+      <div class="grid-bg pointer-events-none absolute inset-0 opacity-40"></div>
+      <div class="relative mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr]">
+        <div>
+          <img src="/images/logo-sin-fondopng-con-www.png" alt="Topografía Especializada" class="h-24 w-auto" />
+          <p class="mt-4 max-w-sm text-sm text-base-content/70">
+            Precisión, tecnología y más de cinco décadas de experiencia en topografía, geodesia y geomática en Panamá.
+          </p>
+          <p class="mt-4 font-mono text-[11px] uppercase tracking-widest text-primary">Desde 1970</p>
         </div>
-        <p class="text-sm text-base-content/80">
-          © 2024 Topografía Especializada S.A. | Calle B Sur y Segunda Oeste, Diagonal al Colegio Sucre
-        </p>
-        <p class="text-sm text-base-content/80">David, Chiriquí, Panamá</p>
-        <p class="text-xs opacity-70 mt-2">Tel: +507 6671-4646 | gerencia@ricardosanjur.com</p>
-      </aside>
+
+        <div>
+          <h4 class="font-mono text-[11px] uppercase tracking-widest text-base-content/50">Navegación</h4>
+          <ul class="mt-4 space-y-2 text-sm">
+            {nav.map((n) => (<li><a href={n.href} class="text-base-content/75 transition-colors hover:text-primary">{n.label}</a></li>))}
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="font-mono text-[11px] uppercase tracking-widest text-base-content/50">Contacto</h4>
+          <ul class="mt-4 space-y-2 text-sm text-base-content/75">
+            <li>Calle B Sur y Segunda Oeste, Diag. al Colegio Sucre</li>
+            <li>David, Chiriquí, Panamá</li>
+            <li><a href="tel:+50766714646" class="transition-colors hover:text-primary">+507 6671-4646</a></li>
+            <li><a href="mailto:gerencia@ricardosanjur.com" class="transition-colors hover:text-primary">gerencia@ricardosanjur.com</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="relative border-t border-white/5">
+        <div class="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-6 text-xs text-base-content/50 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <p>© {new Date().getFullYear()} Topografía Especializada S.A. · Ricardo A. Sanjur A.</p>
+          <p class="font-mono">Ing. Civil Especialista en Sistemas de Información Geográfica</p>
+        </div>
+      </div>
     </footer>
+
+    <script>
+      const io = new IntersectionObserver(
+        (entries) => {
+          for (const e of entries) if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+        },
+        { threshold: 0.12 }
+      );
+      document.querySelectorAll(".reveal").forEach((el) => io.observe(el));
+    </script>
   </body>
 </html>
 
