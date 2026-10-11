@@ -78,6 +78,7 @@ export const ui = {
             "Levantamiento aéreo para modelos digitales de terreno, ortofotos y cálculo de volúmenes.",
           image: "/images/176070209_204156991250335_7340951298165577398_n.jpg",
           tag: "Dron",
+          pos: "top",
         },
         {
           title: "Planos Topográficos",
@@ -85,6 +86,7 @@ export const ui = {
             "Planos con curvas de nivel, puntos de control y detalle planimétrico preciso.",
           image: "/images/imageye___-_305715561_489067489342767_4814350727418359153_n.jpeg",
           tag: "Planos",
+          pos: "top",
         },
         {
           title: "Catastro y SIG",
@@ -480,12 +482,14 @@ export const ui = {
           description: "Aerial surveying for digital terrain models, orthophotos and volume calculation.",
           image: "/images/176070209_204156991250335_7340951298165577398_n.jpg",
           tag: "Drone",
+          pos: "top",
         },
         {
           title: "Topographic Maps",
           description: "Maps with contour lines, control points and precise planimetric detail.",
           image: "/images/imageye___-_305715561_489067489342767_4814350727418359153_n.jpeg",
           tag: "Maps",
+          pos: "top",
         },
         {
           title: "Cadastre and GIS",

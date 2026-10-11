@@ -105,7 +105,7 @@ const heroImages = [
       {h.services.map((s, i) => (
         <article class="reveal group relative overflow-hidden rounded-3xl border border-white/8 bg-base-200" style={`transition-delay:${i * 50}ms`}>
           <div class="relative h-52 overflow-hidden">
-            <img src={s.image} alt={s.title} class="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy" />
+            <img src={s.image} alt={s.title} style={("pos" in s && s.pos) ? `object-position:${s.pos}` : undefined} class="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy" />
             <div class="absolute inset-0 bg-gradient-to-t from-base-200 via-base-200/30 to-transparent"></div>
             <span class="absolute left-4 top-4 rounded-full border border-white/15 bg-black/40 px-3 py-1 font-mono text-[10px] uppercase tracking-widest text-primary backdrop-blur">{s.tag}</span>
           </div>
