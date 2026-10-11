@@ -24,7 +24,11 @@ export default {
   ): Promise<Response> {
     const url = new URL(request.url);
 
-    if (request.method === "GET" && url.pathname === "/" && !hasLangCookie(request)) {
+    // Never redirect crawlers: let them index both language versions (hreflang handles the rest).
+    const ua = request.headers.get("User-Agent") ?? "";
+    const isBot = /(googlebot|bingbot|bingpreview|duckduckbot|yandex|baiduspider|slurp|crawler|spider|bot)/i.test(ua);
+
+    if (request.method === "GET" && url.pathname === "/" && !hasLangCookie(request) && !isBot) {
       const country = request.cf?.country;
       if (country && !HISPANIC_COUNTRIES.has(country)) {
         // 302 to the English home. No loop: /en/ is not "/".
