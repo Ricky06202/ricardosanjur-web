@@ -196,6 +196,21 @@ const jsonLd = { "@context": "https://schema.org", "@graph": [...graph, ...extra
       <slot />
     </main>
 
+    <!-- WhatsApp flotante (foto del Ing. Sanjur) -->
+    <a href="https://wa.me/50766714646" target="_blank" rel="noopener" aria-label="Escríbanos por WhatsApp"
+       class="group fixed bottom-5 right-5 z-50 flex items-center gap-2.5 rounded-full bg-white/95 p-1.5 pr-1.5 shadow-2xl shadow-black/40 ring-1 ring-black/5 backdrop-blur transition hover:scale-105 sm:pr-5">
+      <span class="relative block h-14 w-14 shrink-0 overflow-hidden rounded-full ring-2 ring-[#25D366]">
+        <img src="/images/whatsapp-ricardo.jpg" alt="Ing. Ricardo Sanjur" width="112" height="112" class="h-full w-full object-cover" />
+        <span class="absolute bottom-0 right-0 flex h-5 w-5 items-center justify-center rounded-full bg-[#25D366] ring-2 ring-white">
+          <svg viewBox="0 0 32 32" class="h-3 w-3" fill="#fff" aria-hidden="true"><path d="M16.04 3C9.4 3 4 8.4 4 15.04c0 2.13.56 4.2 1.62 6.03L4 29l8.1-1.58a12 12 0 0 0 3.94.66h.01c6.63 0 12.03-5.4 12.03-12.04C28.08 8.4 22.68 3 16.04 3zm0 22.8h-.01a10 10 0 0 1-5.1-1.4l-.36-.21-3.8.74.76-3.7-.24-.38a9.9 9.9 0 0 1-1.52-5.3c0-5.5 4.48-9.98 10-9.98 2.67 0 5.18 1.04 7.07 2.93a9.9 9.9 0 0 1 2.92 7.06c0 5.51-4.48 9.99-9.99 9.99z"/></svg>
+        </span>
+      </span>
+      <span class="hidden font-semibold leading-tight text-[#0b1220] sm:block">
+        <span class="block text-[10px] font-mono uppercase tracking-widest text-[#25D366]">WhatsApp</span>
+        <span class="block text-sm">Escríbanos</span>
+      </span>
+    </a>
+
     <footer class="relative mt-24 border-t border-white/5">
       <div class="grid-bg pointer-events-none absolute inset-0 opacity-40"></div>
       <div class="relative mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr]">
