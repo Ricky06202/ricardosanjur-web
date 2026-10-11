@@ -2,7 +2,7 @@ User-agent: *
 Allow: /
 
 # Areas privadas y de aplicacion (sin valor de busqueda)
-Disallow: /panel-planos
+Disallow: /admin
 Disallow: /mis-planos/
 Disallow: /cdn-cgi/
 

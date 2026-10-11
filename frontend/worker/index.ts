@@ -9,6 +9,7 @@ interface Env {
   PLANOS: any;
   PANEL_CLAVE?: string;
   PANEL_SECRET?: string;
+  ADMIN_TOKEN?: string;
 }
 
 // Paises/territorios donde el espanol es idioma oficial o mayoritario.
@@ -362,10 +363,7 @@ async function handleLogin(request: Request, env: Env): Promise<Response> {
   return loginPage('Contrasena incorrecta.');
 }
 
-async function handleInicio(request: Request, env: Env): Promise<Response> {
-  const guard = await requireSession(request, env);
-  if (guard) return guard;
-
+async function handleInicio(request: Request, env: Env, tok: string): Promise<Response> {
   const cRes = await env.DB
     .prepare('SELECT c.id, c.nombre, c.correo, c.telefono, c.token, c.activo, c.creado_en, ' +
       '(SELECT COUNT(*) FROM plans p WHERE p.client_id = c.id) AS planos, ' +
@@ -390,7 +388,7 @@ async function handleInicio(request: Request, env: Env): Promise<Response> {
         '<td>' + esc(c.descargas) + '</td>' +
         '<td><a class="code" href="' + esc(link) + '">' + esc(link) + '</a>' +
         '<div style="margin-top:6px">' + (active ? '<span class="ok">activo</span>' : '<span class="err">revocado</span>') + '</div></td>' +
-        '<td><form method="POST" action="/panel-planos/revocar">' +
+        '<td><form method="POST" action="/admin/' + tok + '/revocar">' +
         '<input type="hidden" name="client_id" value="' + esc(c.id) + '">' +
         '<button class="btn ghost" type="submit">' + (active ? 'Revocar' : 'Reactivar') + '</button>' +
         '</form></td></tr>';
@@ -403,32 +401,30 @@ async function handleInicio(request: Request, env: Env): Promise<Response> {
     options += '<option value="' + esc(c.id) + '">' + esc(c.nombre || c.id) + '</option>';
   }
 
-  const body = '<h1><span>Panel de planos</span></h1>' +
+  const body = '<h1><span>Admin de planos</span></h1>' +
     '<p class="muted">Clientes, planos y descargas.</p>' +
     '<div class="card"><div class="row"><h2>Clientes</h2><span class="pill">' + clients.length + ' registrados</span></div>' +
     '<div style="overflow-x:auto"><table><thead><tr><th>Cliente</th><th>#Planos</th><th>#Descargas</th><th>Link del cliente</th><th></th></tr></thead>' +
     '<tbody>' + rows + '</tbody></table></div></div>' +
-    '<div class="card"><h2>Nuevo cliente</h2><form method="POST" action="/panel-planos/cliente"><div class="grid2">' +
+    '<div class="card"><h2>Nuevo cliente</h2><form method="POST" action="/admin/' + tok + '/cliente"><div class="grid2">' +
     '<div><label>Nombre</label><input name="nombre" required></div>' +
     '<div><label>Correo</label><input name="correo" type="email"></div>' +
     '<div><label>Telefono</label><input name="telefono"></div>' +
     '</div><p style="margin-top:16px"><button class="btn" type="submit">Crear cliente</button></p></form></div>' +
-    '<div class="card"><h2>Subir plano</h2><form method="POST" action="/panel-planos/plano" enctype="multipart/form-data">' +
+    '<div class="card"><h2>Subir plano</h2><form method="POST" action="/admin/' + tok + '/plano" enctype="multipart/form-data">' +
     '<label>Cliente</label><select name="client_id" required>' + (options || '<option value="">Crea un cliente primero</option>') + '</select>' +
     '<label>Titulo</label><input name="titulo" required>' +
     '<label>Descripcion (opcional)</label><textarea name="descripcion" rows="2"></textarea>' +
     '<label>Archivo (PDF / DWG / ZIP)</label><input type="file" name="archivo" required>' +
     '<p style="margin-top:16px"><button class="btn" type="submit">Subir plano</button></p></form></div>';
-  return page('Panel', body, 200);
+  return page('Admin', body, 200);
 }
 
-async function handleCreateClient(request: Request, env: Env): Promise<Response> {
-  const guard = await requireSession(request, env);
-  if (guard) return guard;
+async function handleCreateClient(request: Request, env: Env, tok: string): Promise<Response> {
   const form = await request.formData();
   const nombre = str(form.get('nombre'));
   if (!nombre) {
-    return page('Panel', '<h1><span>Falta el nombre</span></h1><p><a class="btn ghost" href="/panel-planos/inicio">Volver</a></p>', 400);
+    return page('Admin', '<h1><span>Falta el nombre</span></h1><p><a class="btn ghost" href="/admin/' + tok + '">Volver</a></p>', 400);
   }
   const id = crypto.randomUUID();
   const token = crypto.randomUUID().replace(/-/g, '');
@@ -436,22 +432,20 @@ async function handleCreateClient(request: Request, env: Env): Promise<Response>
     .prepare('INSERT INTO clients (id, nombre, correo, telefono, token, activo, creado_en) VALUES (?, ?, ?, ?, ?, 1, ?)')
     .bind(id, nombre, str(form.get('correo')), str(form.get('telefono')), token, new Date().toISOString())
     .run();
-  return redirect('/panel-planos/inicio', 303);
+  return redirect('/admin/' + tok, 303);
 }
 
-async function handleUpload(request: Request, env: Env): Promise<Response> {
-  const guard = await requireSession(request, env);
-  if (guard) return guard;
+async function handleUpload(request: Request, env: Env, tok: string): Promise<Response> {
   const form = await request.formData();
   const clientId = str(form.get('client_id'));
   const titulo = str(form.get('titulo'));
   const file = form.get('archivo');
   if (!clientId || !titulo || !file || typeof file === 'string') {
-    return page('Panel', '<h1><span>Datos incompletos</span></h1><p class="muted">Cliente, titulo y archivo son obligatorios.</p><p><a class="btn ghost" href="/panel-planos/inicio">Volver</a></p>', 400);
+    return page('Admin', '<h1><span>Datos incompletos</span></h1><p class="muted">Cliente, titulo y archivo son obligatorios.</p><p><a class="btn ghost" href="/admin/' + tok + '">Volver</a></p>', 400);
   }
   const client = await env.DB.prepare('SELECT id FROM clients WHERE id = ?').bind(clientId).first();
   if (!client) {
-    return page('Panel', '<h1><span>Cliente no encontrado</span></h1><p><a class="btn ghost" href="/panel-planos/inicio">Volver</a></p>', 400);
+    return page('Admin', '<h1><span>Cliente no encontrado</span></h1><p><a class="btn ghost" href="/admin/' + tok + '">Volver</a></p>', 400);
   }
   const safeName = sanitizeFileName((file as any).name);
   const key = 'planos/' + clientId + '/' + crypto.randomUUID() + '-' + safeName;
@@ -463,12 +457,10 @@ async function handleUpload(request: Request, env: Env): Promise<Response> {
     .prepare('INSERT INTO plans (id, client_id, titulo, descripcion, r2_key, mime, tamano, descargas, creado_en, activo) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, 1)')
     .bind(crypto.randomUUID(), clientId, titulo, str(form.get('descripcion')), key, mime, size, new Date().toISOString())
     .run();
-  return redirect('/panel-planos/inicio', 303);
+  return redirect('/admin/' + tok, 303);
 }
 
-async function handleRevoke(request: Request, env: Env): Promise<Response> {
-  const guard = await requireSession(request, env);
-  if (guard) return guard;
+async function handleRevoke(request: Request, env: Env, tok: string): Promise<Response> {
   const form = await request.formData();
   const clientId = str(form.get('client_id'));
   if (clientId) {
@@ -477,7 +469,7 @@ async function handleRevoke(request: Request, env: Env): Promise<Response> {
       .bind(clientId)
       .run();
   }
-  return redirect('/panel-planos/inicio', 303);
+  return redirect('/admin/' + tok, 303);
 }
 
 /* ============================ router ============================ */
@@ -488,6 +480,13 @@ export default {
     env: Env,
   ): Promise<Response> {
     const url = new URL(request.url);
+
+    // Host canonico: apex -> www.
+    if (url.hostname === 'ricardosanjur.com') {
+      url.hostname = 'www.ricardosanjur.com';
+      return Response.redirect(url.toString(), 301);
+    }
+
     const method = request.method;
     let path = url.pathname;
     if (path.length > 1 && path.slice(-1) === '/') path = path.replace(/\/+$/, '');
@@ -524,13 +523,19 @@ export default {
       return handleClient(mTok[1], env);
     }
 
-    // Panel.
-    if (path === '/panel-planos' && method === 'GET') return loginPage('');
-    if (path === '/panel-planos/login' && method === 'POST') return handleLogin(request, env);
-    if (path === '/panel-planos/inicio' && method === 'GET') return handleInicio(request, env);
-    if (path === '/panel-planos/cliente' && method === 'POST') return handleCreateClient(request, env);
-    if (path === '/panel-planos/plano' && method === 'POST') return handleUpload(request, env);
-    if (path === '/panel-planos/revocar' && method === 'POST') return handleRevoke(request, env);
+    // Admin por token en la URL (sin login, sin cookies).
+    const mAdmin = path.match(/^\/admin\/([A-Za-z0-9_-]{16,})(\/(cliente|plano|revocar))?$/);
+    if (mAdmin) {
+      const token = String(env.ADMIN_TOKEN || '');
+      if (!token || !constantTimeEqual(mAdmin[1], token)) {
+        return new Response('No encontrado', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } });
+      }
+      const sub = mAdmin[2];
+      if (!sub && method === 'GET') return handleInicio(request, env, mAdmin[1]);
+      if (sub === '/cliente' && method === 'POST') return handleCreateClient(request, env, mAdmin[1]);
+      if (sub === '/plano' && method === 'POST') return handleUpload(request, env, mAdmin[1]);
+      if (sub === '/revocar' && method === 'POST') return handleRevoke(request, env, mAdmin[1]);
+    }
 
     return env.ASSETS.fetch(request);
   },
