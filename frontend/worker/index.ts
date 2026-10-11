@@ -289,6 +289,7 @@ async function handleClient(token: string, env: Env): Promise<Response> {
 
   const body = '<h1>Hola, <span>' + esc(client.nombre || 'cliente') + '</span></h1>' +
     '<p class="muted">Estos son sus planos disponibles. Cada enlace descarga el archivo.</p>' +
+    (plans.length > 1 ? '<p style="margin:14px 0"><a class="btn" href="/mis-planos/' + encodeURIComponent(token) + '/zip">Descargar todo (ZIP)</a></p>' : '') +
     listHtml;
   return page('Mis planos', body, 200);
 }
@@ -331,6 +332,102 @@ async function handleDownload(token: string, id: string, env: Env): Promise<Resp
     'attachment; filename="' + filename.replace(/"/g, '') + '"; filename*=UTF-8\'\'' + encodeURIComponent(filename));
   headers.set('cache-control', 'private, no-store');
   return new Response(obj.body, { status: 200, headers: headers });
+}
+
+/* ============================ zip (store) ============================ */
+
+const CRC_TABLE = (function () {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? (0xedb88320 ^ (c >>> 1)) >>> 0 : c >>> 1;
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+
+function crc32(buf: Uint8Array): number {
+  let c = 0xffffffff;
+  for (let i = 0; i < buf.length; i++) c = (CRC_TABLE[(c ^ buf[i]) & 0xff] ^ (c >>> 8)) >>> 0;
+  return (c ^ 0xffffffff) >>> 0;
+}
+
+// ZIP sin compresion (store). Suficiente para juntar varios planos en un solo archivo.
+function makeZip(files: { name: string; data: Uint8Array }[]): Uint8Array {
+  const enc = new TextEncoder();
+  const u16 = (n: number) => new Uint8Array([n & 0xff, (n >>> 8) & 0xff]);
+  const u32 = (n: number) => new Uint8Array([n & 0xff, (n >>> 8) & 0xff, (n >>> 16) & 0xff, (n >>> 24) & 0xff]);
+  const cat = (...parts: Uint8Array[]) => {
+    let len = 0;
+    for (const q of parts) len += q.length;
+    const out = new Uint8Array(len);
+    let o = 0;
+    for (const q of parts) { out.set(q, o); o += q.length; }
+    return out;
+  };
+  const chunks: Uint8Array[] = [];
+  const central: Uint8Array[] = [];
+  let offset = 0;
+  for (const f of files) {
+    const nameBytes = enc.encode(f.name);
+    const crc = crc32(f.data);
+    const size = f.data.length;
+    const local = cat(
+      u32(0x04034b50), u16(20), u16(0x0800), u16(0), u16(0), u16(0),
+      u32(crc), u32(size), u32(size), u16(nameBytes.length), u16(0), nameBytes,
+    );
+    chunks.push(local, f.data);
+    central.push(cat(
+      u32(0x02014b50), u16(20), u16(20), u16(0x0800), u16(0), u16(0), u16(0),
+      u32(crc), u32(size), u32(size), u16(nameBytes.length), u16(0), u16(0),
+      u16(0), u16(0), u32(0), u32(offset), nameBytes,
+    ));
+    offset += local.length + size;
+  }
+  const cd = cat(...central);
+  const eocd = cat(
+    u32(0x06054b50), u16(0), u16(0), u16(files.length), u16(files.length),
+    u32(cd.length), u32(offset), u16(0),
+  );
+  return cat(...chunks, cd, eocd);
+}
+
+async function handleZip(token: string, env: Env): Promise<Response> {
+  const client = await env.DB
+    .prepare('SELECT id, nombre, activo FROM clients WHERE token = ?')
+    .bind(token)
+    .first();
+  if (!client || Number(client.activo) !== 1) {
+    return notFoundPage('Este enlace no es valido o fue desactivado.');
+  }
+  const res = await env.DB
+    .prepare('SELECT id, r2_key FROM plans WHERE client_id = ? AND activo = 1 ORDER BY creado_en DESC')
+    .bind(client.id)
+    .all();
+  const plans = (res && res.results) || [];
+  const files: { name: string; data: Uint8Array }[] = [];
+  const usados: Record<string, number> = {};
+  for (const pl of plans) {
+    const obj: any = await env.PLANOS.get(pl.r2_key).catch(() => null);
+    if (!obj || !obj.body) continue;
+    const buf = new Uint8Array(await new Response(obj.body).arrayBuffer());
+    let name = fileNameFromKey(pl.r2_key) || ('plano-' + pl.id);
+    if (usados[name] != null) {
+      usados[name] += 1;
+      const dot = name.lastIndexOf('.');
+      name = dot > 0 ? name.slice(0, dot) + ' (' + usados[name] + ')' + name.slice(dot) : name + ' (' + usados[name] + ')';
+    } else {
+      usados[name] = 0;
+    }
+    files.push({ name, data: buf });
+  }
+  if (!files.length) return notFoundPage('No hay archivos para descargar.');
+  const zip = makeZip(files);
+  const headers = new Headers();
+  headers.set('content-type', 'application/zip');
+  headers.set('content-disposition', 'attachment; filename="planos-' + sanitizeFileName(client.nombre || 'cliente') + '.zip"');
+  headers.set('cache-control', 'private, no-store');
+  return new Response(zip, { status: 200, headers });
 }
 
 /* ============================ panel ============================ */
@@ -411,12 +508,14 @@ async function handleInicio(request: Request, env: Env, tok: string): Promise<Re
     '<div><label>Correo</label><input name="correo" type="email"></div>' +
     '<div><label>Telefono</label><input name="telefono"></div>' +
     '</div><p style="margin-top:16px"><button class="btn" type="submit">Crear cliente</button></p></form></div>' +
-    '<div class="card"><h2>Subir plano</h2><form method="POST" action="/admin/' + tok + '/plano" enctype="multipart/form-data">' +
+    '<div class="card"><h2>Subir planos</h2>' +
+    '<p class="muted" style="margin-top:-6px">Puedes elegir varios archivos a la vez.</p>' +
+    '<form method="POST" action="/admin/' + tok + '/plano" enctype="multipart/form-data">' +
     '<label>Cliente</label><select name="client_id" required>' + (options || '<option value="">Crea un cliente primero</option>') + '</select>' +
-    '<label>Titulo</label><input name="titulo" required>' +
+    '<label>Titulo (opcional: si lo dejas vacio se usa el nombre del archivo)</label><input name="titulo">' +
     '<label>Descripcion (opcional)</label><textarea name="descripcion" rows="2"></textarea>' +
-    '<label>Archivo (PDF / DWG / ZIP)</label><input type="file" name="archivo" required>' +
-    '<p style="margin-top:16px"><button class="btn" type="submit">Subir plano</button></p></form></div>';
+    '<label>Archivos (PDF / DWG / ZIP - selecciona varios con Ctrl o manteniendo)</label><input type="file" name="archivos" multiple required>' +
+    '<p style="margin-top:16px"><button class="btn" type="submit">Subir archivos</button></p></form></div>';
   return page('Admin', body, 200);
 }
 
@@ -437,27 +536,43 @@ async function handleCreateClient(request: Request, env: Env, tok: string): Prom
 
 async function handleUpload(request: Request, env: Env, tok: string): Promise<Response> {
   const form = await request.formData();
+  const back = '/admin/' + tok;
   const clientId = str(form.get('client_id'));
-  const titulo = str(form.get('titulo'));
-  const file = form.get('archivo');
-  if (!clientId || !titulo || !file || typeof file === 'string') {
-    return page('Admin', '<h1><span>Datos incompletos</span></h1><p class="muted">Cliente, titulo y archivo son obligatorios.</p><p><a class="btn ghost" href="/admin/' + tok + '">Volver</a></p>', 400);
+  const tituloBase = str(form.get('titulo'));
+  const descripcion = str(form.get('descripcion'));
+  const files = (form.getAll('archivos') as any[]).concat(form.getAll('archivo') as any[])
+    .filter((f) => f && typeof f !== 'string' && typeof f.arrayBuffer === 'function');
+  if (!clientId || files.length === 0) {
+    return page('Admin', '<h1><span>Datos incompletos</span></h1><p class="muted">Elige un cliente y al menos un archivo.</p><p><a class="btn ghost" href="' + back + '">Volver</a></p>', 400);
   }
   const client = await env.DB.prepare('SELECT id FROM clients WHERE id = ?').bind(clientId).first();
   if (!client) {
-    return page('Admin', '<h1><span>Cliente no encontrado</span></h1><p><a class="btn ghost" href="/admin/' + tok + '">Volver</a></p>', 400);
+    return page('Admin', '<h1><span>Cliente no encontrado</span></h1><p><a class="btn ghost" href="' + back + '">Volver</a></p>', 400);
   }
-  const safeName = sanitizeFileName((file as any).name);
-  const key = 'planos/' + clientId + '/' + crypto.randomUUID() + '-' + safeName;
-  const mime = (file as any).type || 'application/octet-stream';
-  const size = Number((file as any).size) || 0;
-  const bytes = await (file as any).arrayBuffer();
-  await env.PLANOS.put(key, bytes, { httpMetadata: { contentType: mime } });
-  await env.DB
-    .prepare('INSERT INTO plans (id, client_id, titulo, descripcion, r2_key, mime, tamano, descargas, creado_en, activo) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, 1)')
-    .bind(crypto.randomUUID(), clientId, titulo, str(form.get('descripcion')), key, mime, size, new Date().toISOString())
-    .run();
-  return redirect('/admin/' + tok, 303);
+  const ahora = new Date().toISOString();
+  let subidos = 0;
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const safeName = sanitizeFileName(file.name);
+    const key = 'planos/' + clientId + '/' + crypto.randomUUID() + '-' + safeName;
+    const mime = file.type || 'application/octet-stream';
+    const size = Number(file.size) || 0;
+    const bytes = await file.arrayBuffer();
+    const titulo = files.length === 1
+      ? (tituloBase || safeName)
+      : (tituloBase ? tituloBase + ' - ' + safeName : safeName);
+    try {
+      await env.PLANOS.put(key, bytes, { httpMetadata: { contentType: mime } });
+      await env.DB
+        .prepare('INSERT INTO plans (id, client_id, titulo, descripcion, r2_key, mime, tamano, descargas, creado_en, activo) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, 1)')
+        .bind(crypto.randomUUID(), clientId, titulo, descripcion, key, mime, size, ahora)
+        .run();
+      subidos += 1;
+    } catch (e) {
+      // sigue con los demas archivos
+    }
+  }
+  return redirect(back + '?subidos=' + subidos, 303);
 }
 
 async function handleRevoke(request: Request, env: Env, tok: string): Promise<Response> {
@@ -521,6 +636,10 @@ export default {
     const mTok = path.match(/^\/mis-planos\/([A-Za-z0-9_-]+)$/);
     if (method === 'GET' && mTok) {
       return handleClient(mTok[1], env);
+    }
+    const mZip = path.match(/^\/mis-planos\/([A-Za-z0-9_-]+)\/zip$/);
+    if (method === 'GET' && mZip) {
+      return handleZip(mZip[1], env);
     }
 
     // Admin por token en la URL (sin login, sin cookies).

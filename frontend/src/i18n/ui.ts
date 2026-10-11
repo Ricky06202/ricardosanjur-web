@@ -21,6 +21,8 @@ export const ui = {
       navHeading: "Navegación",
       contactHeading: "Contacto",
       rights: "Ing. Civil Especialista en Sistemas de Información Geográfica",
+      madeBy: "Hecho por",
+      madeByCta: "¿Quieres una página así? WhatsApp",
     },
     home: {
       title: "Inicio",
@@ -428,6 +430,8 @@ export const ui = {
       navHeading: "Navigation",
       contactHeading: "Contact",
       rights: "Civil Engineer, Geographic Information Systems Specialist",
+      madeBy: "Made by",
+      madeByCta: "Want a site like this? WhatsApp",
     },
     home: {
       title: "Home",

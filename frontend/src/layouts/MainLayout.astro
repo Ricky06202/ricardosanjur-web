@@ -230,6 +230,10 @@ const jsonLd = { "@context": "https://schema.org", "@graph": [...graph, ...extra
         <div class="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-6 text-xs text-base-content/50 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <p>© {new Date().getFullYear()} Topografía Especializada S.A. · Ricardo A. Sanjur A.</p>
           <p class="font-mono">{t.footer.rights}</p>
+          <a href="https://rsanjur.com" target="_blank" rel="noopener" class="inline-flex items-center gap-2 transition-colors hover:text-primary">
+            <img src="/images/rs-logo.svg" alt="rsanjur.com" class="h-5 w-5 rounded-md" />
+            <span>{t.footer.madeBy} <strong class="text-base-content/80">rsanjur.com</strong> · {t.footer.madeByCta} <strong class="text-base-content/80">+507 6510-4147</strong></span>
+          </a>
         </div>
       </div>
     </footer>
