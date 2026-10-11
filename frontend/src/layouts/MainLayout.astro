@@ -3,17 +3,36 @@ import { ui, type Lang } from "../i18n/ui";
 import { routeKeys, routeHref, getLangFromUrl, otherLang, switchPath, alternates } from "../i18n/utils";
 import LangSwitch from "../components/LangSwitch.astro";
 
+interface Crumb { name: string; path: string }
+
 interface Props {
   title: string;
   description?: string;
   lang?: Lang;
+  image?: string;
+  ogType?: "website" | "article";
+  breadcrumbs?: Crumb[];
+  extraJsonLd?: Record<string, unknown> | Record<string, unknown>[];
+  publishedTime?: string | Date;
+  modifiedTime?: string | Date;
 }
 
 const lang: Lang = Astro.props.lang ?? getLangFromUrl(Astro.url);
 const t = ui[lang];
 
-const { title, description = t.meta.defaultDescription } = Astro.props;
+const {
+  title,
+  description = t.meta.defaultDescription,
+  image = "/og/og-default.jpg",
+  ogType = "website",
+  breadcrumbs = [],
+  extraJsonLd,
+  publishedTime,
+  modifiedTime,
+} = Astro.props;
 
+const origin = (Astro.site ? new URL("/", Astro.site).href : "https://www.ricardosanjur.com/").replace(/\/$/, "");
+const base = Astro.site ?? origin;
 const nav = routeKeys.map((key) => ({ href: routeHref(key, lang), label: t.navLabels[key] }));
 const path = Astro.url.pathname;
 const isActive = (href: string) =>
@@ -22,6 +41,65 @@ const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site).href : As
 const alt = alternates(Astro.url, Astro.site);
 const other = otherLang(lang);
 const switchHref = switchPath(path, other);
+const absImage = new URL(image, base).href;
+const pageTitle = `${title} | ${t.meta.titleSuffix}`;
+const ogLocaleAlt = other === "en" ? "en_US" : "es_PA";
+
+const orgId = `${origin}/#organization`;
+const siteId = `${origin}/#website`;
+
+const org = {
+  "@type": "ProfessionalService",
+  "@id": orgId,
+  name: "Topografía Especializada, S.A.",
+  alternateName: "Ricardo A. Sanjur A.",
+  url: new URL(routeHref("home", lang), base).href,
+  logo: new URL("/images/logo-sin-fondopng-con-www.png", base).href,
+  image: absImage,
+  description: t.meta.defaultDescription,
+  telephone: "+50766714646",
+  email: "gerencia@ricardosanjur.com",
+  foundingDate: "1970",
+  address: {
+    "@type": "PostalAddress",
+    streetAddress: "Calle B Sur y Segunda Oeste, Diag. al Colegio Sucre",
+    addressLocality: "David",
+    addressRegion: "Chiriquí",
+    addressCountry: "PA",
+  },
+  areaServed: { "@type": "Country", name: "Panamá" },
+  knowsAbout: ["Topografía", "Geodesia", "GNSS", "SIG", "Geomática", "Catastro"],
+  knowsLanguage: ["es", "en"],
+};
+
+const website = {
+  "@type": "WebSite",
+  "@id": siteId,
+  url: new URL(routeHref("home", lang), base).href,
+  name: t.meta.siteName,
+  inLanguage: lang,
+  publisher: { "@id": orgId },
+};
+
+const graph: Record<string, unknown>[] = [org, website];
+if (breadcrumbs.length > 0) {
+  const items = [
+    { name: t.navLabels.home, url: new URL(routeHref("home", lang), base).href },
+    ...breadcrumbs.map((c) => ({ name: c.name, url: new URL(c.path, base).href })),
+  ];
+  graph.push({
+    "@type": "BreadcrumbList",
+    "@id": `${canonical}#breadcrumb`,
+    itemListElement: items.map((c, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: c.name,
+      item: c.url,
+    })),
+  });
+}
+const extra = extraJsonLd ? (Array.isArray(extraJsonLd) ? extraJsonLd : [extraJsonLd]) : [];
+const jsonLd = { "@context": "https://schema.org", "@graph": [...graph, ...extra] };
 ---
 
 <!doctype html>
@@ -30,6 +108,7 @@ const switchHref = switchPath(path, other);
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={description} />
+    <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1" />
     <meta name="generator" content={Astro.generator} />
     <meta name="theme-color" content="#05070f" />
     <link rel="canonical" href={canonical} />
@@ -38,32 +117,27 @@ const switchHref = switchPath(path, other);
     <link rel="alternate" hreflang="x-default" href={alt.es} />
     <meta property="og:site_name" content={t.meta.siteName} />
     <meta property="og:locale" content={t.ogLocale} />
+    <meta property="og:locale:alternate" content={ogLocaleAlt} />
     <meta property="og:url" content={canonical} />
-    <meta property="og:title" content={`${title} | ${t.meta.titleSuffix}`} />
+    <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={description} />
-    <meta property="og:type" content="website" />
-    <meta property="og:image" content={new URL("/images/Home3-2.jpg", Astro.site).href} />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:image" content={absImage} />
+    <meta property="og:image:secure_url" content={absImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={title} />
+    {publishedTime && <meta property="article:published_time" content={new Date(publishedTime).toISOString()} />}
+    {modifiedTime && <meta property="article:modified_time" content={new Date(modifiedTime).toISOString()} />}
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content={`${title} | ${t.meta.titleSuffix}`} />
+    <meta name="twitter:title" content={pageTitle} />
     <meta name="twitter:description" content={description} />
-    <meta name="twitter:image" content={new URL("/images/Home3-2.jpg", Astro.site).href} />
+    <meta name="twitter:image" content={absImage} />
+    <meta name="twitter:image:alt" content={title} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <script type="application/ld+json" set:html={JSON.stringify({
-      "@context": "https://schema.org",
-      "@type": "ProfessionalService",
-      "name": "Topografía Especializada, S.A.",
-      "alternateName": "Ricardo A. Sanjur A.",
-      "url": Astro.site?.href,
-      "logo": new URL("/images/logo-sin-fondopng-con-www.png", Astro.site).href,
-      "image": new URL("/images/Home3-2.jpg", Astro.site).href,
-      "description": description,
-      "telephone": "+50766714646",
-      "email": "gerencia@ricardosanjur.com",
-      "foundingDate": "1970",
-      "address": { "@type": "PostalAddress", "streetAddress": "Calle B Sur y Segunda Oeste, Diag. al Colegio Sucre", "addressLocality": "David", "addressRegion": "Chiriquí", "addressCountry": "PA" },
-      "areaServed": { "@type": "Country", "name": "Panamá" },
-      "knowsAbout": ["Topografía","Geodesia","GNSS","SIG","Geomática","Catastro"]
-    })} />
+    <link rel="alternate icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

@@ -7,10 +7,10 @@ export const languages: Lang[] = ["es", "en"];
 /** Canonical (Spanish, root) paths per logical route. */
 export const routes = {
   home: "/",
-  services: "/services",
-  about: "/about",
-  blog: "/blog",
-  contact: "/contact",
+  services: "/services/",
+  about: "/about/",
+  blog: "/blog/",
+  contact: "/contact/",
 } as const;
 
 export type RouteKey = keyof typeof routes;
@@ -36,11 +36,12 @@ export function stripLang(pathname: string): string {
  * es: /services -> /services   en: /services -> /en/services
  */
 export function localePath(path: string, lang: Lang): string {
-  const clean = path === "" ? "/" : path;
-  const hasTrailing = clean.length > 1 && clean.endsWith("/");
-  const core = hasTrailing ? clean.slice(0, -1) : clean;
-  if (lang === "es") return core === "" ? "/" : core;
-  return core === "" || core === "/" ? "/en/" : "/en" + core;
+  // Las rutas construidas por Astro son "directory" (con barra final): /services/
+  // Normalizamos siempre a barra final para que canonical y hreflang coincidan.
+  let p = path === "" ? "/" : path;
+  if (p !== "/" && !p.endsWith("/")) p += "/";
+  if (lang === "es") return p;
+  return p === "/" ? "/en/" : "/en" + p;
 }
 
 /** Href for a logical route in a given language. */

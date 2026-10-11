@@ -1,6 +1,7 @@
 ---
 import MainLayout from "../../layouts/MainLayout.astro";
 import { ui, type Lang } from "../../i18n/ui";
+import { routeHref } from "../../i18n/utils";
 
 interface Props { lang: Lang; }
 const { lang } = Astro.props;
@@ -9,7 +10,12 @@ const c = t.contact;
 const mapsUrl = "https://www.google.com/maps/search/Calle+B+Sur+y+Segunda+Oeste+Diagonal+al+Colegio+Sucre+David+Chiriqui+Panama";
 ---
 
-<MainLayout title={c.title} description={c.description} lang={lang}>
+<MainLayout
+  title={c.title}
+  description={c.description}
+  lang={lang}
+  breadcrumbs={[{ name: c.title, path: routeHref("contact", lang) }]}
+>
 
   <!-- Hero -->
   <section class="relative h-[40vh] min-h-[350px] overflow-hidden">

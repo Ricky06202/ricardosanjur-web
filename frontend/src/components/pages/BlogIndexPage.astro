@@ -21,7 +21,12 @@ function formatDate(date: Date) {
 }
 ---
 
-<MainLayout title={b.title} description={b.description} lang={lang}>
+<MainLayout
+  title={b.title}
+  description={b.description}
+  lang={lang}
+  breadcrumbs={[{ name: b.title, path: routeHref("blog", lang) }]}
+>
 
   <!-- Hero -->
   <section class="relative h-[50vh] min-h-[400px] overflow-hidden">

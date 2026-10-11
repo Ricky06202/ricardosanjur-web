@@ -22,6 +22,44 @@ const YEAR_SECONDS = 31536000;
 const SITE_ORIGIN = 'https://www.ricardosanjur.com';
 const enc = new TextEncoder();
 
+/* ================= migracion WordPress viejo (301 / 410) ================= */
+// Inventario del WordPress anterior (www.ricardosanjur.com). Claves SIN barra final.
+// Solo se aplica el 301 cuando el destino difiere de la URL pedida (evita bucles).
+const LEGACY_REDIRECTS: Record<string, string> = {
+  '/about': '/about/',
+  '/servicios': '/services/',
+  '/contacto': '/contact/',
+  '/nosotros': '/about/',
+  '/empresa': '/about/',
+  '/proyectos': '/services/',
+  '/projectos': '/services/',
+  '/portafolio': '/services/',
+  '/projects': '/services/',
+  '/inicio': '/',
+  '/home': '/',
+  '/feed': '/blog/',
+  '/comments/feed': '/blog/',
+  '/privacidad': '/',
+  '/aviso-de-privacidad': '/',
+  '/politica-de-privacidad': '/',
+  '/terminos': '/',
+  '/page/2': '/blog/',
+};
+
+// Rutas de sistema de WordPress que se retiran de la web publica -> 410 Gone.
+const GONE_PREFIXES = [
+  '/wp-admin', '/wp-login.php', '/wp-json', '/xmlrpc.php',
+  '/wp-content', '/wp-includes', '/wp-cron.php', '/wp-activate.php',
+  '/readme.html', '/license.txt', '/wp-signup.php',
+];
+
+// Archivos/estructuras tipicas de WP (fechas, categorias, tags, autores) -> blog.
+function legacyArchiveTarget(path: string): string | null {
+  if (/^\/\d{4}(\/\d{1,2})?(\/\d{1,2})?$/.test(path)) return '/blog/';
+  if (/^\/(category|tag|author)(\/|$)/.test(path)) return '/blog/';
+  return null;
+}
+
 function hasLangCookie(request: Request): boolean {
   const cookie = request.headers.get('Cookie') ?? '';
   return /(?:^|;\s*)lang=/.test(cookie);
@@ -462,6 +500,18 @@ export default {
       if (country && !HISPANIC_COUNTRIES.has(country)) {
         return Response.redirect(new URL('/en/', url).toString(), 302);
       }
+    }
+
+    // Migracion desde el WordPress viejo.
+    const isGone = GONE_PREFIXES.some(function (g) {
+      return path === g || path.startsWith(g + '/');
+    });
+    if (isGone) {
+      return new Response('410 Gone', { status: 410, headers: { 'content-type': 'text/plain; charset=utf-8' } });
+    }
+    const legacyTarget = LEGACY_REDIRECTS[path] || legacyArchiveTarget(path);
+    if (legacyTarget && legacyTarget !== url.pathname) {
+      return redirect(legacyTarget, 301);
     }
 
     // Mis Planos (cliente).

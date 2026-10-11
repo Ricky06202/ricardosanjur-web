@@ -1,4 +1,9 @@
 User-agent: *
 Allow: /
 
+# Areas privadas y de aplicacion (sin valor de busqueda)
+Disallow: /panel-planos
+Disallow: /mis-planos/
+Disallow: /cdn-cgi/
+
 Sitemap: https://www.ricardosanjur.com/sitemap.xml

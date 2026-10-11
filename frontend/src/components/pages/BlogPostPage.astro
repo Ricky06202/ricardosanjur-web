@@ -30,9 +30,41 @@ function formatDate(date: Date) {
     day: "numeric"
   });
 }
+
+const origin = (Astro.site ? new URL("/", Astro.site).href : "https://www.ricardosanjur.com/").replace(/\/$/, "");
+const base = Astro.site ?? origin;
+const postPath = localePath(`/blog/${post.id}/`, lang);
+const canonical = new URL(postPath, base).href;
+const absImage = new URL("/og/og-default.jpg", base).href;
+const postLd = {
+  "@type": "BlogPosting",
+  "@id": `${canonical}#article`,
+  headline: post.data.title,
+  description: post.data.summary,
+  datePublished: post.data.date.toISOString(),
+  dateModified: post.data.date.toISOString(),
+  author: { "@type": "Person", name: post.data.author },
+  publisher: { "@id": `${origin}/#organization` },
+  image: absImage,
+  inLanguage: lang,
+  mainEntityOfPage: canonical,
+  ...(post.data.tags && post.data.tags.length ? { keywords: post.data.tags.join(", ") } : {}),
+};
 ---
 
-<MainLayout title={post.data.title} description={post.data.summary} lang={lang}>
+<MainLayout
+  title={post.data.title}
+  description={post.data.summary}
+  lang={lang}
+  ogType="article"
+  publishedTime={post.data.date}
+  modifiedTime={post.data.date}
+  breadcrumbs={[
+    { name: b.title, path: routeHref("blog", lang) },
+    { name: post.data.title, path: postPath },
+  ]}
+  extraJsonLd={postLd}
+>
   <!-- Hero -->
   <section class="hero min-h-[30vh] bg-gradient-to-br from-primary/10 via-base-100 to-secondary/10">
     <div class="hero-content text-center">
