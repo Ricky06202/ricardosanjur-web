@@ -3,8 +3,11 @@
   "name": "ricardosanjur-web",
   "account_id": "66f8699b20c28ad6be430da2eaa98d34",
   "compatibility_date": "2026-10-10",
+  "main": "worker/index.ts",
   "assets": {
     "directory": "./dist",
-    "not_found_handling": "404-page"
+    "binding": "ASSETS",
+    "not_found_handling": "404-page",
+    "run_worker_first": true
   }
 }

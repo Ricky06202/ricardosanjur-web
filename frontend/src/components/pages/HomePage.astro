@@ -1,0 +1,232 @@
+---
+import MainLayout from "../../layouts/MainLayout.astro";
+import { ui, type Lang } from "../../i18n/ui";
+import { routeHref } from "../../i18n/utils";
+
+interface Props { lang: Lang; }
+const { lang } = Astro.props;
+const t = ui[lang];
+const h = t.home;
+
+const heroImages = [
+  "/images/20240821_163941.jpg",
+  "/images/20250130_121614.jpg",
+  "/images/20240824_125553-1.jpg",
+];
+---
+
+<MainLayout title={h.title} description={h.description} lang={lang}>
+  <!-- ================= HERO ================= -->
+  <section class="relative flex min-h-[92vh] items-center overflow-hidden">
+    <div id="hero-slider" class="absolute inset-0">
+      {heroImages.map((img, i) => (
+        <div class="absolute inset-0 transition-opacity duration-[1400ms] ease-in-out" style={`opacity: ${i === 0 ? 1 : 0}`} data-slide={i}>
+          <img src={img} alt={h.heroImageAlt} class="h-full w-full object-cover" loading={i === 0 ? "eager" : "lazy"} />
+        </div>
+      ))}
+    </div>
+    <div class="absolute inset-0 bg-gradient-to-br from-[#05070f] via-[#05070f]/85 to-[#0a2fd6]/40"></div>
+    <div class="grid-bg absolute inset-0 opacity-60"></div>
+    <div class="pointer-events-none absolute -top-24 right-[-10%] h-[520px] w-[520px] rounded-full bg-primary/25 blur-[130px]"></div>
+    <div class="pointer-events-none absolute bottom-[-20%] left-[-10%] h-[420px] w-[420px] rounded-full bg-secondary/15 blur-[120px]"></div>
+
+    <div class="relative mx-auto w-full max-w-7xl px-4 py-24 sm:px-6">
+      <div class="max-w-3xl">
+        <div class="animate-fade-up inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 backdrop-blur">
+          <span class="relative flex h-2 w-2"><span class="absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span><span class="relative inline-flex h-2 w-2 rounded-full bg-primary"></span></span>
+          <span class="font-mono text-[11px] uppercase tracking-[0.22em] text-base-content/80">{h.heroBadge}</span>
+        </div>
+
+        <h1 class="animate-fade-up mt-6 font-display text-4xl font-bold leading-[1.05] sm:text-6xl lg:text-7xl" style="animation-delay:.08s" set:html={h.heroTitle} />
+
+        <p class="animate-fade-up mt-6 max-w-xl text-lg text-base-content/75" style="animation-delay:.16s">
+          {h.heroLead}
+        </p>
+
+        <div class="animate-fade-up mt-9 flex flex-col gap-3 sm:flex-row" style="animation-delay:.24s">
+          <a href={routeHref("contact", lang)} class="btn btn-primary btn-lg rounded-full px-8">{h.ctaPrimary}</a>
+          <a href={routeHref("services", lang)} class="btn btn-lg rounded-full border border-white/15 bg-white/5 px-8 text-white backdrop-blur hover:border-primary/60 hover:bg-white/10">{h.ctaSecondary}</a>
+        </div>
+      </div>
+
+      <!-- HUD card -->
+      <div class="glass animate-float absolute bottom-18 right-6 hidden max-w-[230px] rounded-2xl p-5 md:block">
+        <p class="font-mono text-[10px] uppercase tracking-[0.2em] text-primary">{h.hudActive}</p>
+        <p class="mt-2 font-display text-3xl font-bold">±8 mm</p>
+        <p class="text-xs text-base-content/70">{h.hudPrecision}</p>
+        <div class="mt-3 h-px w-full bg-white/10"></div>
+        <p class="mt-3 font-mono text-[10px] uppercase tracking-widest text-base-content/50">WGS‑84 · UTM 17N</p>
+      </div>
+    </div>
+
+    <div class="absolute bottom-8 left-1/2 z-20 flex -translate-x-1/2 gap-2">
+      {heroImages.map((_, i) => (
+        <button class="h-1.5 rounded-full bg-white/30 transition-all duration-300 slider-dot data-[active=true]:w-8 data-[active=true]:bg-primary" style="width:1.5rem" data-slide={i} aria-label={`${h.sliderImageAlt} ${i + 1}`} />
+      ))}
+    </div>
+  </section>
+
+  <!-- ================= MARQUEE de capacidades ================= -->
+  <section class="hud-line relative overflow-hidden border-y border-white/5 bg-base-200/40 py-4">
+    <div class="flex w-max animate-marquee gap-10 whitespace-nowrap pr-10">
+      {[...h.capabilities, ...h.capabilities].map((c) => (
+        <span class="flex items-center gap-3 font-mono text-xs uppercase tracking-[0.25em] text-base-content/55">
+          <span class="h-1.5 w-1.5 rounded-full bg-primary"></span>{c}
+        </span>
+      ))}
+    </div>
+  </section>
+
+  <!-- ================= MÉTRICAS ================= -->
+  <section class="mx-auto max-w-7xl px-4 py-20 sm:px-6">
+    <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
+      {h.metrics.map((m, i) => (
+        <div class="reveal glass rounded-2xl p-6 text-center" style={`transition-delay:${i * 60}ms`}>
+          <p class="font-display text-4xl font-bold text-white sm:text-5xl">
+            <span class="counter" data-target={m.value}>0</span><span class="text-primary">{m.suffix}</span>
+          </p>
+          <p class="mt-2 font-mono text-[11px] uppercase tracking-widest text-base-content/55">{m.label}</p>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <!-- ================= SERVICIOS ================= -->
+  <section class="mx-auto max-w-7xl px-4 py-16 sm:px-6">
+    <div class="reveal flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <p class="font-mono text-xs uppercase tracking-[0.25em] text-primary">{h.servicesKicker}</p>
+        <h2 class="mt-3 font-display text-3xl font-bold sm:text-4xl" set:html={h.servicesHeading} />
+      </div>
+      <a href={routeHref("services", lang)} class="font-mono text-xs uppercase tracking-widest text-base-content/60 transition-colors hover:text-primary">{h.servicesViewAll}</a>
+    </div>
+
+    <div class="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {h.services.map((s, i) => (
+        <article class="reveal group relative overflow-hidden rounded-3xl border border-white/8 bg-base-200" style={`transition-delay:${i * 50}ms`}>
+          <div class="relative h-52 overflow-hidden">
+            <img src={s.image} alt={s.title} class="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy" />
+            <div class="absolute inset-0 bg-gradient-to-t from-base-200 via-base-200/30 to-transparent"></div>
+            <span class="absolute left-4 top-4 rounded-full border border-white/15 bg-black/40 px-3 py-1 font-mono text-[10px] uppercase tracking-widest text-primary backdrop-blur">{s.tag}</span>
+          </div>
+          <div class="p-6">
+            <div class="flex items-start justify-between gap-3">
+              <h3 class="font-display text-lg font-semibold text-white">{s.title}</h3>
+              {"price" in s && s.price && (
+                <span class="shrink-0 rounded-full bg-primary/15 px-3 py-1 font-mono text-[10px] uppercase tracking-widest text-primary">{s.price}</span>
+              )}
+            </div>
+            <p class="mt-2 text-sm text-base-content/65">{s.description}</p>
+          </div>
+          <div class="pointer-events-none absolute inset-0 rounded-3xl ring-1 ring-inset ring-transparent transition group-hover:ring-primary/40"></div>
+        </article>
+      ))}
+    </div>
+  </section>
+
+  <!-- ================= TECNOLOGÍA ================= -->
+  <section class="relative overflow-hidden border-y border-white/5 bg-base-200/40">
+    <div class="grid-bg pointer-events-none absolute inset-0 opacity-40"></div>
+    <div class="relative mx-auto grid max-w-7xl items-center gap-12 px-4 py-24 sm:px-6 lg:grid-cols-2">
+      <div class="reveal relative">
+        <div class="glow-blue overflow-hidden rounded-3xl">
+          <img src="/images/20241125_101126.jpg" alt={h.techImageAlt} class="w-full object-cover" loading="lazy" />
+        </div>
+        <div class="glass absolute -bottom-6 -right-4 rounded-2xl p-4 sm:right-6">
+          <p class="font-mono text-[10px] uppercase tracking-widest text-primary">{h.techCardLabel}</p>
+          <p class="mt-1 font-display text-xl font-bold">{h.techCardValue}</p>
+        </div>
+      </div>
+      <div class="reveal">
+        <p class="font-mono text-xs uppercase tracking-[0.25em] text-primary">{h.techKicker}</p>
+        <h2 class="mt-3 font-display text-3xl font-bold sm:text-4xl" set:html={h.techHeading} />
+        <p class="mt-5 text-base-content/70">
+          {h.techLead}
+        </p>
+        <ul class="mt-8 grid gap-3 sm:grid-cols-2">
+          {h.techFeatures.map((f) => (
+            <li class="flex items-center gap-3 rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3 text-sm">
+              <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">✓</span>{f}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= PROCESO ================= -->
+  <section class="mx-auto max-w-7xl px-4 py-24 sm:px-6">
+    <div class="reveal text-center">
+      <p class="font-mono text-xs uppercase tracking-[0.25em] text-primary">{h.processKicker}</p>
+      <h2 class="mt-3 font-display text-3xl font-bold sm:text-4xl" set:html={h.processHeading} />
+    </div>
+    <div class="mt-14 grid gap-6 md:grid-cols-4">
+      {h.steps.map((s, i) => (
+        <div class="reveal relative rounded-2xl border border-white/8 bg-base-200 p-6" style={`transition-delay:${i * 70}ms`}>
+          <span class="font-display text-5xl font-bold text-primary/25">{s.n}</span>
+          <h3 class="mt-3 font-display text-lg font-semibold text-white">{s.t}</h3>
+          <p class="mt-2 text-sm text-base-content/65">{s.d}</p>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <!-- ================= CTA ================= -->
+  <section class="mx-auto max-w-7xl px-4 pb-24 sm:px-6">
+    <div class="reveal glow-blue relative overflow-hidden rounded-[2rem] border border-primary/30 bg-gradient-to-br from-primary/25 via-base-200 to-base-200 p-10 sm:p-16">
+      <div class="grid-bg pointer-events-none absolute inset-0 opacity-40"></div>
+      <div class="relative flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 class="font-display text-3xl font-bold sm:text-4xl">{h.ctaHeading}</h2>
+          <p class="mt-3 max-w-xl text-base-content/75">{h.ctaLead}</p>
+        </div>
+        <div class="flex flex-col gap-3 sm:flex-row">
+          <a href={routeHref("contact", lang)} class="btn btn-primary btn-lg rounded-full px-8">{h.ctaButton}</a>
+          <a href="tel:+50766714646" class="btn btn-lg rounded-full border border-white/15 bg-white/5 px-8 text-white backdrop-blur hover:bg-white/10">{h.ctaCall}</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</MainLayout>
+
+<script>
+  // Slider de fondo
+  const slides = Array.from(document.querySelectorAll<HTMLElement>("[data-slide]")).filter((el) => el.tagName !== "BUTTON");
+  const dots = Array.from(document.querySelectorAll<HTMLButtonElement>(".slider-dot"));
+  let idx = 0;
+  function go(n: number) {
+    idx = (n + slides.length) % slides.length;
+    slides.forEach((s, i) => (s.style.opacity = i === idx ? "1" : "0"));
+    dots.forEach((d, i) => d.dataset.active = String(i === idx));
+  }
+  dots.forEach((d, i) => d.addEventListener("click", () => go(i)));
+  if (slides.length > 1) {
+    let t = setInterval(() => go(idx + 1), 6000);
+    document.addEventListener("visibilitychange", () => {
+      clearInterval(t);
+      if (!document.hidden) t = setInterval(() => go(idx + 1), 6000);
+    });
+    go(0);
+  }
+
+  // Contadores
+  const counters = document.querySelectorAll<HTMLElement>(".counter");
+  const cio = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      const el = e.target as HTMLElement;
+      const target = Number(el.dataset.target || "0");
+      const start = performance.now();
+      const dur = 1400;
+      const step = (now: number) => {
+        const p = Math.min(1, (now - start) / dur);
+        const eased = 1 - Math.pow(1 - p, 3);
+        el.textContent = Math.round(target * eased).toLocaleString(document.documentElement.lang === "en" ? "en-US" : "es-PA");
+        if (p < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+      cio.unobserve(el);
+    }
+  }, { threshold: 0.4 });
+  counters.forEach((c) => cio.observe(c));
+</script>

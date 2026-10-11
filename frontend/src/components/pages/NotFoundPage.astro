@@ -1,0 +1,28 @@
+---
+import MainLayout from "../../layouts/MainLayout.astro";
+import { ui, type Lang } from "../../i18n/ui";
+import { routeHref } from "../../i18n/utils";
+
+interface Props { lang: Lang; }
+const { lang } = Astro.props;
+const t = ui[lang];
+const nf = t.notFound;
+---
+
+<MainLayout title={nf.title} description={nf.description} lang={lang}>
+  <section class="hero min-h-[70vh]">
+    <div class="hero-content text-center">
+      <div class="max-w-lg">
+        <div class="text-9xl font-bold text-primary mb-4">404</div>
+        <h1 class="text-3xl font-bold mb-4">{nf.heading}</h1>
+        <p class="text-base-content/70 mb-8">
+          {nf.lead}
+        </p>
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+          <a href={routeHref("home", lang)} class="btn btn-primary">{nf.backHome}</a>
+          <a href={routeHref("contact", lang)} class="btn btn-outline btn-primary">{nf.contact}</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</MainLayout>

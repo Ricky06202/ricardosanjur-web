@@ -1,0 +1,257 @@
+---
+import MainLayout from "../../layouts/MainLayout.astro";
+import { ui, type Lang } from "../../i18n/ui";
+import { routeHref } from "../../i18n/utils";
+
+interface Props { lang: Lang; }
+const { lang } = Astro.props;
+const t = ui[lang];
+const s = t.services;
+---
+
+<MainLayout title={s.title} description={s.description} lang={lang}>
+
+  <!-- Hero -->
+  <section class="relative h-[50vh] min-h-[400px] overflow-hidden">
+    <div class="absolute inset-0">
+      <img src="/images/Home7-2.jpg" alt={s.heroImageAlt} class="w-full h-full object-cover" />
+      <div class="absolute inset-0 bg-black/70"></div>
+    </div>
+    <div class="relative z-10 h-full flex items-end pb-16">
+      <div class="container mx-auto px-4 text-center">
+        <div class="badge badge-primary badge-outline mb-4">{s.badge}</div>
+        <h1 class="text-4xl md:text-5xl font-bold text-white mb-4" set:html={s.heading} />
+        <p class="text-lg text-white/80 max-w-2xl mx-auto">
+          {s.lead}
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Servicios -->
+  <section class="py-20">
+    <div class="container mx-auto px-4">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {s.items.map(service => (
+          <div id={service.id} class="card bg-base-100 border border-base-300 shadow-lg hover:shadow-xl transition-all scroll-mt-24 overflow-hidden">
+            <div class="flex flex-col md:flex-row">
+              <figure class="md:w-1/3 h-48 md:h-auto">
+                <img
+                  src={service.image}
+                  alt={service.title}
+                  class="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              </figure>
+              <div class="card-body md:w-2/3">
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="text-3xl">{service.icon}</span>
+                  <h2 class="card-title text-xl">{service.title}</h2>
+                </div>
+                <p class="text-base-content/70 mb-4 text-sm">{service.description}</p>
+                <ul class="grid grid-cols-2 gap-1 mb-4">
+                  {service.features.map(feature => (
+                    <li class="flex items-center gap-1 text-xs">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-primary flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                      </svg>
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+                <div class="flex items-center justify-between mt-auto">
+                  <span class="text-xl font-bold text-primary">{service.price}</span>
+                  <a href="#cotizacion" class="btn btn-primary btn-sm">{s.request}</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- Formulario de Cotización -->
+  <section id="cotizacion" class="py-20 bg-base-200 scroll-mt-24">
+    <div class="container mx-auto px-4">
+      <div class="text-center mb-12">
+        <h2 class="text-3xl md:text-4xl font-bold mb-4">{s.quoteHeading}</h2>
+        <p class="text-base-content/70 max-w-2xl mx-auto">
+          {s.quoteLead}
+        </p>
+      </div>
+
+      <div class="max-w-4xl mx-auto">
+        <form class="card bg-base-100 shadow-xl" id="quoteForm" data-msg-sent={s.msgSent} data-msg-error={s.msgError} data-msg-conn={s.msgConnError}>
+          <div class="card-body space-y-6">
+
+            <!-- Datos Personales -->
+            <div class="border-b border-base-300 pb-4">
+              <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                {s.personalHeading}
+              </h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="form-control">
+                  <label class="label"><span class="label-text">{s.labelFullName}</span></label>
+                  <input type="text" name="nombre" class="input input-bordered" required placeholder={s.placeholderName} />
+                </div>
+                <div class="form-control">
+                  <label class="label"><span class="label-text">{s.labelCompany}</span></label>
+                  <input type="text" name="empresa" class="input input-bordered" placeholder={s.placeholderCompany} />
+                </div>
+                <div class="form-control">
+                  <label class="label"><span class="label-text">{s.labelEmail}</span></label>
+                  <input type="email" name="email" class="input input-bordered" required placeholder={s.placeholderEmail} />
+                </div>
+                <div class="form-control">
+                  <label class="label"><span class="label-text">{s.labelPhone}</span></label>
+                  <input type="tel" name="telefono" class="input input-bordered" required placeholder={s.placeholderPhone} />
+                </div>
+              </div>
+            </div>
+
+            <!-- Datos de la Finca -->
+            <div class="border-b border-base-300 pb-4">
+              <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                {s.propertyHeading}
+              </h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="form-control md:col-span-2">
+                  <label class="label"><span class="label-text">{s.labelAddress}</span></label>
+                  <input type="text" name="direccion" class="input input-bordered" required placeholder={s.placeholderAddress} />
+                </div>
+                <div class="form-control">
+                  <label class="label"><span class="label-text">{s.labelPlotNumber}</span></label>
+                  <input type="text" name="numeroFinca" class="input input-bordered" required placeholder={s.placeholderPlotNumber} />
+                </div>
+                <div class="form-control">
+                  <label class="label"><span class="label-text">{s.labelArea}</span></label>
+                  <input type="text" name="area" class="input input-bordered" placeholder={s.placeholderArea} />
+                </div>
+              </div>
+            </div>
+
+            <!-- Tipo de Servicio -->
+            <div class="border-b border-base-300 pb-4">
+              <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                {s.serviceTypeHeading}
+              </h3>
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {s.serviceTypes.map(type => (
+                  <label class="label cursor-pointer justify-start gap-2">
+                    <input type="checkbox" name="tipoServicio" value={type} class="checkbox checkbox-primary checkbox-sm" />
+                    <span class="label-text text-sm">{type}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <!-- Características de la Finca -->
+            <div class="border-b border-base-300 pb-4">
+              <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                </svg>
+                {s.landHeading}
+              </h3>
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {s.landFeatures.map(feature => (
+                  <label class="label cursor-pointer justify-start gap-2">
+                    <input type="checkbox" name="caracteristicaFinca" value={feature} class="checkbox checkbox-secondary checkbox-sm" />
+                    <span class="label-text text-sm">{feature}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <!-- Archivos -->
+            <div>
+              <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                </svg>
+                {s.docsHeading}
+              </h3>
+              <div class="form-control">
+                <label class="label"><span class="label-text">{s.labelDocs}</span></label>
+                <input type="file" name="archivos" class="file-input file-input-bordered w-full" multiple accept=".pdf,.jpg,.jpeg,.png,.dwg,.dxf" />
+                <label class="label">
+                  <span class="label-text-alt">{s.docsHint}</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Mensaje Adicional -->
+            <div class="form-control">
+              <label class="label"><span class="label-text">{s.labelMessage}</span></label>
+              <textarea name="mensaje" class="textarea textarea-bordered h-24" placeholder={s.placeholderMessage}></textarea>
+            </div>
+
+            <!-- Submit -->
+            <div class="form-control mt-6">
+              <button type="submit" class="btn btn-primary btn-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+                {s.submit}
+              </button>
+            </div>
+
+            <!-- Info adicional -->
+            <div class="alert">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <div class="text-sm">
+                <p>{s.alertContact}</p>
+                <p class="mt-1">{s.alertUrgent} <a href="tel:+50766714646" class="link link-primary">+507 6671-4646</a></p>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+</MainLayout>
+
+<script>
+  const messages = { sent: "", error: "", conn: "" };
+  const form = document.getElementById('quoteForm') as HTMLFormElement;
+  const formRoot = form;
+  if (formRoot) {
+    messages.sent = formRoot.dataset.msgSent || "";
+    messages.error = formRoot.dataset.msgError || "";
+    messages.conn = formRoot.dataset.msgConn || "";
+  }
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(form);
+
+    try {
+      const response = await fetch('/api/quote', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (response.ok) {
+        alert(messages.sent);
+        form.reset();
+      } else {
+        alert(messages.error);
+      }
+    } catch (error) {
+      alert(messages.conn);
+    }
+  });
+</script>

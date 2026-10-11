@@ -1,0 +1,31 @@
+---
+import { ui, type Lang } from "../i18n/ui";
+import { otherLang, switchPath } from "../i18n/utils";
+
+interface Props {
+  lang: Lang;
+  variant?: "desktop" | "mobile";
+}
+const { lang, variant = "desktop" } = Astro.props;
+const target = otherLang(lang);
+const href = switchPath(Astro.url.pathname, target);
+const t = ui[lang];
+const esActive = lang === "es";
+const activeCls = "rounded-full bg-primary/20 px-2.5 py-1 font-mono text-[11px] font-semibold uppercase tracking-widest text-primary";
+const idleCls = "rounded-full px-2.5 py-1 font-mono text-[11px] uppercase tracking-widest text-base-content/60 transition-colors hover:text-white";
+---
+{
+  variant === "desktop" ? (
+    <div class="hidden items-center rounded-full border border-white/10 bg-white/5 p-0.5 lg:flex" aria-label={t.langLabel}>
+      <a href={switchPath(Astro.url.pathname, "es")} data-lang-switch="es" aria-current={esActive ? "true" : undefined} class={esActive ? activeCls : idleCls}>ES</a>
+      <a href={switchPath(Astro.url.pathname, "en")} data-lang-switch="en" aria-current={!esActive ? "true" : undefined} class={!esActive ? activeCls : idleCls}>EN</a>
+    </div>
+  ) : (
+    <li class="mt-1 border-t border-white/10 pt-2" aria-label={t.langLabel}>
+      <div class="flex items-center gap-1 px-2">
+        <a href={switchPath(Astro.url.pathname, "es")} data-lang-switch="es" aria-current={esActive ? "true" : undefined} class={esActive ? activeCls : idleCls}>ES</a>
+        <a href={switchPath(Astro.url.pathname, "en")} data-lang-switch="en" aria-current={!esActive ? "true" : undefined} class={!esActive ? activeCls : idleCls}>EN</a>
+      </div>
+    </li>
+  )
+}
