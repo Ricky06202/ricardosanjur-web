@@ -25,21 +25,20 @@ const heroImages = [
         </div>
       ))}
     </div>
-    <div class="absolute inset-0 bg-gradient-to-br from-[#05070f]/80 via-[#05070f]/55 to-[#0a2fd6]/20"></div>
-    <div class="grid-bg absolute inset-0 opacity-40"></div>
-    <div class="pointer-events-none absolute -top-24 right-[-10%] h-[520px] w-[520px] rounded-full bg-primary/25 blur-[130px]"></div>
+    <div class="absolute inset-0 bg-gradient-to-b from-black/85 via-black/35 to-black/85"></div>
+    <div class="pointer-events-none absolute -top-24 right-[-10%] h-[520px] w-[520px] rounded-full bg-primary/12 blur-[130px]"></div>
     <div class="pointer-events-none absolute bottom-[-20%] left-[-10%] h-[420px] w-[420px] rounded-full bg-secondary/15 blur-[120px]"></div>
 
     <div class="relative mx-auto w-full max-w-7xl px-4 py-24 sm:px-6">
       <div class="max-w-3xl">
         <div class="animate-fade-up inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 backdrop-blur">
           <span class="relative flex h-2 w-2"><span class="absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span><span class="relative inline-flex h-2 w-2 rounded-full bg-primary"></span></span>
-          <span class="font-mono text-[11px] uppercase tracking-[0.22em] text-base-content/80">{h.heroBadge}</span>
+          <span class="hero-text font-mono text-[11px] uppercase tracking-[0.22em] text-base-content/90">{h.heroBadge}</span>
         </div>
 
-        <h1 class="animate-fade-up mt-6 font-display text-4xl font-bold leading-[1.05] sm:text-6xl lg:text-7xl" style="animation-delay:.08s" set:html={h.heroTitle} />
+        <h1 class="hero-text animate-fade-up mt-6 font-display text-4xl font-bold leading-[1.05] sm:text-6xl lg:text-7xl" style="animation-delay:.08s" set:html={h.heroTitle} />
 
-        <p class="animate-fade-up mt-6 max-w-xl text-lg text-base-content/75" style="animation-delay:.16s">
+        <p class="hero-text animate-fade-up mt-6 max-w-xl text-lg text-base-content/90" style="animation-delay:.16s">
           {h.heroLead}
         </p>
 
