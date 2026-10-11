@@ -13,8 +13,8 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "eventos-comiboxch-db",
-      "database_id": "05166ffb-f486-4407-b16d-5989655f2280"
+      "database_name": "topografia-planos-db",
+      "database_id": "6d3a71a3-f89b-449b-8306-db1437bd2ea6"
     }
   ],
   "r2_buckets": [

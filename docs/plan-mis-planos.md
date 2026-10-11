@@ -1,15 +1,14 @@
 # Plan — "Mis Planos" (Topografía Especializada S.A.)
 
 ## Infra (decidido)
-- **D1**: se reutiliza `eventos-comiboxch-db` (uuid `05166ffb-f486-4407-b16d-5989655f2280`).
-  - Solo lo referencia \`backend_v3_backup\` en el repo de comibox (el backend ACTIVO usa `eventos-boxeo-backend-v2`).
-  - Se agregan tablas NUEVAS; no se toca nada existente.
-  - Motivo: la cuenta está en el tope del plan free (10/10 DBs) → no se puede crear una nueva.
-- **R2**: bucket dedicado `topografia-planos-media` (para los PDF/DWG/ZIP).
+- **D1**: base dedicada `topografia-planos-db` (uuid `6d3a71a3-f89b-449b-8306-db1437bd2ea6`), en la cuenta 66f8699b… .
+  - La cuenta estaba en el tope del plan free (10/10 DBs). Se **borró** `eventos-comiboxch-db` (solo la referenciaba `backend_v3_backup`; el backend activo de comibox es `eventos-boxeo-backend-v2`) y se creó esta.
+  - **Respaldo** del DB borrado: `backups/eventos-comiboxch-db-20261011.sql` (local) y en R2 `topografia-planos-media/_backups/`.
+- **R2**: bucket dedicado `topografia-planos-media`.
 - **Worker**: rutas nuevas dentro de `ricardosanjur-web` (mismo deploy).
-- **Panel**: protegido por contraseña en secreto del Worker (`PANEL_CLAVE`).
+- **Panel**: contraseña en secreto del Worker (`PANEL_CLAVE`) + `PANEL_SECRET` para firmar cookie.
 
-## Modelo (D1)
+## Modelo (D1) — creado
 - `clients`: id, nombre, correo, telefono, **token**, activo, creado_en
 - `plans`: id, client_id, titulo, descripcion, r2_key, mime, tamano, descargas, ultima_descarga, creado_en
 - `downloads`: id, plan_id, client_id, fecha
