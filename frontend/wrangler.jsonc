@@ -9,5 +9,18 @@
     "binding": "ASSETS",
     "not_found_handling": "404-page",
     "run_worker_first": true
-  }
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "eventos-comiboxch-db",
+      "database_id": "05166ffb-f486-4407-b16d-5989655f2280"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "PLANOS",
+      "bucket_name": "topografia-planos-media"
+    }
+  ]
 }
