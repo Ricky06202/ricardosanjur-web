@@ -33,18 +33,18 @@ const heroImages = [
       <div class="max-w-3xl">
         <div class="animate-fade-up inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 backdrop-blur">
           <span class="relative flex h-2 w-2"><span class="absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span><span class="relative inline-flex h-2 w-2 rounded-full bg-primary"></span></span>
-          <span class="hero-text font-mono text-[11px] uppercase tracking-[0.22em] text-base-content/90">{h.heroBadge}</span>
+          <span class="hero-text font-mono text-[11px] uppercase tracking-[0.22em] text-white/90">{h.heroBadge}</span>
         </div>
 
-        <h1 class="hero-text animate-fade-up mt-6 font-display text-4xl font-bold leading-[1.05] sm:text-6xl lg:text-7xl" style="animation-delay:.08s" set:html={h.heroTitle} />
+        <h1 class="hero-text animate-fade-up mt-6 font-display text-4xl font-bold leading-[1.05] text-white sm:text-6xl lg:text-7xl" style="animation-delay:.08s" set:html={h.heroTitle} />
 
-        <p class="hero-text animate-fade-up mt-6 max-w-xl text-lg text-base-content/90" style="animation-delay:.16s">
+        <p class="hero-text animate-fade-up mt-6 max-w-xl text-lg text-white/90" style="animation-delay:.16s">
           {h.heroLead}
         </p>
 
         <div class="animate-fade-up mt-9 flex flex-col gap-3 sm:flex-row" style="animation-delay:.24s">
           <a href={routeHref("contact", lang)} class="btn btn-primary btn-lg rounded-full px-8">{h.ctaPrimary}</a>
-          <a href={routeHref("services", lang)} class="btn btn-lg rounded-full border border-white/15 bg-white/5 px-8 text-white backdrop-blur hover:border-primary/60 hover:bg-white/10">{h.ctaSecondary}</a>
+          <a href={routeHref("services", lang)} class="btn btn-lg rounded-full border border-white/25 bg-black/25 px-8 text-white backdrop-blur hover:border-primary/60 hover:bg-black/40">{h.ctaSecondary}</a>
         </div>
       </div>
 
@@ -66,7 +66,7 @@ const heroImages = [
   </section>
 
   <!-- ================= MARQUEE de capacidades ================= -->
-  <section class="hud-line relative overflow-hidden border-y border-white/5 bg-base-200/40 py-4">
+  <section class="hud-line relative overflow-hidden border-y border-black/5 bg-base-200/40 py-4">
     <div class="flex w-max animate-marquee gap-10 whitespace-nowrap pr-10">
       {[...h.capabilities, ...h.capabilities].map((c) => (
         <span class="flex items-center gap-3 font-mono text-xs uppercase tracking-[0.25em] text-base-content/55">
@@ -81,7 +81,7 @@ const heroImages = [
     <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
       {h.metrics.map((m, i) => (
         <div class="reveal glass rounded-2xl p-6 text-center" style={`transition-delay:${i * 60}ms`}>
-          <p class="font-display text-4xl font-bold text-white sm:text-5xl">
+          <p class="font-display text-4xl font-bold text-base-content sm:text-5xl">
             <span class="counter" data-target={m.value}>0</span><span class="text-primary">{m.suffix}</span>
           </p>
           <p class="mt-2 font-mono text-[11px] uppercase tracking-widest text-base-content/55">{m.label}</p>
@@ -102,7 +102,7 @@ const heroImages = [
 
     <div class="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
       {h.services.map((s, i) => (
-        <article class="reveal group relative overflow-hidden rounded-3xl border border-white/8 bg-base-200" style={`transition-delay:${i * 50}ms`}>
+        <article class="reveal group relative overflow-hidden rounded-3xl border border-black/5 bg-base-200" style={`transition-delay:${i * 50}ms`}>
           <div class="relative h-52 overflow-hidden">
             <img src={s.image} alt={s.title} style={("pos" in s && s.pos) ? `object-position:${s.pos}` : undefined} class="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy" />
             <div class="absolute inset-0 bg-gradient-to-t from-base-200 via-base-200/30 to-transparent"></div>
@@ -110,7 +110,7 @@ const heroImages = [
           </div>
           <div class="p-6">
             <div class="flex items-start justify-between gap-3">
-              <h3 class="font-display text-lg font-semibold text-white">{s.title}</h3>
+              <h3 class="font-display text-lg font-semibold text-base-content">{s.title}</h3>
               {"price" in s && s.price && (
                 <span class="shrink-0 rounded-full bg-primary/15 px-3 py-1 font-mono text-[10px] uppercase tracking-widest text-primary">{s.price}</span>
               )}
@@ -124,7 +124,7 @@ const heroImages = [
   </section>
 
   <!-- ================= TECNOLOGÍA ================= -->
-  <section class="relative overflow-hidden border-y border-white/5 bg-base-200/40">
+  <section class="relative overflow-hidden border-y border-black/5 bg-base-200/40">
     <div class="grid-bg pointer-events-none absolute inset-0 opacity-40"></div>
     <div class="relative mx-auto grid max-w-7xl items-center gap-12 px-4 py-24 sm:px-6 lg:grid-cols-2">
       <div class="reveal relative">
@@ -144,7 +144,7 @@ const heroImages = [
         </p>
         <ul class="mt-8 grid gap-3 sm:grid-cols-2">
           {h.techFeatures.map((f) => (
-            <li class="flex items-center gap-3 rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3 text-sm">
+            <li class="flex items-center gap-3 rounded-xl border border-black/5 bg-white/[0.03] px-4 py-3 text-sm">
               <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">✓</span>{f}
             </li>
           ))}
@@ -161,9 +161,9 @@ const heroImages = [
     </div>
     <div class="mt-14 grid gap-6 md:grid-cols-4">
       {h.steps.map((s, i) => (
-        <div class="reveal relative rounded-2xl border border-white/8 bg-base-200 p-6" style={`transition-delay:${i * 70}ms`}>
+        <div class="reveal relative rounded-2xl border border-black/5 bg-base-200 p-6" style={`transition-delay:${i * 70}ms`}>
           <span class="font-display text-5xl font-bold text-primary/25">{s.n}</span>
-          <h3 class="mt-3 font-display text-lg font-semibold text-white">{s.t}</h3>
+          <h3 class="mt-3 font-display text-lg font-semibold text-base-content">{s.t}</h3>
           <p class="mt-2 text-sm text-base-content/65">{s.d}</p>
         </div>
       ))}
@@ -181,7 +181,7 @@ const heroImages = [
         </div>
         <div class="flex flex-col gap-3 sm:flex-row">
           <a href={routeHref("contact", lang)} class="btn btn-primary btn-lg rounded-full px-8">{h.ctaButton}</a>
-          <a href="tel:+50766714646" class="btn btn-lg rounded-full border border-white/15 bg-white/5 px-8 text-white backdrop-blur hover:bg-white/10">{h.ctaCall}</a>
+          <a href="tel:+50766714646" class="btn btn-lg rounded-full border border-white/25 bg-black/25 px-8 text-white backdrop-blur hover:bg-black/40">{h.ctaCall}</a>
         </div>
       </div>
     </div>

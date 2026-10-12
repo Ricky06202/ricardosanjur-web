@@ -21,28 +21,28 @@
 @plugin "daisyui/theme" {
   name: "topoblue";
   default: true;
-  prefersdark: true;
-  color-scheme: dark;
+  prefersdark: false;
+  color-scheme: light;
 
-  --color-base-100: oklch(0.17 0.028 264);
-  --color-base-200: oklch(0.21 0.032 264);
-  --color-base-300: oklch(0.27 0.038 264);
-  --color-base-content: oklch(0.95 0.008 250);
+  --color-base-100: oklch(1 0 0);
+  --color-base-200: oklch(0.972 0.006 250);
+  --color-base-300: oklch(0.93 0.012 250);
+  --color-base-content: oklch(0.28 0.032 264);
 
-  --color-primary: oklch(0.58 0.235 264);
+  --color-primary: oklch(0.52 0.215 264);
   --color-primary-content: oklch(0.99 0.005 250);
-  --color-secondary: oklch(0.72 0.14 205);
-  --color-secondary-content: oklch(0.16 0.02 240);
-  --color-accent: oklch(0.82 0.15 88);
-  --color-accent-content: oklch(0.22 0.03 88);
+  --color-secondary: oklch(0.62 0.15 205);
+  --color-secondary-content: oklch(0.99 0.005 250);
+  --color-accent: oklch(0.78 0.15 88);
+  --color-accent-content: oklch(0.24 0.03 88);
 
-  --color-neutral: oklch(0.24 0.03 264);
-  --color-neutral-content: oklch(0.93 0.008 250);
-  --color-info: oklch(0.72 0.14 230);
-  --color-info-content: oklch(0.16 0.02 240);
-  --color-success: oklch(0.74 0.16 155);
-  --color-warning: oklch(0.82 0.16 84);
-  --color-error: oklch(0.66 0.22 25);
+  --color-neutral: oklch(0.34 0.03 264);
+  --color-neutral-content: oklch(0.98 0.005 250);
+  --color-info: oklch(0.62 0.14 230);
+  --color-info-content: oklch(0.99 0.005 250);
+  --color-success: oklch(0.6 0.16 155);
+  --color-warning: oklch(0.72 0.16 84);
+  --color-error: oklch(0.58 0.22 25);
 
   --radius-selector: 2rem;
   --radius-field: 0.7rem;
@@ -58,7 +58,7 @@ html {
 }
 body {
   font-family: var(--font-sans);
-  background-color: var(--color-ink);
+  background-color: oklch(0.985 0.004 250);
   color: var(--color-base-content);
 }
 h1, h2, h3, h4, .font-display {
@@ -91,9 +91,10 @@ h1, h2, h3, h4, .font-display {
 }
 
 .glass {
-  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+  background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.68));
   backdrop-filter: blur(14px);
-  border: 1px solid rgba(150, 175, 255, 0.14);
+  border: 1px solid rgba(37, 99, 235, 0.12);
+  box-shadow: 0 10px 30px -18px rgba(15, 23, 42, 0.25);
 }
 
 .hairline {
