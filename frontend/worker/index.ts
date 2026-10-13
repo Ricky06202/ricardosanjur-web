@@ -10,7 +10,11 @@ interface Env {
   PANEL_CLAVE?: string;
   PANEL_SECRET?: string;
   ADMIN_TOKEN?: string;
+  LEADS_WEBHOOK?: string;
 }
+
+// Contexto del worker (para ctx.waitUntil en avisos best-effort).
+type Ctx = { waitUntil: (p: Promise<unknown>) => void };
 
 // Paises/territorios donde el espanol es idioma oficial o mayoritario.
 const HISPANIC_COUNTRIES = new Set([
@@ -196,6 +200,95 @@ function sanitizeFileName(name: unknown): string {
 function fileNameFromKey(key: unknown): string {
   const base = String(key || '').split('/').pop() || 'plano';
   return base.replace(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}-/, '') || base;
+}
+
+/* ====================== avisos a Discord (LEADS) ====================== */
+// Best-effort: si LEADS_WEBHOOK falta o Discord falla, el sitio funciona igual.
+// Nunca se envia telefono, cedula ni correo completo.
+
+function nombreParcial(nombre: unknown): string {
+  const partes = String(nombre == null ? '' : nombre).trim().split(/\s+/).filter(Boolean);
+  if (!partes.length) return 'Cliente';
+  if (partes.length === 1) return partes[0];
+  return partes[0] + ' ' + partes[1].charAt(0).toUpperCase() + '.';
+}
+
+function extracto(texto: unknown, max: number): string {
+  const s = String(texto == null ? '' : texto).replace(/\s+/g, ' ').trim();
+  return s.length > max ? s.slice(0, max - 1).trimEnd() + '…' : s;
+}
+
+async function avisarLeads(env: Env, texto: string): Promise<void> {
+  const url = env.LEADS_WEBHOOK || '';
+  if (!url) return;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ content: String(texto).slice(0, 1900) }),
+    });
+    console.log('[leads] aviso HTTP ' + res.status);
+  } catch (e) {
+    console.log('[leads] error: ' + String((e as any) && (e as any).message || e));
+  }
+}
+
+/* ====================== contactos (/api/contact) ====================== */
+
+let contactosListo = false;
+async function ensureContactos(env: Env): Promise<void> {
+  if (contactosListo) return;
+  await env.DB.prepare(
+    'CREATE TABLE IF NOT EXISTS contactos (' +
+    'id TEXT PRIMARY KEY, nombre TEXT NOT NULL, email TEXT, telefono TEXT, tema TEXT, ' +
+    'mensaje TEXT NOT NULL, creado_en TEXT NOT NULL, ip TEXT, user_agent TEXT, avisado INTEGER DEFAULT 0)',
+  ).run();
+  contactosListo = true;
+}
+
+function jsonResponse(obj: unknown, status: number): Response {
+  return new Response(JSON.stringify(obj), {
+    status: status,
+    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
+  });
+}
+
+async function handleContact(request: Request, env: Env, ctx: Ctx): Promise<Response> {
+  let data: any = null;
+  try {
+    data = await request.json();
+  } catch (e) {
+    data = null;
+  }
+  if (!data || typeof data !== 'object') return jsonResponse({ ok: false, error: 'json' }, 400);
+
+  const nombre = str(data.nombre);
+  const email = str(data.email);
+  const telefono = str(data.telefono);
+  const tema = str(data.tema);
+  const mensaje = str(data.mensaje);
+  if (!nombre || !mensaje) return jsonResponse({ ok: false, error: 'campos' }, 400);
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return jsonResponse({ ok: false, error: 'email' }, 400);
+
+  const id = crypto.randomUUID();
+  const ahora = new Date().toISOString();
+  const ip = request.headers.get('CF-Connecting-IP') || '';
+  const ua = (request.headers.get('User-Agent') || '').slice(0, 300);
+
+  try {
+    await ensureContactos(env);
+    await env.DB.prepare(
+      'INSERT INTO contactos (id, nombre, email, telefono, tema, mensaje, creado_en, ip, user_agent, avisado) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)',
+    ).bind(id, nombre, email, telefono, tema, mensaje, ahora, ip, ua).run();
+  } catch (e) {
+    console.log('[contacto] error guardando: ' + String((e as any) && (e as any).message || e));
+    return jsonResponse({ ok: false, error: 'guardar' }, 500);
+  }
+
+  const aviso = '📩 Nuevo contacto — ' + nombreParcial(nombre) +
+    ' · ' + (tema || 'sin tema') + ' · ' + extracto(mensaje, 120);
+  ctx.waitUntil(avisarLeads(env, aviso));
+  return jsonResponse({ ok: true }, 201);
 }
 
 /* ============================ UI ============================ */
@@ -534,7 +627,7 @@ async function handleCreateClient(request: Request, env: Env, tok: string): Prom
   return redirect('/admin/' + tok, 303);
 }
 
-async function handleUpload(request: Request, env: Env, tok: string): Promise<Response> {
+async function handleUpload(request: Request, env: Env, ctx: Ctx, tok: string): Promise<Response> {
   const form = await request.formData();
   const back = '/admin/' + tok;
   const clientId = str(form.get('client_id'));
@@ -545,7 +638,7 @@ async function handleUpload(request: Request, env: Env, tok: string): Promise<Re
   if (!clientId || files.length === 0) {
     return page('Admin', '<h1><span>Datos incompletos</span></h1><p class="muted">Elige un cliente y al menos un archivo.</p><p><a class="btn ghost" href="' + back + '">Volver</a></p>', 400);
   }
-  const client = await env.DB.prepare('SELECT id FROM clients WHERE id = ?').bind(clientId).first();
+  const client = await env.DB.prepare('SELECT id, nombre FROM clients WHERE id = ?').bind(clientId).first();
   if (!client) {
     return page('Admin', '<h1><span>Cliente no encontrado</span></h1><p><a class="btn ghost" href="' + back + '">Volver</a></p>', 400);
   }
@@ -572,6 +665,11 @@ async function handleUpload(request: Request, env: Env, tok: string): Promise<Re
       // sigue con los demas archivos
     }
   }
+  if (subidos > 0) {
+    const aviso = '📐 Nuevo plano subido — ' + nombreParcial(client.nombre) +
+      ' · ' + subidos + ' archivo(s)' + (descripcion ? ' · ' + extracto(descripcion, 80) : '');
+    ctx.waitUntil(avisarLeads(env, aviso));
+  }
   return redirect(back + '?subidos=' + subidos, 303);
 }
 
@@ -593,6 +691,7 @@ export default {
   async fetch(
     request: Request & { cf?: { country?: string } },
     env: Env,
+    ctx: Ctx,
   ): Promise<Response> {
     const url = new URL(request.url);
 
@@ -652,8 +751,14 @@ export default {
       const sub = mAdmin[2];
       if (!sub && method === 'GET') return handleInicio(request, env, mAdmin[1]);
       if (sub === '/cliente' && method === 'POST') return handleCreateClient(request, env, mAdmin[1]);
-      if (sub === '/plano' && method === 'POST') return handleUpload(request, env, mAdmin[1]);
+      if (sub === '/plano' && method === 'POST') return handleUpload(request, env, ctx, mAdmin[1]);
       if (sub === '/revocar' && method === 'POST') return handleRevoke(request, env, mAdmin[1]);
+    }
+
+    // Formulario de contacto del sitio (antes devolvia 405 y se perdian los mensajes).
+    if (path === '/api/contact') {
+      if (method === 'POST') return handleContact(request, env, ctx);
+      return jsonResponse({ ok: false, error: 'method' }, 405);
     }
 
     return env.ASSETS.fetch(request);
