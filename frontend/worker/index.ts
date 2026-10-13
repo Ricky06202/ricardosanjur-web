@@ -10,10 +10,9 @@ interface Env {
   PANEL_CLAVE?: string;
   PANEL_SECRET?: string;
   ADMIN_TOKEN?: string;
-  LEADS_WEBHOOK?: string;
 }
 
-// Contexto del worker (para ctx.waitUntil en avisos best-effort).
+// Contexto del worker (waitUntil para trabajo en segundo plano).
 type Ctx = { waitUntil: (p: Promise<unknown>) => void };
 
 // Paises/territorios donde el espanol es idioma oficial o mayoritario.
@@ -202,37 +201,6 @@ function fileNameFromKey(key: unknown): string {
   return base.replace(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}-/, '') || base;
 }
 
-/* ====================== avisos a Discord (LEADS) ====================== */
-// Best-effort: si LEADS_WEBHOOK falta o Discord falla, el sitio funciona igual.
-// Nunca se envia telefono, cedula ni correo completo.
-
-function nombreParcial(nombre: unknown): string {
-  const partes = String(nombre == null ? '' : nombre).trim().split(/\s+/).filter(Boolean);
-  if (!partes.length) return 'Cliente';
-  if (partes.length === 1) return partes[0];
-  return partes[0] + ' ' + partes[1].charAt(0).toUpperCase() + '.';
-}
-
-function extracto(texto: unknown, max: number): string {
-  const s = String(texto == null ? '' : texto).replace(/\s+/g, ' ').trim();
-  return s.length > max ? s.slice(0, max - 1).trimEnd() + '…' : s;
-}
-
-async function avisarLeads(env: Env, texto: string): Promise<void> {
-  const url = env.LEADS_WEBHOOK || '';
-  if (!url) return;
-  try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ content: String(texto).slice(0, 1900) }),
-    });
-    console.log('[leads] aviso HTTP ' + res.status);
-  } catch (e) {
-    console.log('[leads] error: ' + String((e as any) && (e as any).message || e));
-  }
-}
-
 /* ====================== contactos (/api/contact) ====================== */
 
 let contactosListo = false;
@@ -285,9 +253,6 @@ async function handleContact(request: Request, env: Env, ctx: Ctx): Promise<Resp
     return jsonResponse({ ok: false, error: 'guardar' }, 500);
   }
 
-  const aviso = '📩 Nuevo contacto — ' + nombreParcial(nombre) +
-    ' · ' + (tema || 'sin tema') + ' · ' + extracto(mensaje, 120);
-  ctx.waitUntil(avisarLeads(env, aviso));
   return jsonResponse({ ok: true }, 201);
 }
 
@@ -664,11 +629,6 @@ async function handleUpload(request: Request, env: Env, ctx: Ctx, tok: string): 
     } catch (e) {
       // sigue con los demas archivos
     }
-  }
-  if (subidos > 0) {
-    const aviso = '📐 Nuevo plano subido — ' + nombreParcial(client.nombre) +
-      ' · ' + subidos + ' archivo(s)' + (descripcion ? ' · ' + extracto(descripcion, 80) : '');
-    ctx.waitUntil(avisarLeads(env, aviso));
   }
   return redirect(back + '?subidos=' + subidos, 303);
 }
