@@ -1,0 +1,181 @@
+---
+import MainLayout from "../layouts/MainLayout.astro";
+
+const origin = "https://www.ricardosanjur.com";
+---
+<MainLayout
+  title="Verificar un documento"
+  description="Compruebe que un archivo (PDF, DWG, imagen, ZIP, Word...) coincide con la huella SHA-256 de su certificado. La comparacion ocurre en su navegador: el archivo nunca se sube."
+  noindex
+>
+  <section class="relative overflow-hidden border-b border-black/5 bg-base-100">
+    <div class="grid-bg pointer-events-none absolute inset-0 opacity-60"></div>
+    <div class="relative mx-auto max-w-3xl px-4 py-12 sm:px-6 sm:py-16">
+      <span class="badge badge-outline gap-2 font-mono text-[11px] uppercase tracking-widest text-primary">
+        Documentos y certificados
+      </span>
+      <h1 class="mt-4 font-display text-3xl font-bold sm:text-4xl">Verificar un documento</h1>
+      <p class="mt-3 max-w-2xl text-base-content/75">
+        Cada archivo tiene una huella unica (SHA-256). Elija o arrastre el documento que recibio:
+        su navegador calcula la huella y la compara con la del certificado. Si coincide, es el original;
+        si no, fue alterado.
+      </p>
+    </div>
+  </section>
+
+  <section class="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+    <div class="card glass rounded-box border border-black/5">
+      <div class="card-body gap-4">
+        <div>
+          <label for="huella-esperada" class="font-mono text-[11px] uppercase tracking-widest text-base-content/60">
+            Huella esperada (SHA-256)
+          </label>
+          <input
+            id="huella-esperada"
+            type="text"
+            inputmode="text"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="Pegue aqui la huella del certificado (opcional)"
+            class="input input-bordered mt-2 w-full font-mono text-xs"
+          />
+          <p id="doc-esperado" class="mt-2 hidden text-sm text-base-content/70"></p>
+          <p id="cert-link" class="mt-1 hidden text-xs"></p>
+        </div>
+
+        <div>
+          <span class="font-mono text-[11px] uppercase tracking-widest text-base-content/60">Su archivo</span>
+          <label
+            id="drop"
+            for="archivo"
+            tabindex="0"
+            class="mt-2 flex cursor-pointer flex-col items-center justify-center rounded-box border-2 border-dashed border-primary/25 bg-base-200/60 px-6 py-10 text-center transition-colors hover:border-primary/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
+            <svg viewBox="0 0 24 24" class="h-9 w-9 text-primary/60" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0L8 8m4-4 4 4M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+            </svg>
+            <span class="mt-3 font-display font-semibold">Arrastre el archivo aqui</span>
+            <span class="mt-1 text-xs text-base-content/60">o toque para elegirlo en su celular</span>
+            <span class="mt-3 inline-flex rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-content">
+              Elegir archivo
+            </span>
+          </label>
+          <input id="archivo" type="file" class="sr-only" />
+          <p id="archivo-info" class="mt-2 text-sm text-base-content/70"></p>
+        </div>
+
+        <div id="resultado" role="status" aria-live="polite" class="hidden rounded-box border p-4 text-sm"></div>
+
+        <p class="flex items-start gap-2 text-xs text-base-content/60">
+          <svg viewBox="0 0 24 24" class="mt-0.5 h-4 w-4 shrink-0 text-primary" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3l7 3v6c0 4.5-3 7.7-7 9-4-1.3-7-4.5-7-9V6l7-3z" />
+          </svg>
+          <span>
+            Privacidad: el archivo <strong>no se sube a ningun servidor</strong>. La huella se calcula
+            completamente en su navegador y aqui solo se compara con el certificado.
+          </span>
+        </p>
+      </div>
+    </div>
+
+    <p class="mt-6 text-center text-xs text-base-content/60">
+      &iquest;No tiene un certificado todavia? <a class="link link-primary" href={origin + "/contact/"}>Escribanos</a>.
+    </p>
+  </section>
+
+  <script>
+    const $ = (sel) => document.querySelector(sel);
+    const params = new URLSearchParams(location.search);
+    const limpiar = (s) => String(s || "").toLowerCase().replace(/[^0-9a-f]/g, "");
+    const inicial = limpiar(params.get("h"));
+    const nombreDoc = params.get("n") || "";
+    const certId = params.get("id") || "";
+
+    const inputHuella = $("#huella-esperada");
+    const inputArchivo = $("#archivo");
+    const drop = $("#drop");
+    const info = $("#archivo-info");
+    const caja = $("#resultado");
+
+    if (inicial) inputHuella.value = inicial;
+    if (nombreDoc) {
+      const el = $("#doc-esperado");
+      el.textContent = "Documento esperado: " + nombreDoc;
+      el.classList.remove("hidden");
+    }
+    if (certId) {
+      const el = $("#cert-link");
+      el.innerHTML = 'Certificado: <a class="link link-primary" href="/certificado/' + encodeURIComponent(certId) + '">/certificado/' + certId + "</a>";
+      el.classList.remove("hidden");
+    }
+
+    const grupos = (h) => h.replace(/(.{8})/g, "$1 ").trim();
+
+    function hex(buf) {
+      const b = new Uint8Array(buf);
+      let out = "";
+      for (let i = 0; i < b.length; i++) out += b[i].toString(16).padStart(2, "0");
+      return out;
+    }
+
+    function mostrar(tipo, html) {
+      caja.className = "rounded-box border p-4 text-sm " +
+        (tipo === "ok" ? "border-success/40 bg-success/10 text-base-content"
+          : tipo === "bad" ? "border-error/40 bg-error/10 text-base-content"
+          : "border-primary/30 bg-primary/5 text-base-content");
+      caja.innerHTML = html;
+      caja.classList.remove("hidden");
+    }
+
+    async function revisar(file) {
+      if (!file) return;
+      const esperada = limpiar(inputHuella.value);
+      info.textContent = file.name + " - " + (file.size / 1024).toFixed(1).replace(/\.0$/, "") + " KB";
+      mostrar("", "<b>Calculando huella...</b> Este proceso ocurre en su dispositivo.");
+      try {
+        const buf = await file.arrayBuffer();
+        const huella = hex(await crypto.subtle.digest("SHA-256", buf));
+        if (!esperada) {
+          mostrar("info",
+            "<b>Huella calculada</b><div class='mt-2 break-all font-mono text-xs'>" + grupos(huella) + "</div>" +
+            "<p class='mt-3 mb-0 text-xs text-base-content/70'>Pegue arriba la huella que aparece en el certificado para compararla.</p>");
+          return;
+        }
+        if (huella === esperada) {
+          mostrar("ok",
+            "<b class='font-display text-base'>Documento original, sin alteraciones</b>" +
+            "<p class='mt-1 mb-0'>La huella del archivo coincide exactamente con la del certificado.</p>" +
+            "<div class='mt-2 break-all font-mono text-xs'>" + grupos(huella) + "</div>");
+        } else {
+          mostrar("bad",
+            "<b class='font-display text-base'>Este archivo no coincide con el certificado</b>" +
+            "<p class='mt-1 mb-0'>La huella del archivo es distinta: fue modificado o no es el documento certificado.</p>" +
+            "<div class='mt-2 break-all font-mono text-xs'>Su archivo: " + grupos(huella) + "</div>" +
+            "<div class='mt-1 break-all font-mono text-xs'>Certificado: " + grupos(esperada) + "</div>");
+        }
+      } catch (err) {
+        mostrar("bad", "<b>No se pudo calcular la huella</b><p class='mt-1 mb-0'>Abra esta pagina por https e intente de nuevo.</p>");
+      }
+    }
+
+    inputArchivo.addEventListener("change", (ev) => {
+      const f = ev.target.files && ev.target.files[0];
+      revisar(f);
+    });
+    inputArchivo.addEventListener("click", (ev) => { ev.target.value = ""; });
+    drop.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); inputArchivo.click(); }
+    });
+
+    ["dragenter", "dragover"].forEach((t) =>
+      drop.addEventListener(t, (ev) => { ev.preventDefault(); drop.classList.add("border-primary/80", "bg-primary/5"); }));
+    ["dragleave", "drop"].forEach((t) =>
+      drop.addEventListener(t, (ev) => { ev.preventDefault(); drop.classList.remove("border-primary/80", "bg-primary/5"); }));
+    drop.addEventListener("drop", (ev) => {
+      const dt = ev.dataTransfer;
+      if (dt && dt.files && dt.files[0]) revisar(dt.files[0]);
+    });
+
+    if (inicial) inputHuella.readOnly = true;
+  </script>
+</MainLayout>

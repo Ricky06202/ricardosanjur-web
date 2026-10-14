@@ -1,7 +1,10 @@
 // Cloudflare Worker: redirect por pais en "/" + area privada "Mis Planos".
 // Bindings: ASSETS (sitio estatico), DB (D1: clients/plans/downloads), PLANOS (R2).
 // Secretos: PANEL_CLAVE (contrasena del panel), PANEL_SECRET (firma de cookie).
-// Solo usa las tablas clients, plans y downloads de la D1 compartida.
+// Solo usa las tablas clients, plans y downloads de la D1 compartida, mas la tabla
+// aditiva certificados (huella SHA-256 de documentos, pagina publica y verificacion).
+
+import RSQR from './qr.js';
 
 interface Env {
   ASSETS: { fetch: (request: Request) => Promise<Response> };
@@ -116,6 +119,15 @@ async function sha256Hex(s: string): Promise<string> {
 }
 
 // Compara dos secretos en tiempo constante (hash primero para no filtrar longitud).
+// Huella SHA-256 de bytes (el archivo se lee en memoria; nunca se guarda).
+async function sha256BytesHex(buf: ArrayBuffer | Uint8Array): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', buf as any);
+  const bytes = new Uint8Array(digest);
+  let out = '';
+  for (let i = 0; i < bytes.length; i++) out += bytes[i].toString(16).padStart(2, '0');
+  return out;
+}
+
 async function secretEquals(a: string, b: string): Promise<boolean> {
   return constantTimeEqual(await sha256Hex(a), await sha256Hex(b));
 }
@@ -519,6 +531,7 @@ async function handleLogin(request: Request, env: Env): Promise<Response> {
 }
 
 async function handleInicio(request: Request, env: Env, tok: string): Promise<Response> {
+  const url = new URL(request.url);
   const cRes = await env.DB
     .prepare('SELECT c.id, c.nombre, c.correo, c.telefono, c.token, c.activo, c.creado_en, ' +
       '(SELECT COUNT(*) FROM plans p WHERE p.client_id = c.id) AS planos, ' +
@@ -556,6 +569,39 @@ async function handleInicio(request: Request, env: Env, tok: string): Promise<Re
     options += '<option value="' + esc(c.id) + '">' + esc(c.nombre || c.id) + '</option>';
   }
 
+  // Certificados emitidos (modulo aditivo; el archivo no se guarda, solo la huella).
+  let certs: any[] = [];
+  try {
+    await ensureCertificados(env);
+    const certRes = await env.DB.prepare(
+      'SELECT id, huella, nombre, descripcion, mime, tamano, emitido_en FROM certificados ORDER BY emitido_en DESC LIMIT 300',
+    ).all();
+    certs = (certRes && certRes.results) || [];
+  } catch (e) { certs = []; }
+
+  let certRows = '';
+  if (certs.length === 0) {
+    certRows = '<tr><td colspan="4" class="muted">Sin certificados emitidos todavia.</td></tr>';
+  } else {
+    for (let i = 0; i < certs.length; i++) {
+      const k = certs[i];
+      const link = SITE_ORIGIN + '/certificado/' + k.id;
+      certRows += '<tr><td><strong>' + esc(k.nombre || 'Documento') + '</strong>' +
+        (k.descripcion ? '<div class="muted" style="font-size:.8rem">' + esc(k.descripcion) + '</div>' : '') +
+        (k.tamano ? '<div class="muted" style="font-size:.78rem">' + esc(formatBytes(Number(k.tamano))) + '</div>' : '') +
+        '</td>' +
+        '<td><span class="code" title="' + esc(k.huella) + '">' + esc(String(k.huella).slice(0, 12)) + '&hellip;</span></td>' +
+        '<td class="muted" style="font-size:.84rem">' + esc(dateFmt(k.emitido_en)) + '</td>' +
+        '<td><a class="code" href="' + esc(link) + '">/certificado/' + esc(k.id) + '</a>' +
+        '<div style="margin-top:6px"><button class="btn ghost" type="button" data-copy="' + esc(link) + '">Copiar link</button></div></td></tr>';
+    }
+  }
+
+  const certOk = str(url.searchParams ? url.searchParams.get('cert') : null);
+  const certBanner = (!certOk) ? '' :
+    '<div class="card" style="border-color:rgba(120,255,190,.3)"><p class="ok" style="margin:0">Certificado emitido: ' +
+    esc(certOk) + ' &middot; <a href="' + SITE_ORIGIN + '/certificado/' + esc(certOk) + '">ver pagina publica</a></p></div>';
+
   const body = '<h1><span>Admin de planos</span></h1>' +
     '<p class="muted">Clientes, planos y descargas.</p>' +
     '<div class="card"><div class="row"><h2>Clientes</h2><span class="pill">' + clients.length + ' registrados</span></div>' +
@@ -573,7 +619,20 @@ async function handleInicio(request: Request, env: Env, tok: string): Promise<Re
     '<label>Titulo (opcional: si lo dejas vacio se usa el nombre del archivo)</label><input name="titulo">' +
     '<label>Descripcion (opcional)</label><textarea name="descripcion" rows="2"></textarea>' +
     '<label>Archivos (PDF / DWG / ZIP - selecciona varios con Ctrl o manteniendo)</label><input type="file" name="archivos" multiple required>' +
-    '<p style="margin-top:16px"><button class="btn" type="submit">Subir archivos</button></p></form></div>';
+    '<p style="margin-top:16px"><button class="btn" type="submit">Subir archivos</button></p></form></div>' +
+    certBanner +
+    '<div class="card"><div class="row"><h2>Certificados emitidos</h2><span class="pill">' + certs.length + ' total</span></div>' +
+    '<p class="muted" style="margin-top:-4px">Cada certificado es una pagina publica con la huella SHA-256 del documento. Comparta el enlace: cualquiera verifica el archivo sin subirlo.</p>' +
+    '<div style="overflow-x:auto"><table><thead><tr><th>Documento</th><th>Huella</th><th>Emitido</th><th>Link publico</th></tr></thead><tbody>' +
+    certRows + '</tbody></table></div></div>' +
+    '<div class="card"><h2>Emitir certificado</h2>' +
+    '<p class="muted" style="margin-top:-4px">Cualquier archivo (PDF, DWG, JPG, ZIP, DOCX...). Se calcula su huella SHA-256; <strong>el archivo no se guarda</strong> en el sistema.</p>' +
+    '<form method="POST" action="/admin/' + tok + '/certificado" enctype="multipart/form-data">' +
+    '<label>Documento</label><input type="file" name="archivo" required>' +
+    '<label>Nombre visible (opcional: si lo deja vacio se usa el nombre del archivo)</label><input name="nombre">' +
+    '<label>Cliente o descripcion (opcional)</label><input name="descripcion">' +
+    '<p style="margin-top:16px"><button class="btn" type="submit">Emitir certificado</button></p></form></div>' +
+    '<script>(function(){var bs=document.querySelectorAll("[data-copy]");for(var i=0;i<bs.length;i++){(function(b){b.addEventListener("click",function(){var t=b.getAttribute("data-copy")||"";if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(function(){var o=b.textContent;b.textContent="Copiado";setTimeout(function(){b.textContent=o;},1500);});}});})(bs[i]);}})();</script>';
   return page('Admin', body, 200);
 }
 
@@ -645,6 +704,196 @@ async function handleRevoke(request: Request, env: Env, tok: string): Promise<Re
   return redirect('/admin/' + tok, 303);
 }
 
+/* ==================== certificados verificables ==================== */
+// Emite un certificado de un documento CUALQUIERA (PDF, DWG, JPG, ZIP, DOCX...).
+// Solo se guarda su huella SHA-256 y los datos: el archivo NUNCA se sube ni se
+// almacena en el sistema. Quien recibe el documento lo verifica en /verificar.
+
+const EMISOR = 'Ing. Ricardo Sanjur';
+const EMISOR_ORG = 'Topografia Especializada, S.A.';
+
+let certificadosListo = false;
+async function ensureCertificados(env: Env): Promise<void> {
+  if (certificadosListo) return;
+  await env.DB.prepare(
+    'CREATE TABLE IF NOT EXISTS certificados (id TEXT PRIMARY KEY, huella TEXT NOT NULL, ' +
+    'nombre TEXT, mime TEXT, tamano INTEGER, descripcion TEXT, emisor TEXT, ' +
+    'emitido_en TEXT NOT NULL, admin_token TEXT)',
+  ).run();
+  try {
+    await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_certificados_huella ON certificados (huella)').run();
+  } catch (e) { /* el indice es opcional */ }
+  certificadosListo = true;
+}
+
+function huellaGrupos(h: unknown): string {
+  return String(h || '').replace(/(.{8})/g, '$1 ').trim();
+}
+
+function nuevoIdCertificado(): string {
+  return crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+}
+
+function fechaLarga(value: unknown): string {
+  const s = String(value || '');
+  const d = new Date(s);
+  if (isNaN(d.getTime())) return s;
+  try {
+    return d.toLocaleString('es-PA', {
+      day: 'numeric', month: 'long', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', timeZone: 'America/Panama',
+    });
+  } catch (e) {
+    return d.toISOString();
+  }
+}
+
+// Paleta clara del sitio (tema topoblue light) para las paginas publicas nuevas.
+const CERT_CSS = [
+  ':root{--ink:#0f172a;--soft:#55627d;--line:rgba(37,99,235,.16);--primary:#2b5cff;--deep:#0a2fd6;--ok:#0b7a3b;--bad:#b42318}',
+  '*{box-sizing:border-box}',
+  'html{-webkit-text-size-adjust:100%}',
+  'body{margin:0;min-height:100vh;background:#f8f9fb;color:var(--ink);line-height:1.55;',
+  'font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif}',
+  'a{color:var(--primary)}',
+  '.top{border-bottom:1px solid rgba(0,0,0,.06);background:rgba(255,255,255,.92);',
+  'backdrop-filter:blur(12px);position:sticky;top:0;z-index:5}',
+  '.top .in{max-width:860px;margin:0 auto;padding:12px 18px;display:flex;align-items:center;gap:8px;font-weight:700}',
+  '.top .in small{color:var(--soft);font-weight:500}',
+  '.wrap{max-width:860px;margin:0 auto;padding:22px 18px 72px}',
+  'h1{font-family:"Space Grotesk",Inter,ui-sans-serif,sans-serif;letter-spacing:-.01em;',
+  'font-size:clamp(1.35rem,4.4vw,1.85rem);line-height:1.15;margin:16px 0 6px}',
+  'h2{font-family:"Space Grotesk",Inter,ui-sans-serif,sans-serif;letter-spacing:-.01em;font-size:1.05rem;margin:0 0 6px}',
+  '.soft{color:var(--soft)}',
+  '.small{font-size:.9rem}',
+  '.tiny{font-size:.78rem}',
+  '.mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,monospace}',
+  '.card{background:#fff;border:1px solid var(--line);border-radius:1.25rem;padding:20px;margin-top:16px;',
+  'box-shadow:0 14px 36px -28px rgba(15,23,42,.5)}',
+  '.badge{display:inline-flex;align-items:center;gap:7px;font-weight:700;font-size:.85rem;',
+  'padding:6px 13px;border-radius:999px;border:1px solid #b7ebc9;background:#eafaf0;color:var(--ok)}',
+  '.grid{display:grid;grid-template-columns:1.4fr .85fr;gap:22px;align-items:start}',
+  '.label{font-family:"JetBrains Mono",monospace;font-size:.66rem;text-transform:uppercase;',
+  'letter-spacing:.09em;color:var(--soft);margin-top:14px}',
+  '.val{font-weight:600;font-size:.98rem;word-break:break-word}',
+  '.hash{font-family:"JetBrains Mono",monospace;font-size:.78rem;word-break:break-all;',
+  'background:#f2f5ff;border:1px solid var(--line);border-radius:.7rem;padding:9px 11px;color:#1c2b52}',
+  '.qrbox{background:#fff;border:1px solid var(--line);border-radius:1rem;padding:14px;text-align:center}',
+  '.qrbox svg{width:190px;height:190px;max-width:100%;display:block;margin:0 auto}',
+  '.btn{display:inline-block;background:linear-gradient(180deg,var(--primary),var(--deep));color:#fff;',
+  'border:0;border-radius:.7rem;padding:11px 18px;font:inherit;font-weight:600;text-decoration:none;cursor:pointer}',
+  '.btn.ghost{background:#fff;border:1px solid var(--line);color:#243b6b}',
+  '.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}',
+  '@media(max-width:680px){.grid{grid-template-columns:1fr}}',
+].join('\n');
+
+function publicPage(title: string, body: string, status: number): Response {
+  const html = '<!doctype html>\n<html lang="es">\n<head>\n<meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+    '<meta name="robots" content="noindex,nofollow">' +
+    '<meta name="theme-color" content="#f8f9fb">' +
+    '<title>' + esc(title) + ' | Topografia Especializada, S.A.</title>' +
+    '<link rel="icon" type="image/svg+xml" href="/favicon.svg">' +
+    '<link rel="preconnect" href="https://fonts.googleapis.com">' +
+    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
+    '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">' +
+    '<style>' + CERT_CSS + '</style>\n</head>\n<body>' +
+    '<header class="top"><div class="in">Topografia Especializada <small>S.A.</small></div></header>' +
+    '<main class="wrap">' + body + '</main>\n</body>\n</html>';
+  return new Response(html, {
+    status: status || 200,
+    headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
+  });
+}
+
+// GET /certificado/:id -> pagina publica con los datos + la huella + QR de si misma.
+async function handleCertificado(id: string, env: Env): Promise<Response> {
+  let c: any = null;
+  try {
+    await ensureCertificados(env);
+    c = await env.DB.prepare(
+      'SELECT id, huella, nombre, mime, tamano, descripcion, emisor, emitido_en ' +
+      'FROM certificados WHERE id = ?',
+    ).bind(id).first();
+  } catch (e) {
+    c = null;
+  }
+  if (!c) {
+    const nf = '<h1>Certificado no encontrado</h1>' +
+      '<p class="soft">Este codigo no corresponde a ningun certificado emitido, o fue retirado.</p>' +
+      '<p style="margin-top:18px"><a class="btn ghost" href="/">Ir al sitio</a></p>';
+    return publicPage('Certificado no encontrado', nf, 404);
+  }
+
+  const pageUrl = SITE_ORIGIN + '/certificado/' + encodeURIComponent(String(c.id));
+  let qr = '';
+  try {
+    qr = RSQR.svg(pageUrl, { size: 190, margin: 2, ecl: 'M', dark: '#0b1220', light: '#ffffff' });
+  } catch (e) { qr = ''; }
+
+  const tamano = c.tamano ? formatBytes(Number(c.tamano)) : '';
+  const verHref = '/verificar?h=' + encodeURIComponent(String(c.huella)) +
+    (c.nombre ? '&n=' + encodeURIComponent(String(c.nombre)) : '') +
+    '&id=' + encodeURIComponent(String(c.id));
+
+  const body =
+    '<span class="badge">&#10003; Documento certificado</span>' +
+    '<h1>Certificado de documento</h1>' +
+    '<p class="soft small" style="margin-top:0">Esta pagina acredita que el documento descrito abajo fue emitido tal cual por ' +
+    esc(EMISOR) + '. Basta con comparar su huella para saber si alguien lo altero.</p>' +
+    '<div class="card"><div class="grid"><div>' +
+    '<div class="label">Documento</div><div class="val">' + esc(c.nombre || 'Documento') + '</div>' +
+    (c.descripcion ? '<div class="label">Cliente / descripcion</div><div class="val">' + esc(c.descripcion) + '</div>' : '') +
+    '<div class="label">Emitido</div><div class="val">' + esc(fechaLarga(c.emitido_en)) + '</div>' +
+    '<div class="label">Emisor</div><div class="val">' + esc(c.emisor || EMISOR) + '</div>' +
+    '<div class="label">Huella SHA-256</div>' +
+    '<div class="hash">' + esc(huellaGrupos(c.huella)) + '</div>' +
+    '<div class="label">Codigo de certificado</div>' +
+    '<div class="val mono">' + esc(c.id) + (tamano ? ' <span class="soft small">(' + esc(tamano) + ')</span>' : '') + '</div>' +
+    '</div><div>' +
+    '<div class="qrbox">' + (qr || '<div class="soft small">QR no disponible</div>') +
+    '<div class="tiny soft" style="margin-top:8px">Escanee para volver a esta pagina</div></div>' +
+    '</div></div></div>' +
+    '<div class="card"><h2>Como se comprueba</h2>' +
+    '<p class="soft small" style="margin-top:0">Abra la verificacion, elija el archivo que recibio y su navegador calcula su ' +
+    'huella SHA-256. Si coincide con la de arriba, el documento es el original; si no, fue alterado.</p>' +
+    '<p><a class="btn" href="' + esc(verHref) + '">Verificar un archivo</a></p>' +
+    '<p class="tiny soft" style="margin-bottom:0">El archivo nunca se sube a un servidor: la comparacion ocurre en su navegador.</p>' +
+    '</div>';
+  return publicPage('Certificado ' + c.id, body, 200);
+}
+
+// POST /admin/:tok/certificado -> calcula la huella y guarda los datos (sin el archivo).
+async function handleEmitirCertificado(request: Request, env: Env, tok: string): Promise<Response> {
+  const back = '/admin/' + tok;
+  const form = await request.formData();
+  const file: any = form.get('archivo');
+  const descripcion = str(form.get('descripcion'));
+  const nombreManual = str(form.get('nombre'));
+  if (!file || typeof file === 'string' || typeof file.arrayBuffer !== 'function') {
+    return page('Admin', '<h1><span>Falta el archivo</span></h1><p class="muted">Elige el documento a certificar.</p>' +
+      '<p><a class="btn ghost" href="' + back + '">Volver</a></p>', 400);
+  }
+  try {
+    await ensureCertificados(env);
+    const bytes = await file.arrayBuffer();
+    const huella = await sha256BytesHex(bytes);
+    const id = nuevoIdCertificado();
+    const nombre = nombreManual || sanitizeFileName(file.name) || 'documento';
+    await env.DB.prepare(
+      'INSERT INTO certificados (id, huella, nombre, mime, tamano, descripcion, emisor, emitido_en, admin_token) ' +
+      'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    ).bind(id, huella, nombre, file.type || 'application/octet-stream',
+      Number(file.size) || bytes.byteLength, descripcion, EMISOR + ' - ' + EMISOR_ORG,
+      new Date().toISOString(), tok).run();
+    return redirect(back + '?cert=' + id, 303);
+  } catch (e) {
+    return page('Admin', '<h1><span>No se pudo emitir</span></h1><p class="muted">' +
+      esc(String((e as any) && (e as any).message || e)) + '</p>' +
+      '<p><a class="btn ghost" href="' + back + '">Volver</a></p>', 500);
+  }
+}
+
 /* ============================ router ============================ */
 
 export default {
@@ -702,7 +951,7 @@ export default {
     }
 
     // Admin por token en la URL (sin login, sin cookies).
-    const mAdmin = path.match(/^\/admin\/([A-Za-z0-9_-]{16,})(\/(cliente|plano|revocar))?$/);
+    const mAdmin = path.match(/^\/admin\/([A-Za-z0-9_-]{16,})(\/(cliente|plano|revocar|certificado))?$/);
     if (mAdmin) {
       const token = String(env.ADMIN_TOKEN || '');
       if (!token || !constantTimeEqual(mAdmin[1], token)) {
@@ -713,6 +962,13 @@ export default {
       if (sub === '/cliente' && method === 'POST') return handleCreateClient(request, env, mAdmin[1]);
       if (sub === '/plano' && method === 'POST') return handleUpload(request, env, ctx, mAdmin[1]);
       if (sub === '/revocar' && method === 'POST') return handleRevoke(request, env, mAdmin[1]);
+      if (sub === '/certificado' && method === 'POST') return handleEmitirCertificado(request, env, mAdmin[1]);
+    }
+
+    // Certificado publico por id (pagina que abre el QR; sin clave, noindex).
+    const mCert = path.match(/^\/certificado\/([A-Za-z0-9_-]{6,40})$/);
+    if (method === 'GET' && mCert) {
+      return handleCertificado(mCert[1], env);
     }
 
     // Formulario de contacto del sitio (antes devolvia 405 y se perdian los mensajes).

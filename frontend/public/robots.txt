@@ -4,6 +4,7 @@ Allow: /
 # Areas privadas y de aplicacion (sin valor de busqueda)
 Disallow: /admin
 Disallow: /mis-planos/
+Disallow: /certificado/
 Disallow: /cdn-cgi/
 
 Sitemap: https://www.ricardosanjur.com/sitemap.xml
