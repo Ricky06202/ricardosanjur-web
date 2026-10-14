@@ -13,6 +13,14 @@ interface Env {
   PANEL_CLAVE?: string;
   PANEL_SECRET?: string;
   ADMIN_TOKEN?: string;
+  // Acceso de administradores con la cuenta RS ID (id.rsanjur.com).
+  // ADMIN_EMAILS: lista blanca separada por comas de correos autorizados.
+  // RS_ID_SESSION_SECRET (opcional): mismo secreto del worker rs-id; si esta,
+  //   la cookie se valida localmente sin llamar a la API. Si no, se consulta
+  //   GET /api/auth/yo de id.rsanjur.com (no requiere compartir secretos).
+  ADMIN_EMAILS?: string;
+  RS_ID_SESSION_SECRET?: string;
+  RS_ID_VERIFY_URL?: string;
 }
 
 // Contexto del worker (waitUntil para trabajo en segundo plano).
@@ -178,6 +186,84 @@ async function requireSession(request: Request, env: Env): Promise<Response | nu
   const secret = env.PANEL_SECRET || '';
   if (!secret || !(await validSession(request, secret))) return redirect('/panel-planos', 303);
   return null;
+}
+
+/* ================= acceso admin con la cuenta RS ID ================= */
+// RS ID (id.rsanjur.com) firma la cookie "rs_id" (Domain=.rsanjur.com) como
+//   v1.<payloadB64url>.<hmacB64url(secret, "v1." + payloadB64url)>
+// donde el payload JSON trae { sid, sub, email, exp (segundos) }.
+// Aqui solo se lee para saber QUE correo entro; no se toca la sesion de RS ID.
+
+const RS_ID_COOKIE = 'rs_id';
+const RS_ID_VERSION = 'v1';
+const RS_ID_VERIFY_URL_DEFAULT = 'https://id.rsanjur.com/api/auth/yo';
+
+function deB64urlStr(input: string): string {
+  const s = String(input).replace(/-/g, '+').replace(/_/g, '/');
+  const b64 = s + '='.repeat((4 - (s.length % 4)) % 4);
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
+// Correos autorizados como admin (lista blanca en ADMIN_EMAILS, separada por comas).
+function adminEmails(env: Env): string[] {
+  return String(env.ADMIN_EMAILS || '')
+    .split(',')
+    .map((x) => x.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+// Valida la cookie rs_id localmente (misma firma que el worker rs-id).
+async function rsIdEmailLocal(request: Request, secret: string): Promise<string | null> {
+  const token = readCookie(request, RS_ID_COOKIE);
+  if (!token) return null;
+  const partes = token.split('.');
+  if (partes.length !== 3 || partes[0] !== RS_ID_VERSION) return null;
+  const esperada = await hmacSign(secret, RS_ID_VERSION + '.' + partes[1]);
+  if (!constantTimeEqual(esperada, partes[2])) return null;
+  let payload: any = null;
+  try {
+    payload = JSON.parse(deB64urlStr(partes[1]));
+  } catch (e) {
+    return null;
+  }
+  if (!payload || typeof payload.exp !== 'number') return null;
+  if (payload.exp * 1000 < Date.now()) return null;
+  return str(payload.email);
+}
+
+// Valida la cookie rs_id contra la API de RS ID (no requiere compartir secretos).
+async function rsIdEmailApi(request: Request, env: Env): Promise<string | null> {
+  const token = readCookie(request, RS_ID_COOKIE);
+  if (!token) return null;
+  const target = env.RS_ID_VERIFY_URL || RS_ID_VERIFY_URL_DEFAULT;
+  try {
+    const res = await fetch(target, {
+      headers: { cookie: RS_ID_COOKIE + '=' + token, accept: 'application/json' },
+    });
+    if (!res.ok) return null;
+    const data: any = await res.json();
+    if (!data || data.autenticado !== true) return null;
+    return str(data.email);
+  } catch (e) {
+    return null;
+  }
+}
+
+// Devuelve el correo autorizado si la sesion de RS ID es valida y esta en la lista.
+// Si no hay lista configurada, NADIE entra (nunca se filtra el panel por defecto).
+async function adminAutorizado(request: Request, env: Env): Promise<string | null> {
+  const lista = adminEmails(env);
+  if (!lista.length) return null;
+  let email: string | null = null;
+  const secret = env.RS_ID_SESSION_SECRET || '';
+  if (secret) email = await rsIdEmailLocal(request, secret);
+  if (!email) email = await rsIdEmailApi(request, env);
+  if (!email) return null;
+  const norm = email.trim().toLowerCase();
+  return lista.indexOf(norm) > -1 ? norm : null;
 }
 
 function formatBytes(n: number): string {
@@ -530,6 +616,26 @@ async function handleLogin(request: Request, env: Env): Promise<Response> {
   return loginPage('Contrasena incorrecta.');
 }
 
+// Pantalla de acceso al panel con la cuenta RS ID (los clientes NO pasan por aqui).
+function adminLoginPage(aviso: string, status: number): Response {
+  const msg = aviso === 'sin_lista'
+    ? 'El panel no tiene correos autorizados todavia. Falta cargar la lista blanca (ADMIN_EMAILS).'
+    : aviso;
+  const body = '<h1><span>Panel de planos</span></h1>' +
+    '<p class="muted">Acceso privado para el ingeniero y administradores.</p>' +
+    '<div class="card" style="max-width:480px">' +
+    (msg ? '<p class="err">' + esc(msg) + '</p>' : '') +
+    '<h2>Entrar con mi cuenta rsanjur</h2>' +
+    '<p class="muted" style="margin-top:0">Use su cuenta RS ID. El panel se abre solo si su correo esta en la lista de autorizados.</p>' +
+    '<p style="margin-top:16px"><a class="btn" href="https://id.rsanjur.com/entrar">Entrar con mi cuenta rsanjur</a></p>' +
+    '<p class="muted" style="font-size:.82rem">Si no tiene sesion, RS ID le pedira su correo y le enviara un codigo. Cuando entre, vuelva aqui: <span class="code">/admin</span></p>' +
+    '</div>' +
+    '<div class="card" style="max-width:480px"><details><summary class="muted" style="cursor:pointer">Acceso por token (respaldo)</summary>' +
+    '<p class="muted" style="font-size:.86rem;margin-bottom:0">El enlace directo con token <span class="code">/admin/&lt;token&gt;</span> sigue funcionando como respaldo para quien ya lo tenga.</p>' +
+    '</details></div>';
+  return page('Panel', body, status || 200);
+}
+
 async function handleInicio(request: Request, env: Env, tok: string): Promise<Response> {
   const url = new URL(request.url);
   const cRes = await env.DB
@@ -597,13 +703,73 @@ async function handleInicio(request: Request, env: Env, tok: string): Promise<Re
     }
   }
 
+  // Resultado de la subida: el certificado ya se emitio en la MISMA accion.
+  // cert = ids nuevos, dup = ids que ya existian (misma huella, no se duplico).
   const certOk = str(url.searchParams ? url.searchParams.get('cert') : null);
-  const certBanner = (!certOk) ? '' :
-    '<div class="card" style="border-color:rgba(120,255,190,.3)"><p class="ok" style="margin:0">Certificado emitido: ' +
-    esc(certOk) + ' &middot; <a href="' + SITE_ORIGIN + '/certificado/' + esc(certOk) + '">ver pagina publica</a></p></div>';
+  const dupOk = str(url.searchParams ? url.searchParams.get('dup') : null);
+  const subidosN = url.searchParams ? str(url.searchParams.get('subidos')) : null;
+
+  async function certMini(id: string): Promise<{ id: string; huella: string; nombre: string } | null> {
+    try {
+      const row = await env.DB.prepare('SELECT id, huella, nombre FROM certificados WHERE id = ?').bind(id).first();
+      if (!row) return null;
+      return { id: String(row.id), huella: String(row.huella || ''), nombre: String(row.nombre || 'Documento') };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function certCard(c: { id: string; huella: string; nombre: string }, duplicado: boolean): string {
+    const link = SITE_ORIGIN + '/certificado/' + c.id;
+    let qr = '';
+    try {
+      qr = RSQR.svg(link, { size: 168, margin: 2, ecl: 'M', dark: '#0b1220', light: '#ffffff' });
+    } catch (e) { qr = ''; }
+    return '<div class="plan">' +
+      '<strong>' + esc(c.nombre) + '</strong>' +
+      (duplicado
+        ? '<div class="ok" style="font-size:.84rem">Ya tenia certificado (misma huella). No se duplico.</div>'
+        : '<div class="ok" style="font-size:.84rem">Certificado creado automaticamente.</div>') +
+      '<div class="muted" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;margin-top:10px">Huella SHA-256</div>' +
+      '<div class="code">' + esc(c.huella) + '</div>' +
+      '<div style="margin-top:10px"><a class="code" href="' + esc(link) + '">/certificado/' + esc(c.id) + '</a></div>' +
+      '<div class="row" style="margin-top:12px">' +
+      '<a class="btn" href="' + esc(link) + '">Ver certificado</a>' +
+      '<button class="btn ghost" type="button" data-copy="' + esc(link) + '">Copiar link</button></div>' +
+      (qr ? '<div style="margin-top:12px;background:#fff;border-radius:.7rem;padding:10px;display:inline-block">' + qr + '</div>' : '') +
+      '</div>';
+  }
+
+  let certBanner = '';
+  if (certOk || dupOk) {
+    const nuevosIds = (certOk || '').split(',').map((x) => x.trim()).filter(Boolean);
+    const dupIds = (dupOk || '').split(',').map((x) => x.trim()).filter(Boolean);
+    let tarjetas = '';
+    for (let i = 0; i < nuevosIds.length; i++) {
+      const c = await certMini(nuevosIds[i]);
+      if (c) tarjetas += certCard(c, false);
+    }
+    for (let i = 0; i < dupIds.length; i++) {
+      const c = await certMini(dupIds[i]);
+      if (c) tarjetas += certCard(c, true);
+    }
+    if (tarjetas) {
+      const n = nuevosIds.length;
+      const d = dupIds.length;
+      certBanner = '<div class="card" style="border-color:rgba(120,255,190,.35)">' +
+        '<div class="row"><h2>Plano subido y certificado emitido</h2><span class="pill">' + n + ' nuevo(s)</span></div>' +
+        '<p class="muted" style="margin-top:-4px">El certificado se creo en la misma accion: huella, link publico y QR listos. Comparta el enlace.' +
+        (d ? ' ' + d + ' archivo(s) ya tenian certificado (misma huella): no se duplicaron, se muestra el vigente.' : '') + '</p>' +
+        '<div class="grid2">' + tarjetas + '</div></div>';
+    }
+  } else if (subidosN) {
+    certBanner = '<div class="card" style="border-color:rgba(120,255,190,.3)"><p class="ok" style="margin:0">' +
+      esc(subidosN) + ' archivo(s) subido(s).</p></div>';
+  }
 
   const body = '<h1><span>Admin de planos</span></h1>' +
     '<p class="muted">Clientes, planos y descargas.</p>' +
+    certBanner +
     '<div class="card"><div class="row"><h2>Clientes</h2><span class="pill">' + clients.length + ' registrados</span></div>' +
     '<div style="overflow-x:auto"><table><thead><tr><th>Cliente</th><th>#Planos</th><th>#Descargas</th><th>Link del cliente</th><th></th></tr></thead>' +
     '<tbody>' + rows + '</tbody></table></div></div>' +
@@ -612,21 +778,20 @@ async function handleInicio(request: Request, env: Env, tok: string): Promise<Re
     '<div><label>Correo</label><input name="correo" type="email"></div>' +
     '<div><label>Telefono</label><input name="telefono"></div>' +
     '</div><p style="margin-top:16px"><button class="btn" type="submit">Crear cliente</button></p></form></div>' +
-    '<div class="card"><h2>Subir planos</h2>' +
-    '<p class="muted" style="margin-top:-6px">Puedes elegir varios archivos a la vez.</p>' +
+    '<div class="card"><h2>Subir plano y emitir certificado</h2>' +
+    '<p class="muted" style="margin-top:-6px">Al guardar se calcula la huella SHA-256 de cada archivo y <strong>el certificado se crea automaticamente</strong> en la misma accion: sin segundo paso. Puedes elegir varios archivos a la vez.</p>' +
     '<form method="POST" action="/admin/' + tok + '/plano" enctype="multipart/form-data">' +
     '<label>Cliente</label><select name="client_id" required>' + (options || '<option value="">Crea un cliente primero</option>') + '</select>' +
     '<label>Titulo (opcional: si lo dejas vacio se usa el nombre del archivo)</label><input name="titulo">' +
     '<label>Descripcion (opcional)</label><textarea name="descripcion" rows="2"></textarea>' +
     '<label>Archivos (PDF / DWG / ZIP - selecciona varios con Ctrl o manteniendo)</label><input type="file" name="archivos" multiple required>' +
-    '<p style="margin-top:16px"><button class="btn" type="submit">Subir archivos</button></p></form></div>' +
-    certBanner +
+    '<p style="margin-top:16px"><button class="btn" type="submit">Subir plano y emitir certificado</button></p></form></div>' +
     '<div class="card"><div class="row"><h2>Certificados emitidos</h2><span class="pill">' + certs.length + ' total</span></div>' +
     '<p class="muted" style="margin-top:-4px">Cada certificado es una pagina publica con la huella SHA-256 del documento. Comparta el enlace: cualquiera verifica el archivo sin subirlo.</p>' +
     '<div style="overflow-x:auto"><table><thead><tr><th>Documento</th><th>Huella</th><th>Emitido</th><th>Link publico</th></tr></thead><tbody>' +
     certRows + '</tbody></table></div></div>' +
-    '<div class="card"><h2>Emitir certificado</h2>' +
-    '<p class="muted" style="margin-top:-4px">Cualquier archivo (PDF, DWG, JPG, ZIP, DOCX...). Se calcula su huella SHA-256; <strong>el archivo no se guarda</strong> en el sistema.</p>' +
+    '<div class="card"><h2>Certificar un archivo sin subirlo (opcional)</h2>' +
+    '<p class="muted" style="margin-top:-4px">Via secundaria para certificar un archivo que no se sube al portal. Cualquier archivo (PDF, DWG, JPG, ZIP, DOCX...): se calcula su huella SHA-256 y <strong>el archivo no se guarda</strong> en el sistema. El camino normal es subir el plano arriba.</p>' +
     '<form method="POST" action="/admin/' + tok + '/certificado" enctype="multipart/form-data">' +
     '<label>Documento</label><input type="file" name="archivo" required>' +
     '<label>Nombre visible (opcional: si lo deja vacio se usa el nombre del archivo)</label><input name="nombre">' +
@@ -667,7 +832,12 @@ async function handleUpload(request: Request, env: Env, ctx: Ctx, tok: string): 
     return page('Admin', '<h1><span>Cliente no encontrado</span></h1><p><a class="btn ghost" href="' + back + '">Volver</a></p>', 400);
   }
   const ahora = new Date().toISOString();
+  try {
+    await ensureCertificados(env);
+  } catch (e) { /* el modulo de certificados es aditivo */ }
   let subidos = 0;
+  const nuevos: string[] = [];      // ids de certificados creados en esta subida
+  const existentes: string[] = [];  // ids de certificados que ya existian (misma huella)
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     const safeName = sanitizeFileName(file.name);
@@ -675,6 +845,7 @@ async function handleUpload(request: Request, env: Env, ctx: Ctx, tok: string): 
     const mime = file.type || 'application/octet-stream';
     const size = Number(file.size) || 0;
     const bytes = await file.arrayBuffer();
+    const huella = await sha256BytesHex(bytes);
     const titulo = files.length === 1
       ? (tituloBase || safeName)
       : (tituloBase ? tituloBase + ' - ' + safeName : safeName);
@@ -688,8 +859,25 @@ async function handleUpload(request: Request, env: Env, ctx: Ctx, tok: string): 
     } catch (e) {
       // sigue con los demas archivos
     }
+    // Certificado automatico en la MISMA accion. Si la huella ya existe, no se duplica.
+    try {
+      const prev = await env.DB.prepare('SELECT id FROM certificados WHERE huella = ? LIMIT 1').bind(huella).first();
+      if (prev && prev.id) {
+        existentes.push(String(prev.id));
+      } else {
+        const certId = nuevoIdCertificado();
+        const descCert = descripcion || (client.nombre ? 'Cliente: ' + client.nombre : null);
+        await env.DB
+          .prepare('INSERT INTO certificados (id, huella, nombre, mime, tamano, descripcion, emisor, emitido_en, admin_token) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+          .bind(certId, huella, titulo || safeName, mime, size, descCert, EMISOR + ' - ' + EMISOR_ORG, ahora, tok)
+          .run();
+        nuevos.push(certId);
+      }
+    } catch (e) {
+      // el plano quedo subido; el certificado se puede emitir luego desde el panel
+    }
   }
-  return redirect(back + '?subidos=' + subidos, 303);
+  return redirect(back + '?subidos=' + subidos + '&cert=' + nuevos.join(',') + '&dup=' + existentes.join(','), 303);
 }
 
 async function handleRevoke(request: Request, env: Env, tok: string): Promise<Response> {
@@ -963,6 +1151,21 @@ export default {
       if (sub === '/plano' && method === 'POST') return handleUpload(request, env, ctx, mAdmin[1]);
       if (sub === '/revocar' && method === 'POST') return handleRevoke(request, env, mAdmin[1]);
       if (sub === '/certificado' && method === 'POST') return handleEmitirCertificado(request, env, mAdmin[1]);
+    }
+
+    // Acceso al panel con la cuenta RS ID (id.rsanjur.com), sin pegar el token en la URL.
+    // El acceso por token (/admin/<token>) sigue intacto como respaldo.
+    if (path === '/admin') {
+      if (method !== 'GET') {
+        return new Response('No encontrado', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } });
+      }
+      if (!adminEmails(env).length) return adminLoginPage('sin_lista', 200);
+      const adminToken = String(env.ADMIN_TOKEN || '');
+      const email = await adminAutorizado(request, env);
+      if (email && adminToken) return redirect('/admin/' + adminToken, 303);
+      if (email && !adminToken) return adminLoginPage('El panel no esta configurado (falta ADMIN_TOKEN).', 500);
+      const hayCookie = !!readCookie(request, RS_ID_COOKIE);
+      return adminLoginPage(hayCookie ? 'Su correo no esta autorizado para el panel.' : '', hayCookie ? 401 : 200);
     }
 
     // Certificado publico por id (pagina que abre el QR; sin clave, noindex).
