@@ -21,6 +21,12 @@ interface Env {
   ADMIN_EMAILS?: string;
   RS_ID_SESSION_SECRET?: string;
   RS_ID_VERIFY_URL?: string;
+  // SSO cross-domain (ver /admin/entrar): secreto compartido con el worker rs-id
+  // para llamar a POST /api/auth/canjear, y secreto propio que firma la cookie de
+  // sesion del panel (si falta, se usa PANEL_SECRET).
+  RS_ID_CANJE_SECRET?: string;
+  RS_ID_CANJE_URL?: string;
+  ADMIN_SESSION_SECRET?: string;
 }
 
 // Contexto del worker (waitUntil para trabajo en segundo plano).
@@ -197,6 +203,11 @@ async function requireSession(request: Request, env: Env): Promise<Response | nu
 const RS_ID_COOKIE = 'rs_id';
 const RS_ID_VERSION = 'v1';
 const RS_ID_VERIFY_URL_DEFAULT = 'https://id.rsanjur.com/api/auth/yo';
+const RS_ID_CANJE_URL_DEFAULT = 'https://id.rsanjur.com/api/auth/canjear';
+// Cookie PROPIA de la topografia (Domain=.ricardosanjur.com). No es la del RS ID:
+// por eso puede viajar dentro de este dominio, que NO es subdominio de rsanjur.com.
+const ADMIN_COOKIE = 'admin_sesion';
+const ADMIN_DAYS = 30;
 
 function deB64urlStr(input: string): string {
   const s = String(input).replace(/-/g, '+').replace(/_/g, '/');
@@ -252,15 +263,94 @@ async function rsIdEmailApi(request: Request, env: Env): Promise<string | null> 
   }
 }
 
-// Devuelve el correo autorizado si la sesion de RS ID es valida y esta en la lista.
-// Si no hay lista configurada, NADIE entra (nunca se filtra el panel por defecto).
+/* -------- sesion PROPIA del panel (cookie admin_sesion) -------- */
+// La cookie esta firmada con un secreto del worker y vive en el dominio de la
+// topografia (Domain=.ricardosanjur.com), asi que SI viaja aqui. Es independiente
+// de la cookie del RS ID (que es de .rsanjur.com y nunca llega a este dominio).
+function adminSessionSecret(env: Env): string {
+  return env.ADMIN_SESSION_SECRET || env.PANEL_SECRET || '';
+}
+
+function adminCookieDomain(request: Request): string {
+  const host = new URL(request.url).hostname.toLowerCase();
+  if (host === 'ricardosanjur.com' || host.endsWith('.ricardosanjur.com')) return '.ricardosanjur.com';
+  return '';
+}
+
+async function issueAdminCookie(request: Request, env: Env, email: string): Promise<string> {
+  const secret = adminSessionSecret(env);
+  const exp = Date.now() + ADMIN_DAYS * 86400000;
+  const emailEnc = b64url(enc.encode(email));
+  const payload = exp + '.' + emailEnc;
+  const sig = await hmacSign(secret, 'admin|' + payload);
+  const partes = [ADMIN_COOKIE + '=' + payload + '.' + sig, 'Path=/', 'HttpOnly', 'SameSite=Lax', 'Max-Age=' + (ADMIN_DAYS * 86400)];
+  const dom = adminCookieDomain(request);
+  if (dom) partes.push('Domain=' + dom);
+  if (new URL(request.url).protocol === 'https:') partes.push('Secure');
+  return partes.join('; ');
+}
+
+function clearAdminCookie(request: Request, env: Env): string {
+  const partes = [ADMIN_COOKIE + '=', 'Path=/', 'HttpOnly', 'SameSite=Lax', 'Max-Age=0'];
+  const dom = adminCookieDomain(request);
+  if (dom) partes.push('Domain=' + dom);
+  if (new URL(request.url).protocol === 'https:') partes.push('Secure');
+  return partes.join('; ');
+}
+
+async function validAdminSession(request: Request, env: Env): Promise<string | null> {
+  const secret = adminSessionSecret(env);
+  if (!secret) return null;
+  const raw = readCookie(request, ADMIN_COOKIE);
+  if (!raw) return null;
+  const partes = raw.split('.');
+  if (partes.length !== 3) return null;
+  const exp = partes[0];
+  const emailEnc = partes[1];
+  const sig = partes[2];
+  if (!/^[0-9]+$/.test(exp)) return null;
+  if (!(Number(exp) > Date.now())) return null;
+  const expected = await hmacSign(secret, 'admin|' + exp + '.' + emailEnc);
+  if (!constantTimeEqual(sig, expected)) return null;
+  try { return deB64urlStr(emailEnc).trim().toLowerCase(); } catch (e) { return null; }
+}
+
+/* -------- canje del codigo de un solo uso contra el RS ID -------- */
+async function canjearRsid(env: Env, codigo: string, origen: string): Promise<{ email?: string; cuenta_id?: string; error?: string }> {
+  const secret = env.RS_ID_CANJE_SECRET || '';
+  if (!secret) return { error: 'no_configurado' };
+  const target = env.RS_ID_CANJE_URL || RS_ID_CANJE_URL_DEFAULT;
+  try {
+    const res = await fetch(target, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        accept: 'application/json',
+        'x-rsid-app-secret': secret,
+      },
+      body: JSON.stringify({ codigo: codigo, origen: origen }),
+    });
+    let data: any = null;
+    try { data = await res.json(); } catch (e) { data = null; }
+    if (!res.ok || !data || data.ok !== true) return { error: (data && data.error) || 'canje_fallido' };
+    return { email: str(data.email) || undefined, cuenta_id: str(data.cuenta_id) || undefined };
+  } catch (e) {
+    return { error: 'canje_error' };
+  }
+}
+
+// Devuelve el correo autorizado. Primero la sesion PROPIA del panel (cookie
+// admin_sesion); si no, la cookie del RS ID (compatibilidad). Si no hay lista
+// configurada, NADIE entra (nunca se filtra el panel por defecto).
 async function adminAutorizado(request: Request, env: Env): Promise<string | null> {
   const lista = adminEmails(env);
   if (!lista.length) return null;
-  let email: string | null = null;
-  const secret = env.RS_ID_SESSION_SECRET || '';
-  if (secret) email = await rsIdEmailLocal(request, secret);
-  if (!email) email = await rsIdEmailApi(request, env);
+  let email: string | null = await validAdminSession(request, env);
+  if (!email) {
+    const secret = env.RS_ID_SESSION_SECRET || '';
+    if (secret) email = await rsIdEmailLocal(request, secret);
+    if (!email) email = await rsIdEmailApi(request, env);
+  }
   if (!email) return null;
   const norm = email.trim().toLowerCase();
   return lista.indexOf(norm) > -1 ? norm : null;
@@ -616,6 +706,33 @@ async function handleLogin(request: Request, env: Env): Promise<Response> {
   return loginPage('Contrasena incorrecta.');
 }
 
+// URL del RS ID a la que se manda al dueno, con la vuelta al panel de la topografia.
+// ricardosanjur.com NO es subdominio de rsanjur.com, asi que el regreso se hace con
+// un codigo de un solo uso, no con una cookie.
+function entrarHref(): string {
+  return 'https://id.rsanjur.com/id?volver=' + encodeURIComponent(SITE_ORIGIN + '/admin/entrar');
+}
+
+// Mensajes claros para el regreso del login (?error=...).
+function adminAvisoDeError(code: string): string {
+  const mapa: Record<string, string> = {
+    sin_codigo: 'No llego el codigo de acceso. Vuelva a intentarlo desde el boton.',
+    codigo_invalido: 'Ese codigo de acceso no es valido. Vuelva a intentarlo.',
+    codigo_requerido: 'Falto el codigo de acceso. Vuelva a intentarlo.',
+    codigo_usado: 'Ese codigo ya se uso (sirve una sola vez). Vuelva a intentarlo.',
+    codigo_expirado: 'El codigo vencio (dura 60 segundos). Vuelva a intentarlo.',
+    origen_invalido: 'No se pudo validar el origen del acceso.',
+    origen_no_coincide: 'El codigo pertenece a otro sitio. Vuelva a intentarlo.',
+    acceso_denegado: 'El acceso no esta autorizado (secreto de aplicacion incorrecto).',
+    no_configurado: 'El panel no esta configurado para este tipo de acceso.',
+    servicio_no_configurado: 'El servicio de acceso no esta configurado todavia.',
+    demasiados_intentos: 'Demasiados intentos. Espere unos minutos.',
+    canje_error: 'No se pudo verificar el acceso. Intente otra vez.',
+    canje_fallido: 'No se pudo verificar el acceso. Intente otra vez.',
+  };
+  return mapa[code] || 'No se pudo completar el acceso. Intente otra vez.';
+}
+
 // Pantalla de acceso al panel con la cuenta RS ID (los clientes NO pasan por aqui).
 function adminLoginPage(aviso: string, status: number): Response {
   const msg = aviso === 'sin_lista'
@@ -627,8 +744,8 @@ function adminLoginPage(aviso: string, status: number): Response {
     (msg ? '<p class="err">' + esc(msg) + '</p>' : '') +
     '<h2>Entrar con mi cuenta rsanjur</h2>' +
     '<p class="muted" style="margin-top:0">Use su cuenta RS ID. El panel se abre solo si su correo esta en la lista de autorizados.</p>' +
-    '<p style="margin-top:16px"><a class="btn" href="https://id.rsanjur.com/entrar">Entrar con mi cuenta rsanjur</a></p>' +
-    '<p class="muted" style="font-size:.82rem">Si no tiene sesion, RS ID le pedira su correo y le enviara un codigo. Cuando entre, vuelva aqui: <span class="code">/admin</span></p>' +
+    '<p style="margin-top:16px"><a class="btn" href="' + esc(entrarHref()) + '">Entrar con mi cuenta rsanjur</a></p>' +
+    '<p class="muted" style="font-size:.82rem">RS ID le pedira su correo y le enviara un codigo. Al entrar, <strong>vuelve solo</strong> a este panel si su correo esta autorizado.</p>' +
     '</div>' +
     '<div class="card" style="max-width:480px"><details><summary class="muted" style="cursor:pointer">Acceso por token (respaldo)</summary>' +
     '<p class="muted" style="font-size:.86rem;margin-bottom:0">El enlace directo con token <span class="code">/admin/&lt;token&gt;</span> sigue funcionando como respaldo para quien ya lo tenga.</p>' +
@@ -636,7 +753,43 @@ function adminLoginPage(aviso: string, status: number): Response {
   return page('Panel', body, status || 200);
 }
 
-async function handleInicio(request: Request, env: Env, tok: string): Promise<Response> {
+// GET /admin/entrar?rsid=<codigo> -> canjea el codigo con el RS ID y, si el correo
+// esta autorizado, emite la cookie PROPIA del panel y abre el panel.
+async function handleAdminEntrar(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url);
+  const codigo = str(url.searchParams.get('rsid'));
+  if (!adminEmails(env).length) return adminLoginPage('sin_lista', 200);
+  if (!codigo) return redirect('/admin?error=sin_codigo', 303);
+
+  const r = await canjearRsid(env, codigo, SITE_ORIGIN);
+  if (r.error || !r.email) {
+    return redirect('/admin?error=' + encodeURIComponent(r.error || 'canje_fallido'), 303);
+  }
+
+  const email = r.email.trim().toLowerCase();
+  if (adminEmails(env).indexOf(email) === -1) {
+    return adminLoginPage('La cuenta ' + r.email + ' no esta autorizada para este panel.', 401);
+  }
+  const adminToken = String(env.ADMIN_TOKEN || '');
+  if (!adminToken) return adminLoginPage('El panel no esta configurado (falta ADMIN_TOKEN).', 500);
+
+  const headers = new Headers();
+  headers.set('set-cookie', await issueAdminCookie(request, env, email));
+  headers.set('location', '/admin');
+  headers.set('cache-control', 'no-store');
+  return new Response(null, { status: 303, headers: headers });
+}
+
+// GET /admin/salir -> cierra la sesion propia del panel.
+function handleAdminSalir(request: Request, env: Env): Response {
+  const headers = new Headers();
+  headers.set('set-cookie', clearAdminCookie(request, env));
+  headers.set('location', '/admin');
+  headers.set('cache-control', 'no-store');
+  return new Response(null, { status: 303, headers: headers });
+}
+
+async function handleInicio(request: Request, env: Env, tok: string, opts?: { salir?: boolean }): Promise<Response> {
   const url = new URL(request.url);
   const cRes = await env.DB
     .prepare('SELECT c.id, c.nombre, c.correo, c.telefono, c.token, c.activo, c.creado_en, ' +
@@ -767,7 +920,10 @@ async function handleInicio(request: Request, env: Env, tok: string): Promise<Re
       esc(subidosN) + ' archivo(s) subido(s).</p></div>';
   }
 
-  const body = '<h1><span>Admin de planos</span></h1>' +
+  const salirLink = (opts && opts.salir)
+    ? ' <a class="pill" href="/admin/salir" style="text-decoration:none">Cerrar sesion</a>'
+    : '';
+  const body = '<h1><span>Admin de planos</span>' + salirLink + '</h1>' +
     '<p class="muted">Clientes, planos y descargas.</p>' +
     certBanner +
     '<div class="card"><div class="row"><h2>Clientes</h2><span class="pill">' + clients.length + ' registrados</span></div>' +
@@ -1153,6 +1309,10 @@ export default {
       if (sub === '/certificado' && method === 'POST') return handleEmitirCertificado(request, env, mAdmin[1]);
     }
 
+    // Regreso del login del RS ID: canjea el codigo y abre la sesion propia del panel.
+    if (method === 'GET' && path === '/admin/entrar') return handleAdminEntrar(request, env);
+    if (method === 'GET' && path === '/admin/salir') return handleAdminSalir(request, env);
+
     // Acceso al panel con la cuenta RS ID (id.rsanjur.com), sin pegar el token en la URL.
     // El acceso por token (/admin/<token>) sigue intacto como respaldo.
     if (path === '/admin') {
@@ -1162,9 +1322,13 @@ export default {
       if (!adminEmails(env).length) return adminLoginPage('sin_lista', 200);
       const adminToken = String(env.ADMIN_TOKEN || '');
       const email = await adminAutorizado(request, env);
-      if (email && adminToken) return redirect('/admin/' + adminToken, 303);
+      // Con sesion valida: el panel se abre aqui mismo (sin token en la URL).
+      if (email && adminToken) return handleInicio(request, env, adminToken, { salir: true });
       if (email && !adminToken) return adminLoginPage('El panel no esta configurado (falta ADMIN_TOKEN).', 500);
-      const hayCookie = !!readCookie(request, RS_ID_COOKIE);
+      const err = str(url.searchParams.get('error'));
+      const aviso = err ? adminAvisoDeError(err) : '';
+      const hayCookie = !!readCookie(request, RS_ID_COOKIE) || !!readCookie(request, ADMIN_COOKIE);
+      if (aviso) return adminLoginPage(aviso, 401);
       return adminLoginPage(hayCookie ? 'Su correo no esta autorizado para el panel.' : '', hayCookie ? 401 : 200);
     }
 

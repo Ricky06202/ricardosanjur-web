@@ -23,20 +23,46 @@ La opcion **"Certificar un archivo sin subirlo (opcional)"** se mantiene como vi
 secundaria (para certificar un archivo que no se sube al portal), pero dejo de ser el
 camino normal.
 
-## 2) Acceso con la cuenta RS ID (id.rsanjur.com)
+## 2) Acceso con la cuenta RS ID (id.rsanjur.com) - SSO cross-domain
 
-El ingeniero puede entrar al panel con su **cuenta RS ID** sin pegar el token en la URL:
+**Problema de raiz:** `ricardosanjur.com` **NO es subdominio de `rsanjur.com`**
+(son dos dominios registrables distintos). La cookie de sesion de RS ID se emite con
+`Domain=.rsanjur.com`, asi que el navegador **nunca la manda** a
+`ricardosanjur.com`. Por eso el acceso no puede depender de esa cookie: se usa un
+**codigo de un solo uso** que viaja en la URL de vuelta.
 
-- Va a `https://www.ricardosanjur.com/admin`.
-- Si no tiene sesion, ve **"Entrar con mi cuenta rsanjur"** (lo manda a `id.rsanjur.com`).
-- Con sesion RS ID **y su correo en la lista blanca**, el panel se abre solo
-  (redirige a `/admin/<token>`).
-- Sin sesion, o con un correo **no autorizado**, se muestra el login con aviso claro:
-  **nunca se filtra el panel**.
+Flujo:
+
+1. El ingeniero va a `https://www.ricardosanjur.com/admin`.
+2. Sin sesion, ve **"Entrar con mi cuenta rsanjur"**, que enlaza a
+   `https://id.rsanjur.com/id?volver=<https://www.ricardosanjur.com/admin/entrar>`.
+3. En RS ID entra con su correo + codigo de 6 digitos (o Google). Si ya tenia sesion
+   RS ID, el RS ID lo devuelve de una.
+4. RS ID emite un **codigo de un solo uso** (TTL 60 s, guardado hasheado en D1, atado
+   al **origen** de vuelta) y redirige a `/admin/entrar?rsid=<codigo>`.
+5. `/admin/entrar` (server-side) canjea el codigo llamando a
+   `POST https://id.rsanjur.com/api/auth/canjear` con el secreto de app. Si el correo
+   esta en `ADMIN_EMAILS`, emite la **cookie propia del panel** (`admin_sesion`,
+   `Domain=.ricardosanjur.com`, firmada con `ADMIN_SESSION_SECRET`) y abre el panel.
+   Correo no autorizado: **401**. Codigo invalido/usado/expirado: vuelve al login con
+   aviso.
+
+Seguridad del canje (`/api/auth/canjear`):
+
+- Exige el **secreto compartido de app** (cabecera `X-RSID-App-Secret =
+  RS_ID_CANJE_SECRET`); sin el, responde `403`.
+- El codigo es de **un solo uso**, **expira en 60 s** y esta **atado al origen**
+  (campo `origen`): un codigo de otro sitio no sirve.
+- Devuelve lo minimo: `{ok, email, cuenta_id}`. Nunca la wallet ni datos de mas.
+- `volver` solo acepta dominios de la lista blanca (`*.rsanjur.com`,
+  `*.ricardosanjur.com`, `*.strydpanama.com`, `comiboxchiriqui.com`,
+  `*.workers.dev`, `localhost`). Si no esta en la lista, se **ignora** (nunca se
+  redirige a un sitio arbitrario).
 
 El acceso por token (`/admin/<token>`) sigue **intacto** como respaldo: los links
 existentes no se rompen. Los **clientes** siguen entrando a sus planos igual
-(`/mis-planos/<token>`), sin cambios.
+(`/mis-planos/<token>`), sin cambios. El panel muestra un enlace **Cerrar sesion**
+(`/admin/salir`) cuando se entro con la sesion propia.
 
 ### Lista blanca de correos (ADMIN_EMAILS)
 
@@ -55,18 +81,21 @@ Alternativa como var (no secreta) en `wrangler.jsonc`:
 Para agregar el correo del ingeniero, basta volver a correr `secret put` con la lista
 completa (el correo del dueno + el del ingeniero).
 
+### Secretos del worker (los nuevos)
+
+| Secret | Para que |
+|---|---|
+| `RS_ID_CANJE_SECRET` | secreto compartido con el worker `rs-id` para llamar a `/api/auth/canjear` |
+| `ADMIN_SESSION_SECRET` | firma de la cookie propia `admin_sesion` (si falta, usa `PANEL_SECRET`) |
+
 ### Como valida la sesion
 
-La cookie `rs_id` (firmada por RS ID, `Domain=.rsanjur.com`) se verifica de dos formas:
-
-1. **Con `RS_ID_SESSION_SECRET`** (opcional): se valida la firma HMAC localmente, igual
-   que el worker rs-id (mismo esquema `v1.<payload>.<firma>`). Requiere usar EXACTAMENTE
-   el mismo secreto del worker `rs-id`.
-2. **Sin secreto (por defecto)**: se consulta `GET https://id.rsanjur.com/api/auth/yo`
-   reenviando la cookie; si responde `autenticado: true`, se toma su `email`.
-
-Con el metodo 2 no hay que compartir secretos. Solo se lee el correo; la sesion de RS ID
-no se toca.
+1. **Cookie propia `admin_sesion`** (la via normal): firmada con
+   `ADMIN_SESSION_SECRET` y con `Domain=.ricardosanjur.com`, asi que **si viaja**
+   dentro de este dominio. Es la que emite `/admin/entrar`.
+2. **Compatibilidad**: si no hay cookie propia, se mira la cookie `rs_id` (validandola
+   localmente con `RS_ID_SESSION_SECRET` o consultando `GET /api/auth/yo`). Esta via
+   solo sirve dentro de `*.rsanjur.com`; para dominios externos aplica el SSO.
 
 ## Verificacion local (opcional)
 
