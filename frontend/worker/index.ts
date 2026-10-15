@@ -9,6 +9,9 @@ import RSQR from './qr.js';
 interface Env {
   ASSETS: { fetch: (request: Request) => Promise<Response> };
   DB: any;
+  // Cloudflare Email Service (binding send_email). Opcional: si no esta, el
+  // mensaje igual queda guardado en la base (con avisado = 0).
+  EMAIL?: { send: (msg: Record<string, unknown>) => Promise<{ messageId?: string } | null> };
   PLANOS: any;
   PANEL_CLAVE?: string;
   PANEL_SECRET?: string;
@@ -409,6 +412,51 @@ function jsonResponse(obj: unknown, status: number): Response {
   });
 }
 
+// A donde llegan los mensajes del sitio: el correo que la pagina ya publica.
+const DESTINO_CONTACTO = 'gerencia@ricardosanjur.com';
+
+function escCorreo(v: unknown): string {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// Aviso por correo. BEST-EFFORT: si falla, el mensaje YA quedo en la base.
+async function avisarContacto(env: Env, d: { nombre: string; email: string; telefono: string; tema: string; mensaje: string; id: string; ahora: string }) {
+  if (!env.EMAIL) return { enviado: false, error: 'sin_binding_email' };
+  const filas = [
+    ['Nombre', d.nombre],
+    ['Correo', d.email || '-'],
+    ['Telefono', d.telefono || '-'],
+    ['Tema', d.tema || '-'],
+    ['Recibido', d.ahora],
+  ].map(([k, v]) => '<tr><td style="padding:6px 14px 6px 0;color:#777;vertical-align:top">' + escCorreo(k) + '</td><td style="padding:6px 0;font-weight:600">' + escCorreo(v) + '</td></tr>').join('');
+  const html =
+    '<div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;color:#111827">' +
+      '<h2 style="margin:0 0 4px">Nuevo mensaje del sitio</h2>' +
+      '<p style="margin:0 0 16px;color:#777">Topografia Especializada — ricardosanjur.com</p>' +
+      '<table style="border-collapse:collapse">' + filas + '</table>' +
+      '<div style="margin-top:18px;padding:16px;background:#F3F6FF;border-left:3px solid #2b5cff;white-space:pre-wrap">' + escCorreo(d.mensaje) + '</div>' +
+      '<p style="margin-top:18px;color:#777;font-size:13px">Para responder, escribile a <a href="mailto:' + escCorreo(d.email) + '">' + escCorreo(d.email) + '</a>.</p>' +
+    '</div>';
+  const text = 'Nuevo mensaje del sitio\n\nNombre: ' + d.nombre + '\nCorreo: ' + (d.email || '-') +
+    '\nTelefono: ' + (d.telefono || '-') + '\nTema: ' + (d.tema || '-') + '\n\n' + d.mensaje +
+    '\n\n---\nRespondele a ' + (d.email || '-') + '.';
+  try {
+    const res = await env.EMAIL.send({
+      to: DESTINO_CONTACTO,
+      from: 'Topografia Ricardosanjur <no-reply@ricardosanjur.com>',
+      subject: 'Nuevo mensaje del sitio: ' + String(d.nombre || '').slice(0, 80),
+      html: html,
+      text: text,
+    });
+    return { enviado: true, messageId: (res && res.messageId) || null };
+  } catch (e) {
+    console.log('[contacto] EMAIL.send fallo: ' + String((e as any) && (e as any).message || e));
+    return { enviado: false, error: 'envio_fallo' };
+  }
+}
+
 async function handleContact(request: Request, env: Env, ctx: Ctx): Promise<Response> {
   let data: any = null;
   try {
@@ -439,6 +487,17 @@ async function handleContact(request: Request, env: Env, ctx: Ctx): Promise<Resp
   } catch (e) {
     console.log('[contacto] error guardando: ' + String((e as any) && (e as any).message || e));
     return jsonResponse({ ok: false, error: 'guardar' }, 500);
+  }
+
+  // Aviso por correo al correo del sitio. Best-effort: si falla, el mensaje ya
+  // quedo en la base y se puede revisar/renotificar despues (avisado = 0).
+  const aviso = await avisarContacto(env, { nombre, email, telefono, tema, mensaje, id, ahora });
+  if (aviso.enviado) {
+    try {
+      await env.DB.prepare('UPDATE contactos SET avisado = 1 WHERE id = ?').bind(id).run();
+    } catch (e) {
+      console.log('[contacto] no se pudo marcar avisado: ' + String(e));
+    }
   }
 
   return jsonResponse({ ok: true }, 201);

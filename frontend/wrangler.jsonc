@@ -14,6 +14,7 @@
     { "pattern": "www.ricardosanjur.com/*", "zone_name": "ricardosanjur.com" },
     { "pattern": "ricardosanjur.com/*", "zone_name": "ricardosanjur.com" }
   ],
+  "send_email": [{ "name": "EMAIL" }],
   "d1_databases": [
     {
       "binding": "DB",
