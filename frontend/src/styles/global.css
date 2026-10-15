@@ -167,3 +167,35 @@ h1, h2, h3, h4, .font-display {
 
 /* Hero: sombra de texto para que se lea sobre la foto */
 .hero-text { filter: drop-shadow(0 2px 9px rgba(0,0,0,.9)); }
+
+/* ===== Campos de formulario: que SE VEAN =====
+   El tema de daisyUI deja el borde y el fondo del campo con el MISMO color claro
+   (base-200) sobre una tarjeta blanca, asi que la casilla se vuelve invisible y
+   parece que la pagina no cargo. Aca se fuerza borde visible + fondo blanco.
+   Va sin @layer a proposito: asi gana sobre los estilos de daisyUI. */
+.input,
+.select,
+.textarea {
+  background-color: #ffffff;
+  border: 1.5px solid var(--color-base-300, #cbd5e1);
+  border-radius: var(--radius-field, 0.7rem);
+  color: var(--color-base-content, #1f2937);
+  cursor: text;
+}
+.select { cursor: pointer; }
+.input:focus,
+.select:focus,
+.textarea:focus {
+  border-color: var(--color-primary, #2b5cff);
+  outline: 2px solid color-mix(in oklab, var(--color-primary, #2b5cff) 22%, transparent);
+  outline-offset: 0;
+}
+.input::placeholder,
+.textarea::placeholder { color: #9aa3b2; opacity: 1; }
+.checkbox,
+.radio {
+  border: 1.5px solid var(--color-base-300, #cbd5e1);
+  background-color: #ffffff;
+}
+.checkbox:checked,
+.radio:checked { border-color: var(--color-primary, #2b5cff); background-color: var(--color-primary, #2b5cff); }
