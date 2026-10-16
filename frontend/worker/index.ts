@@ -1403,6 +1403,15 @@ export default {
       return jsonResponse({ ok: false, error: 'method' }, 405);
     }
 
+    // Alias del formulario de cotizacion. El formulario de Servicios ya no sube
+    // archivos y manda todo por /api/contact, pero una pagina cacheada todavia
+    // puede apuntar aqui: se responde igual en vez del 405 que dejaba al cliente
+    // con "Hubo un error" y el mensaje perdido.
+    if (path === '/api/quote') {
+      if (method === 'POST') return handleContact(request, env, ctx);
+      return jsonResponse({ ok: false, error: 'method' }, 405);
+    }
+
     return env.ASSETS.fetch(request);
   },
 };

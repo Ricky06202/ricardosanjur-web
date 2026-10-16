@@ -191,21 +191,25 @@ const servicesLd = s.items.map((item) => ({
               </div>
             </div>
 
-            <!-- Archivos -->
-            <div>
+            <!-- Nota: el formulario ya NO sube archivos. Los planos se envian
+                 luego por WhatsApp o correo, para que el envio nunca falle. -->
+
+            <!-- Archivos: se piden por WhatsApp / correo, no por el formulario.
+                 Subir archivos obligaba a un endpoint con multipart que nunca
+                 llego a funcionar y tumbaba todo el envio. -->
+            <div class="border-b border-base-300 pb-4">
               <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                 </svg>
                 {s.docsHeading}
               </h3>
-              <div class="form-control">
-                <label class="label"><span class="label-text">{s.labelDocs}</span></label>
-                <input type="file" name="archivos" class="file-input file-input-bordered w-full" multiple accept=".pdf,.jpg,.jpeg,.png,.dwg,.dxf" />
-                <label class="label">
-                  <span class="label-text-alt">{s.docsHint}</span>
-                </label>
-              </div>
+              <p class="text-sm text-base-content/70">
+                {s.labelDocs}: envíelos por WhatsApp al
+                <a href="https://wa.me/50766714646" target="_blank" rel="noopener" class="link link-primary">+507 6671-4646</a>
+                o a <a href="mailto:gerencia@ricardosanjur.com" class="link link-primary">gerencia@ricardosanjur.com</a>.
+              </p>
+              <p class="label-text-alt mt-2">{s.docsHint}</p>
             </div>
 
             <!-- Mensaje Adicional -->
@@ -251,14 +255,78 @@ const servicesLd = s.items.map((item) => ({
     messages.conn = formRoot.dataset.msgConn || "";
   }
 
+  // Boton de enviar: se desactiva mientras va el envio (evita dobles clics y
+  // deja claro que SI esta pasando algo). Se restaura pase lo que pase.
+  function setEnviando(activo: boolean) {
+    const btn = form?.querySelector('button[type="submit"]') as HTMLButtonElement | null;
+    if (!btn) return;
+    btn.disabled = activo;
+    btn.classList.toggle('btn-disabled', activo);
+  }
+
+  function marcar(sel: Element | null, valida: boolean) {
+    if (!sel) return;
+    const campo = sel as HTMLElement;
+    campo.classList.toggle('input-error', !valida);
+    campo.classList.toggle('textarea-error', !valida);
+    campo.classList.toggle('select-error', !valida);
+  }
+
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const formData = new FormData(form);
+    const fd = new FormData(form);
+    const valor = (k: string) => String(fd.get(k) || '').trim();
 
+    // 1) Validacion visible: el navegador no la muestra cuando el submit se
+    //    maneja por JS, y antes el boton parecia "no hacer nada".
+    const obligatorios: [string, string][] = [
+      ['nombre', 'El nombre es obligatorio.'],
+      ['email', 'El correo es obligatorio.'],
+      ['telefono', 'El telefono es obligatorio.'],
+      ['direccion', 'La direccion es obligatoria.'],
+      ['numeroFinca', 'El numero de finca es obligatorio.'],
+    ];
+    for (const [campo, aviso] of obligatorios) {
+      const input = form.querySelector('[name="' + campo + '"]');
+      const vacio = !valor(campo);
+      marcar(input, !vacio);
+      if (vacio) { alert(aviso); (input as HTMLInputElement)?.focus(); return; }
+    }
+    const inputEmail = form.querySelector('[name="email"]') as HTMLInputElement | null;
+    const emailOk = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(valor('email'));
+    marcar(inputEmail, emailOk);
+    if (!emailOk) { alert('Revise el correo electronico.'); inputEmail?.focus(); return; }
+
+    // 2) Los campos extra se arman como texto y viajan en "mensaje": el endpoint
+    //    /api/contact ya existe, ya guarda y ya avisa por correo. Un solo camino.
+    const servicios = fd.getAll('tipoServicio').map(String).filter(Boolean);
+    const caracteristicas = fd.getAll('caracteristicaFinca').map(String).filter(Boolean);
+    const lineas = [
+      'SOLICITUD DE COTIZACION',
+      'Empresa: ' + (valor('empresa') || '-'),
+      'Direccion de la finca: ' + valor('direccion'),
+      'Numero de finca: ' + valor('numeroFinca'),
+      'Area aproximada: ' + (valor('area') || '-'),
+      'Tipo de servicio: ' + (servicios.length ? servicios.join(', ') : '-'),
+      'Caracteristicas: ' + (caracteristicas.length ? caracteristicas.join(', ') : '-'),
+      '',
+      'Mensaje:',
+      valor('mensaje') || '(sin mensaje adicional)',
+    ];
+    const payload = {
+      nombre: valor('nombre'),
+      email: valor('email'),
+      telefono: valor('telefono'),
+      tema: 'cotizacion',
+      mensaje: lineas.join('\n'),
+    };
+
+    setEnviando(true);
     try {
-      const response = await fetch('/api/quote', {
+      const response = await fetch('/api/contact', {
         method: 'POST',
-        body: formData
+        body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'application/json' },
       });
 
       if (response.ok) {
@@ -269,6 +337,8 @@ const servicesLd = s.items.map((item) => ({
       }
     } catch (error) {
       alert(messages.conn);
+    } finally {
+      setEnviando(false);
     }
   });
 </script>
