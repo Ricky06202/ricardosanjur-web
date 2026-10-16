@@ -413,7 +413,7 @@ function jsonResponse(obj: unknown, status: number): Response {
 }
 
 // A donde llegan los mensajes del sitio: el correo que la pagina ya publica.
-const DESTINO_CONTACTO = 'gerencia@ricardosanjur.com';
+const DESTINO_CONTACTO = 'asistente@ricardosanjur.com';
 
 function escCorreo(v: unknown): string {
   return String(v == null ? '' : v)
