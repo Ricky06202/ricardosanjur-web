@@ -285,7 +285,7 @@ const servicesLd = s.items.map((item) => ({
   }
 
   // Lista visible de archivos elegidos (sin esto el selector parece no hacer nada).
-  const HINT_ARCHIVOS = 'PDF, JPG, PNG, WEBP, DWG o DXF · hasta 3 archivos · máx. 10 MB c/u';
+  const HINT_ARCHIVOS = 'PDF, JPG, PNG, WEBP, DWG o DXF · hasta 5 archivos · máx. 10 MB c/u';
   const inputArchivosEl = document.getElementById('archivosCotizacion') as HTMLInputElement | null;
   const listaArchivosEl = document.getElementById('archivosLista');
   const avisoArchivosEl = document.getElementById('archivosAviso');
@@ -314,7 +314,7 @@ const servicesLd = s.items.map((item) => ({
   }
 
   inputArchivosEl?.addEventListener('change', () => {
-    pintarArchivos(inputArchivosEl.files ? Array.from(inputArchivosEl.files).slice(0, 3) : []);
+    pintarArchivos(inputArchivosEl.files ? Array.from(inputArchivosEl.files).slice(0, 5) : []);
   });
 
   // Arrastrar y soltar tambien funciona (en desktop es lo natural).
@@ -327,7 +327,7 @@ const servicesLd = s.items.map((item) => ({
       if (!dt || !dt.files || dt.files.length === 0) return;
       e.preventDefault();
       inputArchivosEl.files = dt.files;
-      pintarArchivos(Array.from(dt.files).slice(0, 3));
+      pintarArchivos(Array.from(dt.files).slice(0, 5));
     });
   }
 
@@ -383,7 +383,7 @@ const servicesLd = s.items.map((item) => ({
     // 3) Adjuntos: se suben ANTES del texto y por un camino aparte. Si fallan,
     //    el mensaje sale igual (lo importante nunca se pierde) y se avisa.
     const inputArchivos = inputArchivosEl;
-    const archivos = inputArchivos?.files ? Array.from(inputArchivos.files).slice(0, 3) : [];
+    const archivos = inputArchivos?.files ? Array.from(inputArchivos.files).slice(0, 5) : [];
     const ref = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + '-' + Math.random().toString(16).slice(2)).toLowerCase();
     let subidaOk = true;
     if (archivos.length > 0) {

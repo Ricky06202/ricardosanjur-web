@@ -430,7 +430,7 @@ function escCorreo(v: unknown): string {
 }
 
 // Aviso por correo. BEST-EFFORT: si falla, el mensaje YA quedo en la base.
-async function avisarContacto(env: Env, d: { nombre: string; email: string; telefono: string; tema: string; mensaje: string; id: string; ahora: string; archivos?: { nombre: string; tamano: number }[] }) {
+async function avisarContacto(env: Env, d: { nombre: string; email: string; telefono: string; tema: string; mensaje: string; id: string; ahora: string; archivos?: { id: string; nombre: string; tamano: number }[] }) {
   if (!env.EMAIL) return { enviado: false, error: 'sin_binding_email' };
   const filas = [
     ['Nombre', d.nombre],
@@ -447,8 +447,10 @@ async function avisarContacto(env: Env, d: { nombre: string; email: string; tele
       '<div style="margin-top:18px;padding:16px;background:#F3F6FF;border-left:3px solid #2b5cff;white-space:pre-wrap">' + escCorreo(d.mensaje) + '</div>' +
       ((d.archivos && d.archivos.length)
         ? '<div style="margin-top:16px"><strong>Archivos adjuntos (' + d.archivos.length + ')</strong><ul style="margin:8px 0 0;padding-left:18px">' +
-          d.archivos.map((a) => '<li>' + escCorreo(a.nombre) + ' <span style="color:#777">(' + Math.round((a.tamano || 0) / 1024) + ' KB)</span></li>').join('') +
-          '</ul><p style="color:#777;font-size:13px;margin:6px 0 0">Estan guardados en el panel de planos (R2, carpeta cotizaciones/).</p></div>'
+          d.archivos.map((a) => '<li>' + (a.link
+            ? '<a href="' + escCorreo(a.link) + '">' + escCorreo(a.nombre) + '</a>'
+            : escCorreo(a.nombre)) + ' <span style="color:#777">(' + Math.round((a.tamano || 0) / 1024) + ' KB)</span></li>').join('') +
+          '</ul><p style="color:#777;font-size:13px;margin:6px 0 0">Los enlaces vencen en 30 dias.</p></div>'
         : '') +
       '<p style="margin-top:18px;color:#777;font-size:13px">Para responder, escribile a <a href="mailto:' + escCorreo(d.email) + '">' + escCorreo(d.email) + '</a>.</p>' +
     '</div>';
@@ -456,7 +458,7 @@ async function avisarContacto(env: Env, d: { nombre: string; email: string; tele
     '\nTelefono: ' + (d.telefono || '-') + '\nTema: ' + (d.tema || '-') + '\n\n' + d.mensaje +
     '\n\n---\nRespondele a ' + (d.email || '-') + '.' +
     ((d.archivos && d.archivos.length)
-      ? '\n\nArchivos adjuntos (' + d.archivos.length + '):\n' + d.archivos.map((a) => '- ' + a.nombre + ' (' + Math.round((a.tamano || 0) / 1024) + ' KB)').join('\n')
+      ? '\n\nArchivos adjuntos (' + d.archivos.length + '):\n' + d.archivos.map((a) => '- ' + a.nombre + ' (' + Math.round((a.tamano || 0) / 1024) + ' KB)' + (a.link ? '\n  ' + a.link : '')).join('\n')
       : '');
   try {
     const res = await env.EMAIL.send({
@@ -477,9 +479,48 @@ async function avisarContacto(env: Env, d: { nombre: string; email: string; tele
    El formulario manda PRIMERO los adjuntos y DESPUES el texto a /api/contact con
    el mismo "ref". Van separados a proposito: si un archivo pesa demasiado o el
    movil corta la subida, el mensaje de texto igual se guarda y se avisa. */
-const MAX_ARCHIVOS = 3;
+const MAX_ARCHIVOS = 5;
 const MAX_BYTES_ARCHIVO = 10 * 1024 * 1024;
 const EXT_PERMITIDAS = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.dwg', '.dxf'];
+
+/* GET /mis-solicitudes/<archivoId>?t=<firma>
+   Enlace de descarga que va en el correo de aviso: lleva la firma HMAC del id y
+   caduca. Asi el correo trae enlaces en vez de adjuntos (Cloudflare Email corta
+   los mensajes grandes y base64 engorda los archivos). */
+async function firmaArchivo(env: Env, id: string, exp: number): Promise<string> {
+  // Si por lo que sea no hay secreto configurado, se firma con uno derivado del
+  // nombre del sitio: el enlace sigue funcionando (no es una frontera de seguridad
+  // fuerte, solo evita que cualquiera adivine un id).
+  const secreto = adminSessionSecret(env) || 'ricardosanjur-adjuntos';
+  return hmacSign(secreto, 'archivo.' + id + '.' + exp);
+}
+
+async function handleDescargaArchivo(request: Request, env: Env, id: string): Promise<Response> {
+  const url = new URL(request.url);
+  const exp = Number(url.searchParams.get('e') || 0) || 0;
+  const firma = String(url.searchParams.get('t') || '');
+  if (!exp || Date.now() > exp * 1000) return notFoundPage('Ese enlace ya vencio.');
+  const esperada = await firmaArchivo(env, id, exp);
+  if (!firma || !constantTimeEqual(firma, esperada)) return notFoundPage('Enlace no valido.');
+
+  const fila = await env.DB.prepare('SELECT nombre, r2_key, mime FROM contacto_archivos WHERE id = ?').bind(id).first();
+  if (!fila) return notFoundPage('El archivo no existe.');
+  let obj: any = null;
+  try {
+    obj = await env.PLANOS.get(String(fila.r2_key));
+  } catch (e) {
+    obj = null;
+  }
+  if (!obj || !obj.body) return notFoundPage('El archivo no esta disponible.');
+  const nombre = String(fila.nombre || 'archivo');
+  return new Response(obj.body, {
+    headers: {
+      'content-type': String(fila.mime || 'application/octet-stream'),
+      'content-disposition': 'attachment; filename="' + nombre.replace(/"/g, '') + '"',
+      'cache-control': 'private, no-store',
+    },
+  });
+}
 
 async function handleContactFiles(request: Request, env: Env): Promise<Response> {
   if (!env.PLANOS) return jsonResponse({ ok: false, error: 'sin_almacenamiento' }, 500);
@@ -566,14 +607,25 @@ async function handleContact(request: Request, env: Env, ctx: Ctx): Promise<Resp
   const ref = String(str((data as any).ref) || '').toLowerCase();
   if (/^[a-z0-9-]{8,64}$/.test(ref)) {
     try {
-      const res = await env.DB.prepare('SELECT nombre, tamano FROM contacto_archivos WHERE ref = ? ORDER BY creado_en').bind(ref).all();
-      archivos = (res.results || []).map((r: any) => ({ nombre: String(r.nombre || ''), tamano: Number(r.tamano) || 0 }));
+      const res = await env.DB.prepare('SELECT id, nombre, tamano FROM contacto_archivos WHERE ref = ? ORDER BY creado_en').bind(ref).all();
+      archivos = (res.results || []).map((r: any) => ({ id: String(r.id || ''), nombre: String(r.nombre || ''), tamano: Number(r.tamano) || 0 }));
       // Se amarran al mensaje para poder rastrearlos despues.
       await env.DB.prepare('UPDATE contacto_archivos SET ref = ? WHERE ref = ?').bind('contacto:' + id, ref).run();
       await env.DB.prepare('ALTER TABLE contactos ADD COLUMN archivos INTEGER DEFAULT 0').run().catch(() => {});
       await env.DB.prepare('UPDATE contactos SET archivos = ? WHERE id = ?').bind(archivos.length, id).run().catch(() => {});
     } catch (e) {
       console.log('[contacto] no se pudieron leer los adjuntos: ' + String(e));
+    }
+  }
+
+  // Links de descarga firmados (30 dias) para que el correo sea util sin adjuntos.
+  if (archivos.length > 0) {
+    const exp = Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60;
+    for (const a of archivos as any[]) {
+      try {
+        const firma = await firmaArchivo(env, a.id, exp);
+        a.link = SITE_ORIGIN + '/mis-solicitudes/' + a.id + '?e=' + exp + '&t=' + encodeURIComponent(firma);
+      } catch (e) { console.log('[contacto] no se pudo firmar el link del adjunto: ' + String(e)); }
     }
   }
 
@@ -1488,6 +1540,10 @@ export default {
       if (method === 'POST') return handleContact(request, env, ctx);
       return jsonResponse({ ok: false, error: 'method' }, 405);
     }
+
+    // Descarga de un adjunto de cotizacion desde el correo (link firmado y con caducidad).
+    const mAdj = path.match(/^\/mis-solicitudes\/([A-Za-z0-9-]{8,64})$/);
+    if (method === 'GET' && mAdj) return handleDescargaArchivo(request, env, mAdj[1]);
 
     // Adjuntos de una solicitud de cotizacion (van aparte del texto a proposito).
     if (path === '/api/contact/files') {
