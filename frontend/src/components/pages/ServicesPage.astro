@@ -204,12 +204,7 @@ const servicesLd = s.items.map((item) => ({
                 </svg>
                 {s.docsHeading}
               </h3>
-              <p class="text-sm text-base-content/70">
-                {s.labelDocs}: envíelos por WhatsApp al
-                <a href="https://wa.me/50766714646" target="_blank" rel="noopener" class="link link-primary">+507 6671-4646</a>
-                o a <a href="mailto:gerencia@ricardosanjur.com" class="link link-primary">gerencia@ricardosanjur.com</a>.
-              </p>
-              <p class="label-text-alt mt-2">{s.docsHint}</p>
+              <p class="text-sm text-base-content/70">{s.labelDocs}</p>
               <input
                 type="file"
                 name="archivos"
@@ -218,13 +213,18 @@ const servicesLd = s.items.map((item) => ({
                 accept=".pdf,.jpg,.jpeg,.png,.webp,.dwg,.dxf"
                 class="sr-only"
               />
-              <label for="archivosCotizacion" class="btn btn-outline btn-sm mt-3 w-full sm:w-auto">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                </svg>
-                Elegir archivos
+              <label for="archivosCotizacion" id="zonaArchivos"
+                class="mt-3 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-primary/35 bg-primary/[0.04] px-4 py-6 text-center transition-colors hover:border-primary hover:bg-primary/[0.08] active:bg-primary/10">
+                <span class="flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 16V4m0 0L8 8m4-4 4 4" />
+                    <path d="M4 16v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1" />
+                  </svg>
+                </span>
+                <span class="font-medium text-base-content">Toca para subir tus planos</span>
+                <span class="text-xs text-base-content/60" id="archivosAviso">{s.docsHint}</span>
               </label>
-              <p class="mt-2 text-sm break-words" id="archivosAviso">Ningun archivo elegido.</p>
+              <ul id="archivosLista" class="mt-2 space-y-1 text-sm"></ul>
             </div>
 
             <!-- Mensaje Adicional -->
@@ -235,10 +235,7 @@ const servicesLd = s.items.map((item) => ({
 
             <!-- Submit -->
             <div class="form-control mt-6">
-              <button type="submit" class="btn btn-primary btn-lg w-full gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;flex:0 0 20px" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
+              <button type="submit" class="btn btn-primary btn-lg w-full whitespace-normal text-center leading-tight">
                 {s.submit}
               </button>
             </div>
@@ -287,14 +284,52 @@ const servicesLd = s.items.map((item) => ({
     campo.classList.toggle('select-error', !valida);
   }
 
-  // Al elegir archivos se muestran los nombres (sin eso el boton parece no hacer nada).
-  document.getElementById('archivosCotizacion')?.addEventListener('change', (ev) => {
-    const input = ev.target as HTMLInputElement;
-    const aviso = document.getElementById('archivosAviso');
-    if (!aviso) return;
-    const lista = input.files ? Array.from(input.files) : [];
-    aviso.textContent = lista.length ? 'Elegidos: ' + lista.map((a) => a.name).join(', ') : 'Ningun archivo elegido.';
+  // Lista visible de archivos elegidos (sin esto el selector parece no hacer nada).
+  const HINT_ARCHIVOS = 'PDF, JPG, PNG, WEBP, DWG o DXF · hasta 3 archivos · máx. 10 MB c/u';
+  const inputArchivosEl = document.getElementById('archivosCotizacion') as HTMLInputElement | null;
+  const listaArchivosEl = document.getElementById('archivosLista');
+  const avisoArchivosEl = document.getElementById('archivosAviso');
+
+  function formatoPeso(bytes: number) {
+    if (bytes >= 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+    return Math.max(1, Math.round(bytes / 1024)) + ' KB';
+  }
+
+  function pintarArchivos(archivos: File[], error?: string) {
+    if (!listaArchivosEl) return;
+    listaArchivosEl.innerHTML = '';
+    for (const a of archivos) {
+      const li = document.createElement('li');
+      li.className = 'flex items-center gap-2 rounded-lg bg-base-200/70 px-3 py-2';
+      const nombre = document.createElement('span');
+      nombre.className = 'min-w-0 flex-1 truncate text-base-content/80';
+      nombre.textContent = a.name;
+      const peso = document.createElement('span');
+      peso.className = 'shrink-0 font-mono text-xs text-base-content/50';
+      peso.textContent = formatoPeso(a.size);
+      li.append(nombre, peso);
+      listaArchivosEl.append(li);
+    }
+    if (avisoArchivosEl) avisoArchivosEl.textContent = error || (archivos.length ? archivos.length + ' archivo(s) listos' : HINT_ARCHIVOS);
+  }
+
+  inputArchivosEl?.addEventListener('change', () => {
+    pintarArchivos(inputArchivosEl.files ? Array.from(inputArchivosEl.files).slice(0, 3) : []);
   });
+
+  // Arrastrar y soltar tambien funciona (en desktop es lo natural).
+  const zona = document.getElementById('zonaArchivos');
+  if (zona && inputArchivosEl) {
+    ['dragenter', 'dragover'].forEach((ev) => zona.addEventListener(ev, (e) => { e.preventDefault(); zona.classList.add('border-primary', 'bg-primary/10'); }));
+    ['dragleave', 'drop'].forEach((ev) => zona.addEventListener(ev, () => zona.classList.remove('border-primary', 'bg-primary/10')));
+    zona.addEventListener('drop', (e) => {
+      const dt = (e as DragEvent).dataTransfer;
+      if (!dt || !dt.files || dt.files.length === 0) return;
+      e.preventDefault();
+      inputArchivosEl.files = dt.files;
+      pintarArchivos(Array.from(dt.files).slice(0, 3));
+    });
+  }
 
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -347,12 +382,12 @@ const servicesLd = s.items.map((item) => ({
 
     // 3) Adjuntos: se suben ANTES del texto y por un camino aparte. Si fallan,
     //    el mensaje sale igual (lo importante nunca se pierde) y se avisa.
-    const inputArchivos = document.getElementById('archivosCotizacion') as HTMLInputElement | null;
+    const inputArchivos = inputArchivosEl;
     const archivos = inputArchivos?.files ? Array.from(inputArchivos.files).slice(0, 3) : [];
     const ref = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + '-' + Math.random().toString(16).slice(2)).toLowerCase();
     let subidaOk = true;
     if (archivos.length > 0) {
-      const aviso = document.getElementById('archivosAviso');
+      const aviso = avisoArchivosEl;
       if (aviso) aviso.textContent = 'Subiendo ' + archivos.length + ' archivo(s)...';
       try {
         const fdArch = new FormData();
@@ -364,8 +399,8 @@ const servicesLd = s.items.map((item) => ({
       }
       if (aviso) {
         aviso.textContent = subidaOk
-          ? 'Archivos subidos: ' + archivos.map((a) => a.name).join(', ')
-          : 'No se pudieron subir los archivos; la solicitud se envia igual. Puede mandarlos por WhatsApp.';
+          ? 'Archivos subidos.'
+          : 'No se pudieron subir los archivos; la solicitud se envia igual.';
       }
     }
 
@@ -378,10 +413,9 @@ const servicesLd = s.items.map((item) => ({
       });
 
       if (response.ok) {
-        alert(subidaOk || archivos.length === 0 ? messages.sent : messages.sent + '\n\n(Ojo: los archivos no se pudieron subir. Mandelos por WhatsApp al +507 6671-4646.)');
+        alert(subidaOk || archivos.length === 0 ? messages.sent : messages.sent + '\n\n(Ojo: los archivos no se pudieron subir.)');
         form.reset();
-        const aviso = document.getElementById('archivosAviso');
-        if (aviso) aviso.textContent = 'Ningun archivo elegido.';
+        pintarArchivos([]);
       } else {
         alert(messages.error);
       }
