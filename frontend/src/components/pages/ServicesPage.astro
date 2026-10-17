@@ -216,11 +216,15 @@ const servicesLd = s.items.map((item) => ({
                 id="archivosCotizacion"
                 multiple
                 accept=".pdf,.jpg,.jpeg,.png,.webp,.dwg,.dxf"
-                class="file-input file-input-bordered w-full mt-3"
+                class="sr-only"
               />
-              <p class="mt-2 text-xs text-base-content/60" id="archivosAviso">
-                Hasta 3 archivos, 10 MB cada uno. Si prefiere, igual puede mandarlos por WhatsApp.
-              </p>
+              <label for="archivosCotizacion" class="btn btn-outline btn-sm mt-3 w-full sm:w-auto">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                Elegir archivos
+              </label>
+              <p class="mt-2 text-sm break-words" id="archivosAviso">Ningun archivo elegido.</p>
             </div>
 
             <!-- Mensaje Adicional -->
@@ -231,8 +235,8 @@ const servicesLd = s.items.map((item) => ({
 
             <!-- Submit -->
             <div class="form-control mt-6">
-              <button type="submit" class="btn btn-primary btn-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <button type="submit" class="btn btn-primary btn-lg w-full gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;flex:0 0 20px" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                 </svg>
                 {s.submit}
@@ -282,6 +286,15 @@ const servicesLd = s.items.map((item) => ({
     campo.classList.toggle('textarea-error', !valida);
     campo.classList.toggle('select-error', !valida);
   }
+
+  // Al elegir archivos se muestran los nombres (sin eso el boton parece no hacer nada).
+  document.getElementById('archivosCotizacion')?.addEventListener('change', (ev) => {
+    const input = ev.target as HTMLInputElement;
+    const aviso = document.getElementById('archivosAviso');
+    if (!aviso) return;
+    const lista = input.files ? Array.from(input.files) : [];
+    aviso.textContent = lista.length ? 'Elegidos: ' + lista.map((a) => a.name).join(', ') : 'Ningun archivo elegido.';
+  });
 
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -351,7 +364,7 @@ const servicesLd = s.items.map((item) => ({
       }
       if (aviso) {
         aviso.textContent = subidaOk
-          ? 'Archivos subidos. Enviando la solicitud...'
+          ? 'Archivos subidos: ' + archivos.map((a) => a.name).join(', ')
           : 'No se pudieron subir los archivos; la solicitud se envia igual. Puede mandarlos por WhatsApp.';
       }
     }
@@ -368,7 +381,7 @@ const servicesLd = s.items.map((item) => ({
         alert(subidaOk || archivos.length === 0 ? messages.sent : messages.sent + '\n\n(Ojo: los archivos no se pudieron subir. Mandelos por WhatsApp al +507 6671-4646.)');
         form.reset();
         const aviso = document.getElementById('archivosAviso');
-        if (aviso) aviso.textContent = 'Hasta 3 archivos, 10 MB cada uno. Si prefiere, igual puede mandarlos por WhatsApp.';
+        if (aviso) aviso.textContent = 'Ningun archivo elegido.';
       } else {
         alert(messages.error);
       }
