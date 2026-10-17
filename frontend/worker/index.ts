@@ -402,6 +402,14 @@ async function ensureContactos(env: Env): Promise<void> {
     'id TEXT PRIMARY KEY, nombre TEXT NOT NULL, email TEXT, telefono TEXT, tema TEXT, ' +
     'mensaje TEXT NOT NULL, creado_en TEXT NOT NULL, ip TEXT, user_agent TEXT, avisado INTEGER DEFAULT 0)',
   ).run();
+  // Archivos que el cliente adjunta a una solicitud de cotizacion. Se suben
+  // ANTES del mensaje, con un ref comun; si la subida falla el mensaje igual sale.
+  await env.DB.prepare(
+    'CREATE TABLE IF NOT EXISTS contacto_archivos (' +
+    'id TEXT PRIMARY KEY, ref TEXT NOT NULL, nombre TEXT NOT NULL, r2_key TEXT NOT NULL, ' +
+    'mime TEXT, tamano INTEGER, creado_en TEXT NOT NULL)',
+  ).run();
+  await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_contacto_archivos_ref ON contacto_archivos (ref)').run();
   contactosListo = true;
 }
 
@@ -422,7 +430,7 @@ function escCorreo(v: unknown): string {
 }
 
 // Aviso por correo. BEST-EFFORT: si falla, el mensaje YA quedo en la base.
-async function avisarContacto(env: Env, d: { nombre: string; email: string; telefono: string; tema: string; mensaje: string; id: string; ahora: string }) {
+async function avisarContacto(env: Env, d: { nombre: string; email: string; telefono: string; tema: string; mensaje: string; id: string; ahora: string; archivos?: { nombre: string; tamano: number }[] }) {
   if (!env.EMAIL) return { enviado: false, error: 'sin_binding_email' };
   const filas = [
     ['Nombre', d.nombre],
@@ -437,11 +445,19 @@ async function avisarContacto(env: Env, d: { nombre: string; email: string; tele
       '<p style="margin:0 0 16px;color:#777">Topografia Especializada — ricardosanjur.com</p>' +
       '<table style="border-collapse:collapse">' + filas + '</table>' +
       '<div style="margin-top:18px;padding:16px;background:#F3F6FF;border-left:3px solid #2b5cff;white-space:pre-wrap">' + escCorreo(d.mensaje) + '</div>' +
+      ((d.archivos && d.archivos.length)
+        ? '<div style="margin-top:16px"><strong>Archivos adjuntos (' + d.archivos.length + ')</strong><ul style="margin:8px 0 0;padding-left:18px">' +
+          d.archivos.map((a) => '<li>' + escCorreo(a.nombre) + ' <span style="color:#777">(' + Math.round((a.tamano || 0) / 1024) + ' KB)</span></li>').join('') +
+          '</ul><p style="color:#777;font-size:13px;margin:6px 0 0">Estan guardados en el panel de planos (R2, carpeta cotizaciones/).</p></div>'
+        : '') +
       '<p style="margin-top:18px;color:#777;font-size:13px">Para responder, escribile a <a href="mailto:' + escCorreo(d.email) + '">' + escCorreo(d.email) + '</a>.</p>' +
     '</div>';
   const text = 'Nuevo mensaje del sitio\n\nNombre: ' + d.nombre + '\nCorreo: ' + (d.email || '-') +
     '\nTelefono: ' + (d.telefono || '-') + '\nTema: ' + (d.tema || '-') + '\n\n' + d.mensaje +
-    '\n\n---\nRespondele a ' + (d.email || '-') + '.';
+    '\n\n---\nRespondele a ' + (d.email || '-') + '.' +
+    ((d.archivos && d.archivos.length)
+      ? '\n\nArchivos adjuntos (' + d.archivos.length + '):\n' + d.archivos.map((a) => '- ' + a.nombre + ' (' + Math.round((a.tamano || 0) / 1024) + ' KB)').join('\n')
+      : '');
   try {
     const res = await env.EMAIL.send({
       to: DESTINO_CONTACTO,
@@ -455,6 +471,60 @@ async function avisarContacto(env: Env, d: { nombre: string; email: string; tele
     console.log('[contacto] EMAIL.send fallo: ' + String((e as any) && (e as any).message || e));
     return { enviado: false, error: 'envio_fallo' };
   }
+}
+
+/* POST /api/contact/files?ref=<uuid>  (multipart/form-data, campo "archivos")
+   El formulario manda PRIMERO los adjuntos y DESPUES el texto a /api/contact con
+   el mismo "ref". Van separados a proposito: si un archivo pesa demasiado o el
+   movil corta la subida, el mensaje de texto igual se guarda y se avisa. */
+const MAX_ARCHIVOS = 3;
+const MAX_BYTES_ARCHIVO = 10 * 1024 * 1024;
+const EXT_PERMITIDAS = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.dwg', '.dxf'];
+
+async function handleContactFiles(request: Request, env: Env): Promise<Response> {
+  if (!env.PLANOS) return jsonResponse({ ok: false, error: 'sin_almacenamiento' }, 500);
+  const url = new URL(request.url);
+  const ref = String(str(url.searchParams.get('ref')) || '').toLowerCase();
+  if (!/^[a-z0-9-]{8,64}$/.test(ref)) return jsonResponse({ ok: false, error: 'ref' }, 400);
+
+  let form: FormData;
+  try {
+    form = await request.formData();
+  } catch (e) {
+    return jsonResponse({ ok: false, error: 'form' }, 400);
+  }
+  const files = (form.getAll('archivos') as any[])
+    .filter((f) => f && typeof f !== 'string' && typeof f.arrayBuffer === 'function')
+    .slice(0, MAX_ARCHIVOS);
+  if (files.length === 0) return jsonResponse({ ok: false, error: 'sin_archivos' }, 400);
+
+  try {
+    await ensureContactos(env);
+  } catch (e) {
+    return jsonResponse({ ok: false, error: 'base' }, 500);
+  }
+
+  const guardados: { nombre: string; tamano: number }[] = [];
+  const rechazados: string[] = [];
+  for (const file of files) {
+    const nombre = sanitizeFileName(file.name);
+    const ext = (nombre.match(/\.[a-z0-9]+$/i) || [''])[0].toLowerCase();
+    if (EXT_PERMITIDAS.indexOf(ext) === -1) { rechazados.push(nombre); continue; }
+    if (Number(file.size) > MAX_BYTES_ARCHIVO) { rechazados.push(nombre); continue; }
+    try {
+      const bytes = await file.arrayBuffer();
+      const key = 'cotizaciones/' + ref + '/' + crypto.randomUUID() + '-' + nombre;
+      const mime = file.type || 'application/octet-stream';
+      await env.PLANOS.put(key, bytes, { httpMetadata: { contentType: mime } });
+      await env.DB.prepare(
+        'INSERT INTO contacto_archivos (id, ref, nombre, r2_key, mime, tamano, creado_en) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      ).bind(crypto.randomUUID(), ref, nombre, key, mime, Number(file.size) || 0, new Date().toISOString()).run();
+      guardados.push({ nombre, tamano: Number(file.size) || 0 });
+    } catch (e) {
+      rechazados.push(nombre);
+    }
+  }
+  return jsonResponse({ ok: guardados.length > 0, guardados, rechazados }, guardados.length > 0 ? 201 : 400);
 }
 
 async function handleContact(request: Request, env: Env, ctx: Ctx): Promise<Response> {
@@ -491,7 +561,23 @@ async function handleContact(request: Request, env: Env, ctx: Ctx): Promise<Resp
 
   // Aviso por correo al correo del sitio. Best-effort: si falla, el mensaje ya
   // quedo en la base y se puede revisar/renotificar despues (avisado = 0).
-  const aviso = await avisarContacto(env, { nombre, email, telefono, tema, mensaje, id, ahora });
+  // Adjuntos que el cliente subio antes de enviar (mismo "ref"). Si no hay, lista vacia.
+  let archivos: { nombre: string; tamano: number }[] = [];
+  const ref = String(str((data as any).ref) || '').toLowerCase();
+  if (/^[a-z0-9-]{8,64}$/.test(ref)) {
+    try {
+      const res = await env.DB.prepare('SELECT nombre, tamano FROM contacto_archivos WHERE ref = ? ORDER BY creado_en').bind(ref).all();
+      archivos = (res.results || []).map((r: any) => ({ nombre: String(r.nombre || ''), tamano: Number(r.tamano) || 0 }));
+      // Se amarran al mensaje para poder rastrearlos despues.
+      await env.DB.prepare('UPDATE contacto_archivos SET ref = ? WHERE ref = ?').bind('contacto:' + id, ref).run();
+      await env.DB.prepare('ALTER TABLE contactos ADD COLUMN archivos INTEGER DEFAULT 0').run().catch(() => {});
+      await env.DB.prepare('UPDATE contactos SET archivos = ? WHERE id = ?').bind(archivos.length, id).run().catch(() => {});
+    } catch (e) {
+      console.log('[contacto] no se pudieron leer los adjuntos: ' + String(e));
+    }
+  }
+
+  const aviso = await avisarContacto(env, { nombre, email, telefono, tema, mensaje, id, ahora, archivos });
   if (aviso.enviado) {
     try {
       await env.DB.prepare('UPDATE contactos SET avisado = 1 WHERE id = ?').bind(id).run();
@@ -1400,6 +1486,12 @@ export default {
     // Formulario de contacto del sitio (antes devolvia 405 y se perdian los mensajes).
     if (path === '/api/contact') {
       if (method === 'POST') return handleContact(request, env, ctx);
+      return jsonResponse({ ok: false, error: 'method' }, 405);
+    }
+
+    // Adjuntos de una solicitud de cotizacion (van aparte del texto a proposito).
+    if (path === '/api/contact/files') {
+      if (method === 'POST') return handleContactFiles(request, env);
       return jsonResponse({ ok: false, error: 'method' }, 405);
     }
 

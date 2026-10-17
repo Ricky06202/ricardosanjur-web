@@ -163,11 +163,11 @@ const servicesLd = s.items.map((item) => ({
                 </svg>
                 {s.serviceTypeHeading}
               </h3>
-              <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
                 {s.serviceTypes.map(type => (
-                  <label class="label cursor-pointer justify-start gap-2">
+                  <label class="label cursor-pointer justify-start items-start gap-2 min-w-0">
                     <input type="checkbox" name="tipoServicio" value={type} class="checkbox checkbox-primary checkbox-md" />
-                    <span class="label-text text-sm">{type}</span>
+                    <span class="label-text text-sm whitespace-normal break-words leading-snug text-left">{type}</span>
                   </label>
                 ))}
               </div>
@@ -181,11 +181,11 @@ const servicesLd = s.items.map((item) => ({
                 </svg>
                 {s.landHeading}
               </h3>
-              <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
                 {s.landFeatures.map(feature => (
-                  <label class="label cursor-pointer justify-start gap-2">
+                  <label class="label cursor-pointer justify-start items-start gap-2 min-w-0">
                     <input type="checkbox" name="caracteristicaFinca" value={feature} class="checkbox checkbox-secondary checkbox-md" />
-                    <span class="label-text text-sm">{feature}</span>
+                    <span class="label-text text-sm whitespace-normal break-words leading-snug text-left">{feature}</span>
                   </label>
                 ))}
               </div>
@@ -210,6 +210,17 @@ const servicesLd = s.items.map((item) => ({
                 o a <a href="mailto:gerencia@ricardosanjur.com" class="link link-primary">gerencia@ricardosanjur.com</a>.
               </p>
               <p class="label-text-alt mt-2">{s.docsHint}</p>
+              <input
+                type="file"
+                name="archivos"
+                id="archivosCotizacion"
+                multiple
+                accept=".pdf,.jpg,.jpeg,.png,.webp,.dwg,.dxf"
+                class="file-input file-input-bordered w-full mt-3"
+              />
+              <p class="mt-2 text-xs text-base-content/60" id="archivosAviso">
+                Hasta 3 archivos, 10 MB cada uno. Si prefiere, igual puede mandarlos por WhatsApp.
+              </p>
             </div>
 
             <!-- Mensaje Adicional -->
@@ -321,17 +332,43 @@ const servicesLd = s.items.map((item) => ({
       mensaje: lineas.join('\n'),
     };
 
+    // 3) Adjuntos: se suben ANTES del texto y por un camino aparte. Si fallan,
+    //    el mensaje sale igual (lo importante nunca se pierde) y se avisa.
+    const inputArchivos = document.getElementById('archivosCotizacion') as HTMLInputElement | null;
+    const archivos = inputArchivos?.files ? Array.from(inputArchivos.files).slice(0, 3) : [];
+    const ref = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + '-' + Math.random().toString(16).slice(2)).toLowerCase();
+    let subidaOk = true;
+    if (archivos.length > 0) {
+      const aviso = document.getElementById('archivosAviso');
+      if (aviso) aviso.textContent = 'Subiendo ' + archivos.length + ' archivo(s)...';
+      try {
+        const fdArch = new FormData();
+        archivos.forEach((a) => fdArch.append('archivos', a));
+        const r = await fetch('/api/contact/files?ref=' + encodeURIComponent(ref), { method: 'POST', body: fdArch });
+        subidaOk = r.ok;
+      } catch (e) {
+        subidaOk = false;
+      }
+      if (aviso) {
+        aviso.textContent = subidaOk
+          ? 'Archivos subidos. Enviando la solicitud...'
+          : 'No se pudieron subir los archivos; la solicitud se envia igual. Puede mandarlos por WhatsApp.';
+      }
+    }
+
     setEnviando(true);
     try {
       const response = await fetch('/api/contact', {
         method: 'POST',
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, ref }),
         headers: { 'Content-Type': 'application/json' },
       });
 
       if (response.ok) {
-        alert(messages.sent);
+        alert(subidaOk || archivos.length === 0 ? messages.sent : messages.sent + '\n\n(Ojo: los archivos no se pudieron subir. Mandelos por WhatsApp al +507 6671-4646.)');
         form.reset();
+        const aviso = document.getElementById('archivosAviso');
+        if (aviso) aviso.textContent = 'Hasta 3 archivos, 10 MB cada uno. Si prefiere, igual puede mandarlos por WhatsApp.';
       } else {
         alert(messages.error);
       }
