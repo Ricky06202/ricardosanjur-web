@@ -199,3 +199,22 @@ h1, h2, h3, h4, .font-display {
 }
 .checkbox:checked,
 .radio:checked { border-color: var(--color-primary, #2b5cff); background-color: var(--color-primary, #2b5cff); }
+
+/* ===== Movil: campos a 16px =====
+   iOS/Safari hace zoom automatico al enfocar un campo con letra menor de 16px
+   y la pagina se ve "rota" y desalineada. En pantallas chicas se fuerza 16px.
+   (Los checkbox/radio no cambian de tamano por el font-size.) */
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+    line-height: 1.35;
+  }
+  /* Area tactil comoda (44px) para los enlaces del pie y de contacto. */
+  .touch-link {
+    display: inline-block;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+}

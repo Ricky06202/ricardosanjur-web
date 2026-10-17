@@ -166,7 +166,7 @@ const servicesLd = s.items.map((item) => ({
               <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {s.serviceTypes.map(type => (
                   <label class="label cursor-pointer justify-start gap-2">
-                    <input type="checkbox" name="tipoServicio" value={type} class="checkbox checkbox-primary checkbox-sm" />
+                    <input type="checkbox" name="tipoServicio" value={type} class="checkbox checkbox-primary checkbox-md" />
                     <span class="label-text text-sm">{type}</span>
                   </label>
                 ))}
@@ -184,7 +184,7 @@ const servicesLd = s.items.map((item) => ({
               <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {s.landFeatures.map(feature => (
                   <label class="label cursor-pointer justify-start gap-2">
-                    <input type="checkbox" name="caracteristicaFinca" value={feature} class="checkbox checkbox-secondary checkbox-sm" />
+                    <input type="checkbox" name="caracteristicaFinca" value={feature} class="checkbox checkbox-secondary checkbox-md" />
                     <span class="label-text text-sm">{feature}</span>
                   </label>
                 ))}
