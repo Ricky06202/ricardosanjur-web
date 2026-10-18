@@ -207,8 +207,11 @@ const jsonLd = { "@context": "https://schema.org", "@graph": [...graph, ...extra
       )}
     </main>
 
-    <!-- WhatsApp flotante (foto del Ing. Sanjur) -->
-    <a href="https://wa.me/50766714646" target="_blank" rel="noopener" aria-label="Escríbanos por WhatsApp"
+    <!-- WhatsApp flotante (foto del Ing. Sanjur).
+         El mensaje sale ya escrito y dice de qué página escribe, para saber que
+         viene del sitio web (pedido de Doña Eysbel, 18/10). Arriba del botón se
+         ve el mismo texto, así sabe lo que va a mandar antes de tocar. -->
+    <a id="wa-flotante" href="https://wa.me/50766714646" target="_blank" rel="noopener" aria-label="Escríbanos por WhatsApp"
        class="group fixed bottom-5 right-5 z-50 flex items-center gap-2.5 rounded-full bg-white/95 p-1.5 pr-1.5 shadow-2xl shadow-black/40 ring-1 ring-black/5 backdrop-blur transition hover:scale-105 sm:pr-5">
       <span class="relative block h-14 w-14 shrink-0 overflow-hidden rounded-full ring-2 ring-[#25D366]">
         <img src="/images/whatsapp-ricardo-2.jpg" alt="Ing. Ricardo Sanjur" width="112" height="112" class="h-full w-full object-cover" />
@@ -218,9 +221,14 @@ const jsonLd = { "@context": "https://schema.org", "@graph": [...graph, ...extra
       </span>
       <span class="hidden font-semibold leading-tight text-[#0b1220] sm:block">
         <span class="block text-[10px] font-mono uppercase tracking-widest text-[#25D366]">WhatsApp</span>
-        <span class="block text-sm">Escríbanos</span>
+        <span class="block text-sm">Escríbanos por WhatsApp</span>
       </span>
     </a>
+    <!-- Lo que se le manda: se ve arriba del botón y se puede tocar para cerrar. -->
+    <div id="wa-globo" class="fixed bottom-[96px] right-3 z-40 hidden max-w-[260px] rounded-2xl rounded-br-md bg-white py-2 pl-3 pr-9 text-[13px] leading-snug text-[#0b1220] shadow-xl shadow-black/20 ring-1 ring-black/5 sm:right-5 sm:bottom-[100px]">
+      <button type="button" id="wa-globo-cerrar" class="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full text-base-content/40 hover:text-base-content/80" aria-label="Cerrar">&times;</button>
+      <span id="wa-globo-texto"></span>
+    </div>
 
     <footer class="relative mt-24 border-t border-black/5">
       <div class="grid-bg pointer-events-none absolute inset-0 opacity-40"></div>
@@ -272,6 +280,48 @@ const jsonLd = { "@context": "https://schema.org", "@graph": [...graph, ...extra
         { threshold: 0.12 }
       );
       document.querySelectorAll(".reveal").forEach((el) => io.observe(el));
+
+      // WhatsApp con el mensaje ya escrito y la página de donde escribe. Se arma
+      // aquí (no en el HTML) porque cambia según la página en la que esté.
+      (() => {
+        const boton = document.getElementById("wa-flotante") as HTMLAnchorElement | null;
+        if (!boton) return;
+        const camino = (window.location.pathname || "/").replace(/\/+$/, "") || "/";
+        const paginas: Record<string, string> = {
+          "/": "la página principal",
+          "/services": "la página de servicios",
+          "/about": "la página de nosotros",
+          "/contact": "la página de contacto",
+          "/blog": "el blog",
+          "/en": "the home page",
+          "/en/services": "the services page",
+          "/en/about": "the about page",
+          "/en/contact": "the contact page",
+          "/en/blog": "the blog",
+        };
+        const esEn = camino.startsWith("/en");
+        const donde = paginas[camino] || (/^\/blog\//.test(camino) ? (esEn ? "the blog" : "el blog") : (esEn ? "the website" : "la página web"));
+        const texto = esEn
+          ? `Hola, escribo desde ${donde} (${location.hostname}${camino === "/" ? "" : camino}). Vi su sitio web y quiero consultarles.`
+          : `Hola, escribo desde ${donde} (${location.hostname}${camino === "/" ? "" : camino}). Vi su página web y quiero consultarles.`;
+        boton.href = "https://wa.me/50766714646?text=" + encodeURIComponent(texto);
+        const globo = document.getElementById("wa-globo");
+        const textoGlobo = document.getElementById("wa-globo-texto");
+        const cerrar = document.getElementById("wa-globo-cerrar");
+        if (globo && textoGlobo) {
+          textoGlobo.textContent = esEn
+            ? "Tap and the message is ready: it already says you're writing from this page."
+            : "Toque y el mensaje va listo: ya dice desde qué página nos escribe.";
+          // Se muestra a los 2 s (sin tapar la pantalla al entrar) y vuelve cada 5 visitas.
+          const visto = Number(localStorage.getItem("wa_globo_visto") || "0");
+          localStorage.setItem("wa_globo_visto", String(visto + 1));
+          if (visto % 5 === 0) setTimeout(() => globo.classList.remove("hidden"), 2000);
+        }
+        cerrar?.addEventListener("click", (e) => {
+          e.preventDefault();
+          globo?.classList.add("hidden");
+        });
+      })();
 
       // Manual language preference: persist the choice in a cookie (1 year).
       document.querySelectorAll("[data-lang-switch]").forEach((el) => {
