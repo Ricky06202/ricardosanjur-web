@@ -8,6 +8,7 @@
  */
 
 import { BLOG_SCHEMA, markdownAHtml, slugDe } from "./blog";
+import { CSS, page } from "./index";
 
 /* Tipos mínimos de D1 (el proyecto usa `any` para env.DB en index.ts). */
 type D1Sentencia = {
@@ -70,41 +71,35 @@ export async function handleBlogLista(env: Env, tok: string, aviso: string): Pro
     filas = [];
   }
 
-  const lista = filas.length
-    ? filas
-        .map(
-          (f) =>
-            '<tr>' +
-            "<td><strong>" + esc(f.titular) + "</strong>" +
-            '<div class="muted" style="font-size:.84rem">/' + esc(f.idioma === "en" ? "en/blog/" : "blog/") + esc(f.slug) + "</div></td>" +
-            "<td>" + (Number(f.publicado) ? '<span class="pill">Publicado</span>' : '<span class="pill muted">Borrador</span>') + "</td>" +
-            '<td class="muted" style="font-size:.84rem">' + esc(String(f.actualizado_en || "").slice(0, 10)) + "</td>" +
-            '<td style="white-space:nowrap">' +
-            '<a class="btn ghost" href="/admin/' + esc(tok) + "/blog/" + esc(f.id) + '">Editar</a> ' +
-            (Number(f.publicado)
-              ? '<a class="btn ghost" target="_blank" rel="noopener" href="' + esc((f.idioma === "en" ? "/en/blog/" : "/blog/") + f.slug) + '">Ver</a>'
-              : "") +
-            "</td></tr>"
-        )
-        .join("")
-    : '<tr><td colspan="4" class="muted">Todavía no escribiste ningún artículo.</td></tr>';
+  const accion = '<a class="btn sm" href="/admin/' + esc(tok) + '/blog/nuevo">Nuevo articulo</a>';
 
-  const body =
-    '<h1><span>Blog</span><a class="pill" href="/admin/salir" style="text-decoration:none">Cerrar sesión</a></h1>' +
-    '<p class="muted">Escribí el artículo, mirá la vista previa y publicá. Sale en el sitio al instante.</p>' +
-    (aviso ? '<div class="card" style="border-color:rgba(120,255,190,.35)"><p class="ok" style="margin:0">' + esc(aviso) + "</p></div>" : "") +
-    '<div class="card"><div class="row"><h2>Artículos</h2><a class="btn" href="/admin/' + esc(tok) + '/blog/nuevo">Nuevo artículo</a></div>' +
-    '<div style="overflow-x:auto"><table><thead><tr><th>Título</th><th>Estado</th><th>Actualizado</th><th></th></tr></thead>' +
-    "<tbody>" + lista + "</tbody></table></div></div>" +
-    '<p class="muted"><a href="/admin">Volver al panel de planos</a></p>';
+  let lista = '';
+  if (!filas.length) {
+    lista = '<div class="empty">Todavia no hay articulos. Cree el primero con "Nuevo articulo".</div>';
+  } else {
+    for (let i = 0; i < filas.length; i++) {
+      const f = filas[i];
+      lista += '<tr><td data-l="Titulo"><strong>' + esc(f.titular) + '</strong>' +
+        '<div class="muted small">/' + esc(f.idioma === "en" ? "en/blog/" : "blog/") + esc(f.slug) + '</div></td>' +
+        '<td data-l="Estado">' + (Number(f.publicado) ? '<span class="pill">Publicado</span>' : '<span class="pill tipos">Borrador</span>') + '</td>' +
+        '<td data-l="Actualizado" class="muted small">' + esc(String(f.actualizado_en || "").slice(0, 10)) + '</td>' +
+        '<td class="acciones"><a class="btn ghost sm" href="/admin/' + esc(tok) + "/blog/" + esc(f.id) + '">Editar</a>' +
+        (Number(f.publicado)
+          ? '<a class="btn ghost sm" target="_blank" rel="noopener" href="' + esc((f.idioma === "en" ? "/en/blog/" : "/blog/") + f.slug) + '">Ver</a>'
+          : "") +
+        '</td></tr>';
+    }
+  }
 
-  return new Response(
-    '<!doctype html><html lang="es" data-theme="topoblue"><head><meta charset="utf-8">' +
-      '<meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">' +
-      "<title>Blog | Panel</title><style>" + CSS_PANEL + "</style></head><body>" +
-      '<header class="brand">Topografía Especializada <small>S.A.</small></header><main>' + body + "</main></body></html>",
-    { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } }
-  );
+  const body = '<div class="sec"><h1><span>Blog del sitio</span></h1>' +
+    '<div class="row" style="gap:8px"><a class="btn ghost sm" href="/admin">Panel de planos</a>' + accion + '</div></div>' +
+    '<p class="lead">Escriba el articulo, mire la vista previa y publica. Sale en el sitio al instante.</p>' +
+    (aviso ? '<div class="card okline"><p class="ok" style="margin:0">' + esc(aviso) + '</p></div>' : "") +
+    '<div class="card"><div class="sec"><div class="h"><h2>Articulos</h2><span class="pill">' + filas.length + ' en total</span></div></div>' +
+    '<div style="overflow-x:auto;margin-top:6px"><table class="tabla-articulos"><thead><tr><th>Titulo</th><th>Estado</th><th>Actualizado</th><th></th></tr></thead>' +
+    '<tbody>' + lista + '</tbody></table></div></div>';
+
+  return page('Blog', body, 200, CSS_PANEL);
 }
 
 /** GET /admin/<token>/blog/nuevo  o  /admin/<token>/blog/<id> */
@@ -123,54 +118,53 @@ export async function handleBlogForm(env: Env, tok: string, id: string, aviso: s
   const valor = (k: keyof Fila, def = "") => esc(f ? (f as unknown as Record<string, unknown>)[k] ?? def : def);
   const idioma = f?.idioma || "es";
 
-  const body =
-    '<h1><span>' + (esNuevo ? "Nuevo artículo" : "Editar artículo") + "</span>" +
-    '<a class="pill" href="/admin/' + esc(tok) + '/blog" style="text-decoration:none">Volver</a></h1>' +
-    (aviso ? '<div class="card" style="border-color:#f0c2bd"><p style="color:#b42318;margin:0">' + esc(aviso) + "</p></div>" : "") +
-    '<form method="POST" action="/admin/' + esc(tok) + '/blog/guardar">' +
+  const body = '<div class="sec"><h1><span>' + (esNuevo ? "Nuevo articulo" : "Editar articulo") + "</span></h1>" +
+    '<div class="row" style="gap:8px"><a class="btn ghost sm" href="/admin/' + esc(tok) + '/blog">Volver al blog</a>' +
+    (f ? '<a class="btn ghost sm" target="_blank" rel="noopener" href="' + esc((idioma === "en" ? "/en/blog/" : "/blog/") + f.slug) + '">Ver en el sitio</a>' : "") +
+    "</div></div>" +
+    '<p class="lead">Escriba el texto, revise la vista previa y guarde. Si marca "Publicado" sale en el sitio al instante.</p>' +
+    (aviso ? '<div class="card errline"><p class="err small" style="margin:0;font-weight:600">' + esc(aviso) + "</p></div>" : "") +
+    '<form method="POST" action="/admin/' + esc(tok) + '/blog/guardar" data-busy="Guardando...">' +
     (f ? '<input type="hidden" name="id" value="' + esc(f.id) + '">' : "") +
-    '<div class="card"><div class="grid2">' +
-    "<div><label>Título</label><input name=\"titular\" required maxlength=\"160\" value=\"" + valor("titular") + '"></div>' +
-    "<div><label>Idioma</label><select name=\"idioma\">" +
-    '<option value="es"' + (idioma === "es" ? " selected" : "") + ">Español</option>" +
-    '<option value="en"' + (idioma === "en" ? " selected" : "") + ">Inglés</option>" +
-    "</select></div></div>" +
-    '<label>Autor</label><input name="autor" maxlength="80" value="' + esc(f?.autor || "Ricardo A. Sanjur A.") + '">' +
-    '<label>Resumen (lo que se ve en Google y al compartir)</label>' +
-    '<textarea name="resumen" rows="2" maxlength="200">' + valor("resumen") + "</textarea>" +
-    '<label>Etiquetas (separadas por coma)</label><input name="etiquetas" maxlength="160" value="' + valor("etiquetas") + '">' +
-    '<label>Texto del artículo</label>' +
-    '<p class="muted" style="font-size:.84rem;margin:-4px 0 6px">Podés usar: <span class="code">## Título</span>, ' +
-    '<span class="code">**negrita**</span>, <span class="code">- lista</span> y <span class="code">> cita</span>.</p>' +
-    '<textarea name="cuerpo" rows="18" required style="font-family:ui-monospace,Menlo,monospace;font-size:14px">' + valor("cuerpo") + "</textarea>" +
-    '<div class="row" style="margin-top:14px">' +
-    '<label style="display:flex;gap:8px;align-items:center;font-weight:600">' +
-    '<input type="checkbox" name="publicado" value="1"' + (Number(f?.publicado) ? " checked" : "") + '> Publicado</label>' +
-    '<div style="display:flex;gap:8px">' +
-    '<button class="btn ghost" type="button" id="ver">Vista previa</button>' +
-    '<button class="btn" type="submit">Guardar</button></div></div>' +
+    '<div class="acc-editor"><div class="card">' +
+    '<label for="b-titulo">Titulo</label><input id="b-titulo" name="titular" required maxlength="160" value="' + valor("titular") + '">' +
+    '<div class="grid2"><div><label for="b-idioma">Idioma</label><select id="b-idioma" name="idioma">' +
+    '<option value="es"' + (idioma === "es" ? " selected" : "") + ">Espanol</option>" +
+    '<option value="en"' + (idioma === "en" ? " selected" : "") + ">Ingles</option></select></div>" +
+    '<div><label for="b-autor">Autor</label><input id="b-autor" name="autor" maxlength="80" value="' + esc(f?.autor || "Ricardo A. Sanjur A.") + '"></div></div>' +
+    '<label for="b-resumen">Resumen <span class="muted">(lo que se ve en Google y al compartir)</span></label>' +
+    '<textarea id="b-resumen" name="resumen" rows="2" maxlength="200">' + valor("resumen") + "</textarea>" +
+    '<label for="b-etiquetas">Etiquetas <span class="muted">(separadas por coma)</span></label><input id="b-etiquetas" name="etiquetas" maxlength="160" value="' + valor("etiquetas") + '">' +
+    '<label for="b-cuerpo">Texto del articulo</label>' +
+    '<p class="hint">Formato simple: <span class="code">## Titulo</span> <span class="code">**negrita**</span> <span class="code">- lista</span> <span class="code">&gt; cita</span></p>' +
+    '<textarea id="b-cuerpo" name="cuerpo" rows="18" required class="editor-texto">' + valor("cuerpo") + "</textarea>" +
+    '<div class="row" style="margin-top:16px;justify-content:flex-start">' +
+    '<label class="switch"><input type="checkbox" name="publicado" value="1"' + (Number(f?.publicado) ? " checked" : "") + '> Publicado</label>' +
+    "</div>" +
+    '<div class="acciones-movil" style="margin-top:16px">' +
+    '<button class="btn ghost" type="button" id="ver">Actualizar vista previa</button>' +
+    '<button class="btn" type="submit">Guardar</button></div>' +
+    "</div>" +
+    '<div class="card previa-card" id="previa-card"><div class="sec"><div class="h"><h2>Vista previa</h2><span class="pill tipos">Como se vera</span></div></div>' +
+    '<div class="previa-articulo" id="previa"></div></div>' +
     "</div></form>" +
     (f
-      ? '<form method="POST" action="/admin/' + esc(tok) + '/blog/borrar" onsubmit="return confirm(\'¿Sacar este artículo del sitio?\');">' +
+      ? '<form method="POST" action="/admin/' + esc(tok) + '/blog/borrar" class="form-borrar" onsubmit="return confirm(\'Sacar este articulo del sitio?\');">' +
         '<input type="hidden" name="id" value="' + esc(f.id) + '">' +
-        '<button class="btn ghost" style="color:#b42318" type="submit">Sacar del sitio</button></form>'
+        '<button class="btn ghost sm danger" type="submit">Sacar del sitio</button></form>'
       : "") +
-    '<div class="card" id="previa-card" style="display:none"><h2>Vista previa</h2><div id="previa"></div></div>' +
     "<script>" +
     "var t=document.querySelector('textarea[name=cuerpo]');" +
+    "var x=document.getElementById('previa');" +
     "var b=document.getElementById('ver');" +
-    "if(b&&t){b.addEventListener('click',function(){var x=document.getElementById('previa');" +
-    "if(!x.dataset.hecho){x.innerHTML=t.value.split(/\\n\\n+/).map(function(p){return '<p>'+p.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</p>';}).join('');x.dataset.hecho='1';}" +
-    "document.getElementById('previa-card').style.display='block';document.getElementById('previa-card').scrollIntoView({behavior:'smooth'});});}" +
+    "function previa(){if(!t||!x)return;var v=t.value.trim();" +
+    "if(!v){x.innerHTML='<p class=\\'muted small\\'>Empiece a escribir para ver el articulo aqui.</p>';return;}" +
+    "x.textContent=v.split(/\\n\\n+/).join('\\n\\n');}" +
+    "if(b){b.addEventListener('click',previa);}" +
+    "if(t){var tm=null;t.addEventListener('input',function(){clearTimeout(tm);tm=setTimeout(previa,250);});previa();}" +
     "</script>";
 
-  return new Response(
-    '<!doctype html><html lang="es" data-theme="topoblue"><head><meta charset="utf-8">' +
-      '<meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">' +
-      "<title>" + (esNuevo ? "Nuevo artículo" : "Editar artículo") + " | Panel</title><style>" + CSS_PANEL + "</style></head><body>" +
-      '<header class="brand">Topografía Especializada <small>S.A.</small></header><main>' + body + "</main></body></html>",
-    { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } }
-  );
+  return page(esNuevo ? "Nuevo articulo" : "Editar articulo", body, 200, CSS_PANEL);
 }
 
 /** POST /admin/<token>/blog/guardar */
@@ -227,31 +221,20 @@ export async function handleBlogBorrar(request: Request, env: Env, tok: string):
   return new Response(null, { status: 303, headers: { location: "/admin/" + tok + "/blog?aviso=" + encodeURIComponent("Artículo sacado del sitio.") } });
 }
 
-const CSS_PANEL = `
-:root{--bg:#0b1220;--card:#121c2c;--line:#22314a;--ink:#e8eef6;--mut:#93a4bb;--brand:#2563eb}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;line-height:1.5}
-.brand{padding:14px 18px;font-weight:800;letter-spacing:-.02em;border-bottom:1px solid var(--line)}
-.brand small{color:var(--mut);font-weight:600}
-main{max-width:900px;margin:0 auto;padding:18px 16px 60px}
-h1{font-size:22px;display:flex;justify-content:space-between;align-items:center;gap:10px;margin:8px 0 6px}
-h2{font-size:16px;margin:0 0 8px}
-.muted{color:var(--mut)}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin:14px 0}
-.row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
-label{display:block;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin:12px 0 5px}
-input,select,textarea{width:100%;padding:11px 12px;font-size:16px;border-radius:10px;border:1px solid var(--line);background:#0e1725;color:var(--ink)}
-textarea{resize:vertical}
-.grid2{display:grid;grid-template-columns:1fr;gap:10px}
-@media(min-width:640px){.grid2{grid-template-columns:1fr 1fr}}
-.btn{display:inline-block;padding:11px 16px;min-height:42px;border-radius:10px;border:1px solid var(--brand);background:var(--brand);color:#fff;font-weight:700;font-size:15px;text-decoration:none;cursor:pointer}
-.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
-.pill{display:inline-block;padding:5px 10px;border-radius:999px;border:1px solid var(--line);font-size:12px;font-weight:700}
-.pill.muted{color:var(--mut)}
-table{width:100%;border-collapse:collapse}
-th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top}
-th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut)}
-.code{font-family:ui-monospace,Menlo,monospace;background:#0e1725;padding:1px 5px;border-radius:5px}
-.ok{color:#34d399}
-#previa p{white-space:pre-wrap}
-`;
+/* Estilos propios del blog (se suman a la hoja del panel, que es la misma
+ * del resto del admin: nada de un tema oscuro aparte). */
+export const CSS_PANEL = [
+  '.acc-editor{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:16px;align-items:start}',
+  '.acc-editor .card{min-width:0}',
+  '.editor-texto{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;font-size:14px;line-height:1.6}',
+  '.switch{display:flex!important;align-items:center;gap:9px;margin:0!important;font-weight:600!important;color:#344054!important;font-size:.92rem!important}',
+  '.switch input{width:20px!important;height:20px!important;accent-color:var(--brand);padding:0!important}',
+  '.previa-card{position:sticky;top:78px}',
+  '.previa-articulo{max-height:60vh;overflow:auto;padding:4px 2px}',
+  '.previa-articulo p{margin:0 0 12px;white-space:pre-wrap}',
+  '.previa-articulo h2,.previa-articulo h3{font-family:"Space Grotesk",Inter,sans-serif;margin:18px 0 8px}',
+  '.previa-articulo ul{margin:0 0 12px 18px;padding:0}',
+  '.previa-articulo blockquote{margin:0 0 12px;padding:8px 14px;border-left:3px solid var(--brand);background:var(--soft);color:#344054}',
+  '.form-borrar{margin-top:18px;border-top:1px solid var(--line);padding-top:16px}',
+  '@media(max-width:860px){.acc-editor{grid-template-columns:1fr}.previa-card{position:static}}',
+].join('\n');

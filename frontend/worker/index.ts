@@ -655,7 +655,7 @@ async function handleContact(request: Request, env: Env, ctx: Ctx): Promise<Resp
 
 /* Panel del dueno: misma cara que RS ID (mismo azul, mismas tarjetas blancas,
  * misma tipografia) para que todo lo de la familia se sienta un solo producto. */
-const CSS = [
+export const CSS = [
   ':root{--brand:#2563EB;--cyan:#06B6D4;--violet:#8B5CF6;--ink:#0F172A;--mut:#667085;--line:#E4E7EC;',
   '--bg:#F6F8FB;--soft:#F1F5F9;--ok:#059669;--err:#DC2626;--warn:#B45309;',
   '--grad-btn:linear-gradient(135deg,#2563EB 0%,#06B6D4 100%);',
@@ -752,12 +752,19 @@ const CSS = [
   '.only-mobile{display:none}',
   /* movil: la tabla de clientes pasa a tarjetas */
   '@media(max-width:760px){',
-  '.tabla-clientes thead,.tabla-certificados thead{display:none}',
+  '.tabla-clientes thead,.tabla-certificados thead,.tabla-articulos thead{display:none}',
   '.tabla-clientes,.tabla-clientes tbody,.tabla-clientes tr,.tabla-clientes td{display:block;width:100%}',
   '.tabla-certificados,.tabla-certificados tbody,.tabla-certificados tr,.tabla-certificados td{display:block;width:100%}',
   '.tabla-certificados tr{border:1px solid var(--line);border-radius:16px;padding:15px;margin-top:12px;background:#FCFDFF}',
   '.tabla-certificados tr:first-child{margin-top:6px}',
   '.tabla-certificados td{border:0;padding:0;margin:0}',
+  '.tabla-articulos,.tabla-articulos tbody,.tabla-articulos tr,.tabla-articulos td{display:block;width:100%}',
+  '.tabla-articulos tr{border:1px solid var(--line);border-radius:16px;padding:15px;margin-top:12px;background:#FCFDFF}',
+  '.tabla-articulos tr:first-child{margin-top:6px}',
+  '.tabla-articulos td{border:0;padding:0;margin:0}',
+  '.tabla-articulos td[data-l]:not(.acciones)::before{content:attr(data-l);display:block;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin:10px 0 3px}',
+  '.tabla-articulos td.acciones{display:flex;gap:8px;margin-top:12px}',
+  '.tabla-articulos td.acciones .btn{flex:1}',
   '.tabla-certificados .code{display:block;font-size:.76rem;margin-top:4px}',
   '.tabla-certificados .labelc{margin:12px 0 3px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;font-size:.68rem}',
   '.acciones-movil{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}',
@@ -788,7 +795,7 @@ const CSS = [
   'main{padding:20px 14px 72px}.card{padding:18px 16px;border-radius:18px}.acc>summary{padding:16px 16px}.acc>div{padding:16px}h1{font-size:25px}}',
 ].join('\n');
 
-function page(title: string, body: string, status: number): Response {
+export function page(title: string, body: string, status: number, cssExtra?: string): Response {
   const html = '<!doctype html>\n<html lang="es" data-theme="topoblue"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width, initial-scale=1">' +
     '<meta name="robots" content="noindex">' +
@@ -796,11 +803,11 @@ function page(title: string, body: string, status: number): Response {
     '<link rel="preconnect" href="https://fonts.googleapis.com">' +
     '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
     '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">' +
-    '<style>' + CSS + '</style></head><body>' +
+    '<style>' + CSS + (cssExtra ? '\n' + cssExtra : '') + '</style></head><body>' +
     '<header class="top"><div class="in">' + adminBarra() + '</div></header>' +
     '<main>' + body + '</main>\n' +
     '<script>(function(){var bs=document.querySelectorAll("[data-copy]");for(var i=0;i<bs.length;i++){(function(b){b.addEventListener("click",function(){var t=b.getAttribute("data-copy")||"";if(!(navigator.clipboard&&navigator.clipboard.writeText)){window.prompt("Copie el enlace",t);return;}navigator.clipboard.writeText(t).then(function(){var o=b.textContent;b.textContent="Copiado";b.classList.add("ok");setTimeout(function(){b.textContent=o;},1600);});});})(bs[i]);}})();' +
-    '(function(){var fs=document.querySelectorAll("form[data-busy]");for(var i=0;i<fs.length;i++){fs[i].addEventListener("submit",function(){var b=this.querySelector("button[type=submit]");if(b){b.disabled=true;b.textContent=b.getAttribute("data-busy")||"Guardando...";}}});})();</script>' +
+    '(function(){var fs=document.querySelectorAll("form[data-busy]");for(var i=0;i<fs.length;i++){fs[i].addEventListener("submit",function(){var b=this.querySelector("button[type=submit]");if(b){b.disabled=true;b.textContent=this.getAttribute("data-busy")||"Guardando...";}});}})();</script>' +
     '</body></html>';
   return new Response(html, {
     status: status || 200,
