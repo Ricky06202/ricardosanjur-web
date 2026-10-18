@@ -592,6 +592,31 @@ async function sembrarArticulos(env: Env) {
       console.log("[blog] no se pudo pasar el articulo " + slug + ": " + String((e as any) && (e as any).message || e));
     }
   }
+
+  // Artículos que ya estaban en la base y se corrigieron como archivo del repo:
+  // manda el archivo (es lo que está publicado en el código), sin pisar si alguien
+  // los editó desde el panel DESPUÉS de ese archivo.
+  for (const item of ARCHIVOS_BLOG) {
+    const slug = item.archivo.replace(/\.(html?|md)$/, "").split("/").pop() || "";
+    const ficha = FICHAS[slug];
+    if (!ficha) continue;
+    const esHtml = /\.html$/i.test(item.archivo);
+    if (!esHtml) continue;
+    try {
+      const fila = await env.DB.prepare("SELECT cuerpo, actualizado_en FROM blog_posts WHERE slug = ? AND borrado = 0").bind(slug).first<{ cuerpo: string; actualizado_en: string }>();
+      if (!fila) continue;
+      const punto = Date.parse(ficha.fecha + "T23:59:59Z");
+      if (!punto || Date.parse(String(fila.actualizado_en || "")) > punto) continue; // se editó después
+      let cuerpo = String(item.texto);
+      const mSt = cuerpo.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
+      if (mSt) cuerpo = cuerpo.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "");
+      if (cuerpo.trim() !== String(fila.cuerpo || "").trim()) {
+        await env.DB.prepare("UPDATE blog_posts SET cuerpo = ? WHERE slug = ?").bind(cuerpo, slug).run();
+      }
+    } catch {
+      /* si algo falla, se sigue mostrando lo que había */
+    }
+  }
 }
 
 /* GET /sitemap.xml -> todo lo que está publicado, incluidos los artículos del blog
@@ -1982,7 +2007,12 @@ export default {
       // traería el 404, porque ese artículo no existe como archivo.
       // /blog/ pedido internamente como navegación vuelve con el 404 del sitio: se pide
       // directamente blog/index.html, que es la página de verdad.
-      let html = await (await env.ASSETS.fetch(new Request(url.origin + '/blog/index.html', { headers: request.headers }))).text();
+      // Sin caché de la CDN del sitio: la página se arma en cada visita (si no,
+      // un artículo corregido seguía mostrando el viejo durante un día).
+      let html = await (await env.ASSETS.fetch(new Request(url.origin + '/blog/index.html', {
+        headers: request.headers,
+        cf: { cacheEverything: false, cacheTtl: 0 },
+      } as RequestInit))).text();
       if (html.indexOf('<html') < 0) {
         html = await (await env.ASSETS.fetch(new Request(url.origin + '/blog/' + url.search, { headers: request.headers }))).text();
       }
