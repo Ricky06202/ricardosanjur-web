@@ -3,14 +3,40 @@ import MainLayout from "../../layouts/MainLayout.astro";
 import { getCollection } from "astro:content";
 import { ui, type Lang } from "../../i18n/ui";
 import { localePath, routeHref } from "../../i18n/utils";
+import { FICHAS } from "../../content/blog-fichas";
 
 interface Props { lang: Lang; }
 const { lang } = Astro.props;
 const t = ui[lang];
 const b = t.blog;
 
-const posts = await getCollection(lang === "en" ? "blogEn" : "blog");
-posts.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+type Ficha = { id: string; date: Date; title: string; summary: string; author: string; tag?: string };
+
+const coleccion = await getCollection(lang === "en" ? "blogEn" : "blog");
+const deRepo: Ficha[] = coleccion.map((p) => ({
+  id: p.id,
+  date: p.data.date,
+  title: p.data.title,
+  summary: p.data.summary,
+  author: p.data.author,
+  tag: p.data.tags?.[0],
+}));
+
+/* Artículos HTML (hechos a mano, con su propio diseño). Solo en español. */
+const archivosHtml = lang === "es" ? import.meta.glob("../../content/blog/*.html", { eager: true }) : {};
+const deHtml: Ficha[] = Object.keys(archivosHtml)
+  .map((ruta) => ruta.split("/").pop()!.replace(/\.html$/, ""))
+  .filter((id) => FICHAS[id])
+  .map((id) => ({
+    id,
+    date: new Date(FICHAS[id].fecha + "T12:00:00Z"),
+    title: FICHAS[id].titulo,
+    summary: FICHAS[id].resumen,
+    author: "Ricardo A. Sanjur A.",
+    tag: undefined,
+  }));
+
+const posts = [...deRepo, ...deHtml].sort((a, b) => b.date.valueOf() - a.date.valueOf());
 
 function formatDate(date: Date) {
   return date.toLocaleDateString(t.dateLocale, {
@@ -67,34 +93,34 @@ function formatDate(date: Date) {
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
-                  <time datetime={post.data.date.toISOString()}>
-                    {formatDate(post.data.date)}
+                  <time datetime={post.date.toISOString()}>
+                    {formatDate(post.date)}
                   </time>
                 </div>
 
                 <h2 class="card-title text-xl mb-3">
                   <a href={localePath(`/blog/${post.id}`, lang)} class="hover:text-primary transition-colors">
-                    {post.data.title}
+                    {post.title}
                   </a>
                 </h2>
 
                 <p class="text-base-content/70 text-sm mb-4 line-clamp-3">
-                  {post.data.summary}
+                  {post.summary}
                 </p>
 
                 <div class="flex items-center justify-between mt-auto">
                   <div class="flex items-center gap-2">
                     <div class="avatar placeholder">
                       <div class="bg-primary/10 text-primary rounded-full w-8 h-8">
-                        <span class="text-xs">{post.data.author.charAt(0)}</span>
+                        <span class="text-xs">{post.author.charAt(0)}</span>
                       </div>
                     </div>
-                    <span class="text-sm text-base-content/70">{post.data.author}</span>
+                    <span class="text-sm text-base-content/70">{post.author}</span>
                   </div>
 
-                  {post.data.tags && post.data.tags.length > 0 && (
+                  {post.tag && (
                     <div class="badge badge-ghost badge-sm">
-                      {post.data.tags[0]}
+                      {post.tag}
                     </div>
                   )}
                 </div>
