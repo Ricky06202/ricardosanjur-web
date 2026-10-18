@@ -141,6 +141,13 @@ const servicesLd = s.items.map((item) => ({
               </h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="form-control md:col-span-2">
+                  <label class="label"><span class="label-text">{s.labelUbicacion}</span></label>
+                  <select name="ubicacion" class="select select-bordered">
+                    <option value="">Seleccione una opción</option>
+                    {s.ubicacionOpciones.map((u) => (<option value={u}>{u}</option>))}
+                  </select>
+                </div>
+                <div class="form-control md:col-span-2">
                   <label class="label"><span class="label-text">{s.labelAddress}</span></label>
                   <input type="text" name="direccion" class="input input-bordered" required placeholder={s.placeholderAddress} />
                 </div>
@@ -363,6 +370,7 @@ const servicesLd = s.items.map((item) => ({
     const lineas = [
       'SOLICITUD DE COTIZACION',
       'Empresa: ' + (valor('empresa') || '-'),
+      'Ubicacion del trabajo: ' + (valor('ubicacion') || '-'),
       'Direccion de la finca: ' + valor('direccion'),
       'Numero de finca: ' + valor('numeroFinca'),
       'Area aproximada: ' + (valor('area') || '-'),

@@ -146,7 +146,7 @@ const jsonLd = { "@context": "https://schema.org", "@graph": [...graph, ...extra
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
-    <title>{title} | {t.meta.titleSuffix}</title>
+    <title>{title.includes(t.meta.titleSuffix) ? title : title + ' | ' + t.meta.titleSuffix}</title>
   </head>
   <body class="min-h-screen flex flex-col bg-base-100 text-base-content antialiased">
     <header class="sticky top-0 z-50 border-b border-black/5 bg-white/85 backdrop-blur-xl">

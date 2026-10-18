@@ -25,9 +25,9 @@ export const ui = {
       madeByCta: "¿Quieres una página así? Escríbeme",
     },
     home: {
-      title: "Inicio",
+      title: "Topografía Especializada en Chiriquí y Panamá | Agrimensura, GNSS y Drones",
       description:
-        "Topografía Especializada S.A. — Más de 55 años de experiencia en topografía, geodesia, GNSS y geomática en David, Chiriquí y todo Panamá.",
+        "Más de 50 años realizando levantamientos topográficos, planos catastrales, fotogrametría con drones y peritajes en David, Boquete y todo Panamá.",
       heroImageAlt: "Topografía en campo",
       sliderImageAlt: "Imagen",
       heroBadge: "Desde 1970 · David, Chiriquí · Panamá",
@@ -135,9 +135,9 @@ export const ui = {
       ctaCall: "Llamar",
     },
     about: {
-      title: "Nosotros",
+      title: "Quiénes Somos | Topografía desde 1970 en Chiriquí",
       description:
-        "Conozca a Topografía Especializada S.A. - Tres generaciones de experiencia en topografía, geodesia y geomática en David, Chiriquí, Panamá.",
+        "Tres generaciones midiendo Panamá. Conozca a Topografía Especializada S.A., desde 1970 en David, Chiriquí.",
       heroImageAlt: "Sobre Nosotros",
       badge: "Sobre Nosotros",
       heading: 'Tres Generaciones de <span class="text-primary">Excelencia</span>',
@@ -202,9 +202,9 @@ export const ui = {
       ctaContact: "Contáctenos",
     },
     services: {
-      title: "Servicios",
+      title: "Servicios de Topografía en David y Chiriquí",
       description:
-        "Servicios profesionales de topografía, geodesia, catastro y SIG en David, Chiriquí, Panamá.",
+        "Levantamientos, planos catastrales, geodesia GNSS, fotogrametría con drones, catastro, SIG y peritajes topográficos en Chiriquí y todo Panamá.",
       heroImageAlt: "Servicios de Topografía",
       badge: "Nuestros Servicios",
       heading: 'Soluciones Integrales en <span class="text-primary">Topografía</span>',
@@ -304,6 +304,15 @@ export const ui = {
       labelPhone: "Teléfono *",
       placeholderPhone: "+507 6000-0000",
       propertyHeading: "Datos de la Finca",
+      labelUbicacion: "¿Dónde es el trabajo?",
+      ubicacionOpciones: [
+        "David, Chiriquí",
+        "Boquete / Tierras Altas, Chiriquí",
+        "Resto de Chiriquí",
+        "Ciudad de Panamá",
+        "Otra provincia",
+        "Otro país",
+      ],
       labelAddress: "Dirección de la Finca *",
       placeholderAddress: "Corregimiento, Distrito, Chiriquí",
       labelPlotNumber: "Número de Finca *",
@@ -336,9 +345,9 @@ export const ui = {
       msgConnError: "Error de conexión. Por favor intente más tarde.",
     },
     contact: {
-      title: "Contacto",
+      title: "Cotizar Levantamiento Topográfico en David, Chiriquí",
       description:
-        "Contáctenos - Topografía Especializada S.A. Ubicación, teléfono y correo electrónico en David, Chiriquí, Panamá.",
+        "Solicite su cotización para planos, segregaciones, geodesia o peritajes. Ubicados en David, Chiriquí, diagonal al Colegio Sucre. Tel: +507 6671-4646.",
       heroImageAlt: "Contáctenos",
       badge: "Contáctenos",
       heading: 'Estamos aquí para <span class="text-primary">ayudarle</span>',
@@ -379,9 +388,9 @@ export const ui = {
       msgConnError: "Error de conexión. Por favor intente más tarde.",
     },
     blog: {
-      title: "Blog",
+      title: "Blog de Topografía y Geodesia en Panamá",
       description:
-        "Blog de Topografía Especializada S.A. - Artículos sobre geodesia, topografía, SIG y tecnología geoespacial.",
+        "Guías y artículos sobre geodesia, topografía, SIG, drones y trámites de tierras en Panamá escritos por nuestro equipo técnico.",
       heroImageAlt: "Blog de Topografía",
       badge: "Blog",
       heading: 'Noticias y <span class="text-primary">Artículos</span>',
@@ -434,7 +443,7 @@ export const ui = {
       madeByCta: "Want a site like this? Write to me",
     },
     home: {
-      title: "Home",
+      title: "Land Surveying & GIS Services in Chiriquí, Panama | Topografía Especializada",
       description:
         "Topografía Especializada S.A. — More than 55 years of experience in surveying, geodesy, GNSS and geomatics in David, Chiriquí and all of Panama.",
       heroImageAlt: "Surveying in the field",
@@ -538,7 +547,7 @@ export const ui = {
       ctaCall: "Call",
     },
     about: {
-      title: "About",
+      title: "About Us | Surveying Panama Since 1970",
       description:
         "Meet Topografía Especializada S.A. - Three generations of experience in surveying, geodesy and geomatics in David, Chiriquí, Panama.",
       heroImageAlt: "About Us",
@@ -605,9 +614,9 @@ export const ui = {
       ctaContact: "Contact Us",
     },
     services: {
-      title: "Services",
+      title: "Land Surveying Services in David & Chiriquí, Panama",
       description:
-        "Professional surveying, geodesy, cadastre and GIS services in David, Chiriquí, Panama.",
+        "Boundary surveys, cadastral maps, RTK GNSS geodesy, drone mapping, GIS and expert survey reports in Chiriquí and across Panama.",
       heroImageAlt: "Surveying Services",
       badge: "Our Services",
       heading: 'Comprehensive <span class="text-primary">Surveying</span> Solutions',
@@ -697,6 +706,15 @@ export const ui = {
       labelPhone: "Phone *",
       placeholderPhone: "+507 6000-0000",
       propertyHeading: "Property Information",
+      labelUbicacion: "Where is the job?",
+      ubicacionOpciones: [
+        "David, Chiriquí",
+        "Boquete / Tierras Altas, Chiriquí",
+        "Rest of Chiriquí",
+        "Panama City",
+        "Another province",
+        "Another country",
+      ],
       labelAddress: "Property Address *",
       placeholderAddress: "Township, District, Chiriquí",
       labelPlotNumber: "Property Number *",
@@ -729,9 +747,9 @@ export const ui = {
       msgConnError: "Connection error. Please try again later.",
     },
     contact: {
-      title: "Contact",
+      title: "Get a Land Survey Quote in David, Chiriquí",
       description:
-        "Contact us - Topografía Especializada S.A. Location, phone and email in David, Chiriquí, Panama.",
+        "Request a quote for maps, lot splits, geodesy or expert reports. Located in David, Chiriquí, next to Colegio Sucre. Phone: +507 6671-4646.",
       heroImageAlt: "Contact Us",
       badge: "Contact Us",
       heading: 'We are here to <span class="text-primary">help you</span>',
@@ -772,9 +790,9 @@ export const ui = {
       msgConnError: "Connection error. Please try again later.",
     },
     blog: {
-      title: "Blog",
+      title: "Surveying & Geodesy Blog | Panama Land Guides",
       description:
-        "Topografía Especializada S.A. Blog - Articles about geodesy, surveying, GIS and geospatial technology.",
+        "Practical guides on land surveying, geodesy, GIS, drone mapping and property paperwork in Panama, written by our technical team.",
       heroImageAlt: "Surveying Blog",
       badge: "Blog",
       heading: 'News and <span class="text-primary">Articles</span>',
