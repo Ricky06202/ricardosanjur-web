@@ -740,6 +740,8 @@ const CSS = [
   '.stat{display:flex;flex-direction:column;gap:1px}',
   '.stat b{font-family:"Space Grotesk",Inter,sans-serif;font-size:1.4rem;line-height:1.2;font-weight:700}',
   '.stat span{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--mut)}',
+  '.tipo-det{color:var(--mut);font-weight:500;text-transform:none;letter-spacing:0}',
+  '.pill.tipos{color:#475467;background:var(--soft);border-color:var(--line)}',
   '.empty{text-align:center;padding:24px 10px;color:var(--mut);font-size:.92rem}',
   /* tabla escritorio */
   'table{width:100%;border-collapse:collapse;font-size:.92rem}',
@@ -806,6 +808,35 @@ function page(title: string, body: string, status: number): Response {
   });
 }
 
+/* Desglose de tipos de archivo, ej. "3 (2 PDF, 1 DWG)".
+ * Se cuenta por la extension del titulo; si no tiene, cuenta como PDF. */
+function extDeMime(mime: string): string {
+  const m = mime.toLowerCase();
+  if (!m) return '';
+  if (m.indexOf('pdf') > -1) return 'pdf';
+  if (m.indexOf('zip') > -1) return 'zip';
+  if (m.indexOf('jpeg') > -1) return 'jpg';
+  if (m.indexOf('png') > -1) return 'png';
+  if (m.indexOf('dwg') > -1) return 'dwg';
+  const t = m.split('/')[1] || '';
+  return /^[a-z0-9]{1,5}$/.test(t) ? t : '';
+}
+
+function tiposDeLista(titulos: unknown[]): string {
+  const cuenta: Record<string, number> = {};
+  for (let i = 0; i < titulos.length; i++) {
+    const tipo = (extDe(titulos[i]) || 'pdf').toUpperCase();
+    cuenta[tipo] = (cuenta[tipo] || 0) + 1;
+  }
+  const tipos = Object.keys(cuenta).sort(function (a, b) { return cuenta[b] - cuenta[a] || a.localeCompare(b); });
+  return tipos.map(function (t) { return cuenta[t] + ' ' + t; }).join(', ');
+}
+
+function desgloseTipos(titulos: unknown[]): string {
+  const det = tiposDeLista(titulos);
+  return det ? titulos.length + ' <span class="tipo-det">(' + det + ')</span>' : '0';
+}
+
 // Barra superior del panel: marca + navegacion (visible siempre).
 function adminBarra(): string {
   return '<a class="logo" href="/admin"><span class="mark">TE</span>Topografia Especializada <small>S.A.</small></a>';
@@ -839,8 +870,10 @@ async function handleClient(token: string, env: Env): Promise<Response> {
   if (plans.length === 0) {
     listHtml = '<div class="card"><div class="empty">Todavia no tiene planos disponibles. Si esperaba alguno, escriba al ingeniero Sanjur.</div></div>';
   } else {
+    const tipos = tiposDeLista(plans.map(function (p: any) { return p.titulo; }));
     listHtml = '<div class="card"><div class="sec"><div class="h"><h2>Sus planos</h2>' +
-      '<span class="pill">' + plans.length + (plans.length === 1 ? ' archivo' : ' archivos') + '</span></div></div>' +
+      '<span class="pill">' + plans.length + (plans.length === 1 ? ' archivo' : ' archivos') + '</span>' +
+      (tipos ? '<span class="pill tipos">' + tipos + '</span>' : '') + '</div></div>' +
       '<div class="lista-planes">';
     for (let i = 0; i < plans.length; i++) {
       const p = plans[i];
@@ -848,7 +881,7 @@ async function handleClient(token: string, env: Env): Promise<Response> {
       const size = p.tamano ? formatBytes(Number(p.tamano)) : '';
       const when = dateFmt(p.creado_en);
       const meta = [when, size].filter(Boolean).join(' &middot; ');
-      const ext = (extDe(p.titulo) || 'PDF').toUpperCase();
+      const ext = (extDe(p.titulo) || extDeMime(String(p.mime || '')) || 'PDF').toUpperCase();
       listHtml += '<div class="plan">' +
         '<div class="plan-icono">' + esc(ext) + '</div>' +
         '<div class="plan-cuerpo">' +
@@ -865,7 +898,8 @@ async function handleClient(token: string, env: Env): Promise<Response> {
   const body = '<h1>Hola, <span>' + esc(client.nombre || 'cliente') + '</span></h1>' +
     '<p class="lead">Estos son los planos que el ingeniero preparo para usted. Cada archivo se descarga directo a su telefono o computadora.</p>' +
     (plans.length > 1 ? '<div class="card accion-zip"><div><div class="stat"><b>' + plans.length + '</b><span>Archivos disponibles</span></div>' +
-      '<p class="hint" style="margin-top:4px">Bajelos todos juntos en un solo ZIP.</p></div>' +
+      '<p class="hint" style="margin-top:4px">' + desgloseTipos(plans.map(function (p: any) { return p.titulo; })) +
+      (plans.length > 1 ? ' &middot; bajelos todos juntos en un solo ZIP.' : '') + '</p></div>' +
       '<a class="btn" href="/mis-planos/' + encodeURIComponent(token) + '/zip">Descargar todo (ZIP)</a></div>' : '') +
     listHtml;
   return page('Mis planos', body, 200);
@@ -1131,6 +1165,27 @@ async function handleInicio(request: Request, env: Env, tok: string, opts?: { sa
     .all();
   const clients = (cRes && cRes.results) || [];
 
+  /* Desglose de archivos por cliente: cuantos PDF, cuantos DWG, etc.
+   * La mama pidio ver "2 (1 PDF, 1 DWG)" en vez de solo el numero. */
+  const titulosPorCliente: Record<string, unknown[]> = {};
+  try {
+    const listaRes = await env.DB
+      .prepare('SELECT client_id, titulo FROM plans WHERE activo = 1')
+      .all();
+    const lista = (listaRes && listaRes.results) || [];
+    for (let i = 0; i < lista.length; i++) {
+      const fila: any = lista[i];
+      const cid = String(fila.client_id || '');
+      (titulosPorCliente[cid] || (titulosPorCliente[cid] = [])).push(fila.titulo);
+    }
+  } catch (e) { /* si falla, se cae al numero simple */ }
+
+  function desgloseDe(id: string, total: unknown): string {
+    const titulos = titulosPorCliente[String(id)];
+    if (!titulos || !titulos.length) return esc(total == null ? 0 : total);
+    return desgloseTipos(titulos);
+  }
+
   let rows = '';
   if (clients.length === 0) {
     rows = '<tr><td colspan="6"><div class="empty">Todavia no hay clientes. Cree el primero abajo.</div></td></tr>';
@@ -1144,9 +1199,9 @@ async function handleInicio(request: Request, env: Env, tok: string, opts?: { sa
         (c.telefono ? '<div class="muted small">' + esc(c.telefono) + '</div>' : '') +
         '<div class="only-desktop" style="margin-top:4px">' + (active ? '<span class="ok small">activo</span>' : '<span class="err small">revocado</span>') + '</div>' +
         '</td>' +
-        '<td class="only-mobile noet"><div class="stats-inline"><div data-l="Planos">' + esc(c.planos) + '</div>' +
+        '<td class="only-mobile noet"><div class="stats-inline"><div data-l="Planos">' + desgloseDe(String(c.id), c.planos) + '</div>' +
         '<div data-l="Descargas">' + esc(c.descargas) + '</div></div></td>' +
-        '<td class="only-desktop">' + esc(c.planos) + '</td>' +
+        '<td class="only-desktop">' + desgloseDe(String(c.id), c.planos) + '</td>' +
         '<td class="only-desktop">' + esc(c.descargas) + '</td>' +
         '<td class="link" data-l="Link del cliente"><a class="code" href="' + esc(link) + '">' + esc(link) + '</a></td>' +
         '<td><form method="POST" action="/admin/' + tok + '/revocar">' +
@@ -1270,9 +1325,21 @@ async function handleInicio(request: Request, env: Env, tok: string, opts?: { sa
   const totalPlanos = clients.reduce(function (a: any, c: any) { return a + Number(c.planos || 0); }, 0);
   const totalDescargas = clients.reduce(function (a: any, c: any) { return a + Number(c.descargas || 0); }, 0);
 
+  function desgloseResumen(): string {
+    const titulos: unknown[] = [];
+    const claves = Object.keys(titulosPorCliente);
+    for (let i = 0; i < claves.length; i++) {
+      const arr = titulosPorCliente[claves[i]];
+      for (let j = 0; j < arr.length; j++) titulos.push(arr[j]);
+    }
+    if (!titulos.length) return '';
+    const d = tiposDeLista(titulos);
+    return d ? ' <span class="tipo-det">(' + d + ')</span>' : '';
+  }
+
   const resumen = '<div class="card"><div class="stats-row">' +
     '<div class="stat"><b>' + clients.length + '</b><span>Clientes</span></div>' +
-    '<div class="stat"><b>' + totalPlanos + '</b><span>Planos</span></div>' +
+    '<div class="stat"><b>' + totalPlanos + '</b><span>Planos' + desgloseResumen() + '</span></div>' +
     '<div class="stat"><b>' + totalDescargas + '</b><span>Descargas</span></div>' +
     '<div class="stat"><b>' + certs.length + '</b><span>Certificados</span></div>' +
     '</div></div>';
