@@ -371,6 +371,14 @@ function formatBytes(n: number): string {
   return txt + ' ' + units[i];
 }
 
+function extDe(name: unknown): string {
+  const s = String(name || '');
+  const dot = s.lastIndexOf('.');
+  if (dot <= 0 || dot === s.length - 1) return '';
+  const ext = s.slice(dot + 1).toLowerCase();
+  return /^[a-z0-9]{1,5}$/.test(ext) ? ext : '';
+}
+
 function dateFmt(value: unknown): string {
   const s = String(value || '');
   if (!s) return '';
@@ -714,6 +722,17 @@ const CSS = [
   'label{display:block;font-size:.86rem;font-weight:600;margin:16px 0 6px;color:#344054}',
   'label .muted{font-weight:400}',
   '.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}',
+  /* lista de planes del cliente */
+  '.lista-planes{margin-top:12px}',
+  '.plan{display:flex;align-items:center;gap:14px;padding:16px;border:1px solid var(--line);border-radius:16px;background:#FCFDFF;margin-top:10px}',
+  '.plan:first-child{margin-top:6px}',
+  '.plan-icono{flex:0 0 auto;width:46px;height:46px;border-radius:12px;display:grid;place-items:center;font-size:.66rem;font-weight:700;letter-spacing:.04em;color:#1D4ED8;background:#EAF1FE;border:1px solid #D6E4FD}',
+  '.plan-cuerpo{flex:1 1 auto;min-width:0}',
+  '.plan-titulo{font-weight:600;line-height:1.35;overflow-wrap:anywhere}',
+  '.plan-meta{font-size:.78rem;color:var(--mut);margin-top:3px}',
+  '.plan-accion{flex:0 0 auto}',
+  '.accion-zip{display:flex;gap:14px;flex-wrap:wrap;align-items:center;justify-content:space-between}',
+  '.accion-zip .btn{flex:0 0 auto}',
   /* datos */
   '.code{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,monospace;font-size:.8rem;background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:8px 10px;display:inline-block;max-width:100%;min-width:0;overflow-wrap:anywhere;word-break:break-word;color:#1D4ED8}',
   'a.code:hover{text-decoration:none;border-color:#BFD3FD;background:#EAF1FE}',
@@ -741,6 +760,10 @@ const CSS = [
   '.tabla-certificados .labelc{margin:12px 0 3px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;font-size:.68rem}',
   '.acciones-movil{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}',
   '.acciones-movil .btn{flex:1 1 140px;min-height:40px;padding:9px 12px;font-size:.85rem}',
+  '.plan{flex-wrap:wrap}',
+  '.plan-accion{flex:1 1 100%;margin-top:2px}',
+  '.plan-accion .btn{width:100%}',
+  '.accion-zip .btn{width:100%}',
   '.tabla-clientes tr{border:1px solid var(--line);border-radius:16px;padding:15px;margin-top:12px;background:#FCFDFF}',
   '.tabla-clientes tr:first-child{margin-top:6px}',
   '.tabla-clientes td{border:0;padding:0;margin:0}',
@@ -789,9 +812,6 @@ function adminBarra(): string {
 }
 
 function notFoundPage(message: string): Response {
-  const body = '<h1><span>No encontrado</span></h1>' +
-    '<p class="muted">' + esc(message || 'Este enlace no es valido o fue desactivado.') + '</p>' +
-    '<p><a class="btn ghost" href="' + SITE_ORIGIN + '/">Ir al sitio</a></p>';
   const aviso = '<div class="card" style="max-width:520px"><h1><span>Enlace no disponible</span></h1>' +
     '<p class="hint">' + esc(message || 'Este enlace no es valido o fue desactivado.') + '</p>' +
     '<p style="margin-top:16px"><a class="btn ghost" href="' + SITE_ORIGIN + '/">Ir al sitio</a></p></div>';
@@ -817,25 +837,36 @@ async function handleClient(token: string, env: Env): Promise<Response> {
 
   let listHtml = '';
   if (plans.length === 0) {
-    listHtml = '<div class="card"><p class="muted">Aun no tiene planos disponibles.</p></div>';
+    listHtml = '<div class="card"><div class="empty">Todavia no tiene planos disponibles. Si esperaba alguno, escriba al ingeniero Sanjur.</div></div>';
   } else {
+    listHtml = '<div class="card"><div class="sec"><div class="h"><h2>Sus planos</h2>' +
+      '<span class="pill">' + plans.length + (plans.length === 1 ? ' archivo' : ' archivos') + '</span></div></div>' +
+      '<div class="lista-planes">';
     for (let i = 0; i < plans.length; i++) {
       const p = plans[i];
       const href = '/mis-planos/' + encodeURIComponent(token) + '/plano/' + encodeURIComponent(String(p.id));
       const size = p.tamano ? formatBytes(Number(p.tamano)) : '';
       const when = dateFmt(p.creado_en);
-      const meta = [when, size].filter(Boolean).join(' - ');
-      listHtml += '<div class="plan"><div class="row"><div>' +
-        '<strong>' + esc(p.titulo || 'Plano') + '</strong>' +
-        (p.descripcion ? '<div class="muted">' + esc(p.descripcion) + '</div>' : '') +
-        (meta ? '<div class="muted" style="font-size:.82rem">' + esc(meta) + '</div>' : '') +
-        '</div><a class="btn" href="' + esc(href) + '">Descargar</a></div></div>';
+      const meta = [when, size].filter(Boolean).join(' &middot; ');
+      const ext = (extDe(p.titulo) || 'PDF').toUpperCase();
+      listHtml += '<div class="plan">' +
+        '<div class="plan-icono">' + esc(ext) + '</div>' +
+        '<div class="plan-cuerpo">' +
+        '<div class="plan-titulo">' + esc(p.titulo || 'Plano') + '</div>' +
+        (p.descripcion ? '<div class="muted small">' + esc(p.descripcion) + '</div>' : '') +
+        (meta ? '<div class="plan-meta">' + meta + '</div>' : '') +
+        '</div>' +
+        '<div class="plan-accion"><a class="btn sm" href="' + esc(href) + '">Descargar</a></div>' +
+        '</div>';
     }
+    listHtml += '</div></div>';
   }
 
   const body = '<h1>Hola, <span>' + esc(client.nombre || 'cliente') + '</span></h1>' +
-    '<p class="muted">Estos son sus planos disponibles. Cada enlace descarga el archivo.</p>' +
-    (plans.length > 1 ? '<p style="margin:14px 0"><a class="btn" href="/mis-planos/' + encodeURIComponent(token) + '/zip">Descargar todo (ZIP)</a></p>' : '') +
+    '<p class="lead">Estos son los planos que el ingeniero preparo para usted. Cada archivo se descarga directo a su telefono o computadora.</p>' +
+    (plans.length > 1 ? '<div class="card accion-zip"><div><div class="stat"><b>' + plans.length + '</b><span>Archivos disponibles</span></div>' +
+      '<p class="hint" style="margin-top:4px">Bajelos todos juntos en un solo ZIP.</p></div>' +
+      '<a class="btn" href="/mis-planos/' + encodeURIComponent(token) + '/zip">Descargar todo (ZIP)</a></div>' : '') +
     listHtml;
   return page('Mis planos', body, 200);
 }
