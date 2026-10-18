@@ -1,87 +1,18 @@
 ---
 import BlogPostPage from '../../components/pages/BlogPostPage.astro';
-import MainLayout from '../../layouts/MainLayout.astro';
 import { getCollection } from 'astro:content';
-import { ui } from '../../i18n/ui';
-import { localePath, routeHref } from '../../i18n/utils';
-import { FICHAS } from '../../content/blog-fichas';
-import { markdownAHtml } from '../../../worker/blog';
 
-/* Artículos HTML del blog (src/content/blog/):
- *   - .html -> Archivo entero escrito a mano. Se publica TAL CUAL: el diseño
- *              de adentro es del archivo, para que salga igual a como lo ve su autor.
- *   - .md   -> El mismo texto en Markdown simple, convertido con el motor del
- *              panel (# título, **negrita**, - listas). El link no cambia.
- * Para agregar uno: se deja el archivo y se anota su fecha y resumen en
- * src/content/blog-fichas.ts.
- */
+/* Los artículos del repo son los de antes (.md). Los nuevos los publica el dueño
+ * desde el panel /admin y los sirve el worker desde la base, en la misma dirección. */
 export async function getStaticPaths() {
   const posts = await getCollection('blog');
-  const html = import.meta.glob('../../content/blog/*.{html,md}', { query: '?raw', import: 'default', eager: true });
-
-  return [
-    ...posts.map((post) => ({ params: { slug: post.id }, props: { post, fuente: null as null | { slug: string; fecha: string; html: string; titulo: string; resumen: string; extendido: boolean } } })),
-    ...Object.entries(html).map(([ruta, crudo]) => {
-      const archivo = ruta.split('/').pop()!;
-      const slug = archivo.replace(/\.(html?|md)$/, '');
-      const ficha = FICHAS[slug];
-      // .html -> se publica tal cual. .md -> se convierte a HTML aquí mismo.
-      const esHtml = /\.html?$/.test(archivo);
-      const html = esHtml ? String(crudo) : markdownAHtml(String(crudo));
-      const m = String(html).match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
-      return {
-        params: { slug },
-        props: {
-          post: null,
-          fuente: {
-            slug,
-            fecha: ficha?.fecha ?? '2026-01-01',
-            html,
-            titulo: ficha?.titulo ?? (m ? m[1].replace(/<[^>]+>/g, '').trim() : slug),
-            resumen: ficha?.resumen ?? '',
-            extendido: esHtml,
-          },
-        },
-      };
-    }),
-  ];
+  return posts.map((post) => ({
+    params: { slug: post.id },
+    props: { post },
+  }));
 }
 
-const { post, fuente } = Astro.props;
-const t = ui.es;
-const base = Astro.site ?? 'https://www.ricardosanjur.com';
-const origin = new URL('/', base).href.replace(/\/$/, '');
+const { post } = Astro.props;
 ---
 
-{fuente ? (
-  <MainLayout
-    title={`${fuente.titulo} | Topografía Especializada`}
-    description={fuente.resumen || fuente.titulo}
-    lang="es"
-    ogType="article"
-    publishedTime={fuente.fecha}
-    modifiedTime={fuente.fecha}
-    cuerpoLibre={fuente.extendido}
-    breadcrumbs={[
-      { name: t.blog.title, path: routeHref('blog', 'es') },
-      { name: fuente.titulo, path: localePath(`/blog/${fuente.slug}/`, 'es') },
-    ]}
-    extraJsonLd={{
-      '@type': 'BlogPosting',
-      '@id': `${new URL(localePath(`/blog/${fuente.slug}/`, 'es'), base).href}#article`,
-      headline: fuente.titulo,
-      description: fuente.resumen || fuente.titulo,
-      datePublished: fuente.fecha,
-      dateModified: fuente.fecha,
-      author: { '@type': 'Person', name: 'Ricardo A. Sanjur A.' },
-      publisher: { '@id': `${origin}/#organization` },
-      image: new URL('/og/og-default.jpg', base).href,
-      inLanguage: 'es',
-      mainEntityOfPage: new URL(localePath(`/blog/${fuente.slug}/`, 'es'), base).href,
-    }}
-  >
-    <Fragment set:html={fuente.html} />
-  </MainLayout>
-) : (
-  <BlogPostPage lang="es" post={post} />
-)}
+<BlogPostPage lang="es" post={post} />

@@ -34,6 +34,10 @@ type BlogRow = {
   formato?: string | null;
 };
 
+/* Cómo se publica un artículo de la base:
+ *   pagina -> el HTML tal cual (lo que subió el dueño)
+ *   texto  -> Markdown simple del editor
+ */
 export const BLOG_SCHEMA = `
 CREATE TABLE IF NOT EXISTS blog_posts (
   id TEXT PRIMARY KEY,
@@ -187,56 +191,108 @@ async function postsPublicados(db: D1, idioma: string): Promise<D1Fila[]> {
   }
 }
 
-/** GET /blog  y  /en/blog  -> suma los artículos de la base a los del repo. */
+/* ================= lo que se le suma a la página del sitio =================
+ * La página la arma el repo (menú, pie, tarjetas de los .md). Lo de la base se
+ * inyecta al final del <body>: la tarjeta nueva en el índice y el artículo
+ * completo (con los estilos del blog) en /blog/<dirección>.
+ */
+
+const NUBE_CSS_EXTRA =
+  '.nube-blog .tarjeta{max-width:820px;margin:18px auto}' +
+  '.nube-blog .post{max-width:820px;margin:0 auto;font-family:Georgia,"Times New Roman",serif;color:#1c2b33;line-height:1.65}' +
+  '.nube-blog .post h1{font-size:clamp(26px,4.4vw,38px);line-height:1.18;color:#123b4a;margin:18px 0 10px}' +
+  '.nube-blog .post .volver a{color:#157377;text-decoration:none;font-weight:600}';
+
+/** Lo que se le agrega a /blog (índice): las tarjetas de los artículos de la base. */
+/** GET /blog-api -> lista de artículos de la base (JSON de la página /blog-api). */
 export async function handleBlogIndex(env: EnvPub, idioma: string): Promise<Response> {
   const posts = await postsPublicados(env.DB, idioma);
-  const base = idioma === "en" ? SITIO + "/en" : SITIO;
   const esEn = idioma === "en";
-
-  const tarjetas = posts
-    .map(
-      (p) =>
-        '<article class="tarjeta">' +
-        '<p class="fecha">' + hm(fechaBonita(p.actualizado_en)) + "</p>" +
-        "<h2><a href=\"" + URL_POST(esEn, p.slug) + '">' + hm(p.titular) + "</a></h2>" +
-        (p.resumen ? '<p class="resumen">' + hm(p.resumen) + "</p>" : "") +
-        (p.etiquetas ? '<p class="tags">' + p.etiquetas.split(",").map((t) => "<span>" + hm(t.trim()) + "</span>").join("") + "</p>" : "") +
-        '<a class="leer" href="' + URL_POST(esEn, p.slug) + '">' + (esEn ? "Read article" : "Leer artículo") + " →</a>" +
-        "</article>"
-    )
-    .join("");
-
-  const body =
-    '<main class="blog-env">' +
-    (posts.length
-      ? '<div class="grid-blog">' + tarjetas + "</div>"
-      : "") +
-    '<p class="volver"><a href="' + base + '/">← ' + (esEn ? "Back to the site" : "Volver al sitio") + "</a></p>" +
-    "</main>";
-
-  return paginaHtml(
-    (esEn ? "Technical Blog" : "Blog técnico") + " | Topografía Especializada",
+  const body = '<main class="nube-blog blog-env"><div class="grid-blog">' +
+    posts.map((p) => tarjetaHtml(p, esEn)).join("") +
+    '</div><p class="volver"><a href="/blog/">← ' + (esEn ? "Back to the blog" : "Volver al blog") + "</a></p></main>";
+  return paginaHtml((esEn ? "Technical Blog" : "Blog técnico") + " | Topografía Especializada",
     esEn ? "Articles about land surveying, geodesy and geomatics in Panama." : "Artículos sobre topografía, geodesia y geomática en Panamá.",
-    URL_LISTA(esEn),
-    body
-  );
+    esEn ? "/en/blog" : "/blog", body);
 }
 
-/** GET /blog/<slug> y /en/blog/<slug> -> un artículo de la base. */
-export async function handleBlogPost(env: EnvPub, idioma: string, slug: string): Promise<Response | null> {
-  let p: D1Fila | null = null;
+/** GET /blog/<slug>/<archivo> -> una foto o archivo que subió el dueño con su artículo. */
+type R2Obj = {
+  body: ReadableStream | null;
+  size?: number;
+  httpMetadata?: { contentType?: string };
+};
+export async function handleBlogArchivo(env: EnvPub & { PLANOS?: { get: (k: string) => Promise<R2Obj | null> } }, slug: string, archivo: string): Promise<Response> {
+  if (!env.PLANOS || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(archivo) || archivo.indexOf("..") > -1) {
+    return new Response("No encontrado", { status: 404 });
+  }
+  let obj: R2Obj | null = null;
   try {
-    p = await env.DB.prepare(
+    obj = await env.PLANOS.get("blog/" + slug + "/" + archivo);
+  } catch {
+    obj = null;
+  }
+  if (!obj || !obj.body) return new Response("No encontrado", { status: 404 });
+  const tipo = (obj.httpMetadata && obj.httpMetadata.contentType) || "application/octet-stream";
+  return new Response(obj.body, {
+    headers: { "content-type": tipo, "cache-control": "public, max-age=3600" }
+  });
+}
+
+export async function handleBlogTarjeta(env: EnvPub, idioma: string, slug: string): Promise<string | null> {
+  if (slug) {
+    // Artículo suelto: lo arma handleBlogPostHtml (dentro de la página del sitio).
+    const p = await filaPublicada(env, idioma, slug);
+    return p ? "" : null;
+  }
+  const posts = await postsPublicados(env.DB, idioma);
+  if (!posts.length) return null;
+  const esEn = idioma === "en";
+  // Un bloque después del de las tarjetas del repo (no hay lista que tocar a mano).
+  return '<section class="nube-blog" style="max-width:820px;margin:0 auto 40px;padding:0 18px">' +
+    '<div class="grid-blog">' + posts.map((p) => tarjetaHtml(p, esEn)).join("") + "</div></section>";
+}
+
+function tarjetaHtml(p: D1Fila, esEn: boolean): string {
+  const url = "/blog/" + p.slug + "/";
+  return '<article class="tarjeta nube-tarjeta">' +
+    '<p class="fecha">' + hm(fechaBonita(p.actualizado_en)) + "</p>" +
+    "<h2><a href=\"" + url + '">' + hm(p.titular) + "</a></h2>" +
+    (p.resumen ? '<p class="resumen">' + hm(p.resumen) + "</p>" : "") +
+    (p.etiquetas ? '<p class="tags">' + p.etiquetas.split(",").map((t) => "<span>" + hm(t.trim()) + "</span>").join("") + "</p>" : "") +
+    '<a class="leer" href="' + url + '">' + (esEn ? "Read article" : "Leer artículo") + " →</a>" +
+    "</article>";
+}
+
+async function filaPublicada(env: EnvPub, idioma: string, slug: string): Promise<D1Fila | null> {
+  try {
+    return await env.DB.prepare(
       "SELECT slug, idioma, titular, resumen, autor, etiquetas, cuerpo, actualizado_en, COALESCE(formato, 'texto') AS formato FROM blog_posts WHERE slug = ? AND publicado = 1 AND borrado = 0 AND idioma = ?"
     )
       .bind(slug, idioma)
       .first<D1Fila>();
   } catch {
-    return null; // sin tabla: cae al .md del repo
+    return null;
   }
-  if (!p) return null;
+}
 
+/** El artículo de la base como bloque para inyectar en la página del sitio (sin <html>). */
+export async function handleBlogPostHtml(env: EnvPub, idioma: string, slug: string): Promise<string | null> {
+  const p = await filaPublicada(env, idioma, slug);
+  if (!p) return null;
+  return articuloDe(p, idioma === "en");
+}
+
+/** GET /blog  y  /en/blog  -> suma los artículos de la base a los del repo. *//** GET /blog-api/<slug> -> el artículo de la base como página completa (para apps). */
+export async function handleBlogPost(env: EnvPub, idioma: string, slug: string): Promise<Response | null> {
+  const p = await filaPublicada(env, idioma, slug);
+  if (!p) return null;
   const esEn = idioma === "en";
+  return paginaHtml(p.titular + " | Topografía Especializada", p.resumen || p.titular, "/blog/" + p.slug, articuloDe(p, esEn));
+}
+
+/** El artículo (cabecera con la nota de consulta al pie + cuerpo) como HTML suelto. */
+function articuloDe(p: D1Fila, esEn: boolean): string {
   const url = (esEn ? SITIO + "/en/blog/" : SITIO + "/blog/") + p.slug;
   const jsonld = {
     "@context": "https://schema.org",
@@ -251,13 +307,7 @@ export async function handleBlogPost(env: EnvPub, idioma: string, slug: string):
     inLanguage: esEn ? "en" : "es-PA"
   };
 
-  const tags = p.etiquetas
-    ? '<p class="tags">' + p.etiquetas.split(",").map((t) => "<span>" + hm(t.trim()) + "</span>").join("") + "</p>"
-    : "";
-
-  /* Página subida como archivo HTML: se publica tal cual (el dueño la diseñó así
-   * y así tiene que verse). Solo se quitan las etiquetas de documento que
-   * romperían la página (doctype, html, head, body): el resto queda igual. */
+  let cuerpo = "";
   if (p.formato === "pagina") {
     let doc = String(p.cuerpo || "");
     let extraCss = "";
@@ -272,26 +322,23 @@ export async function handleBlogPost(env: EnvPub, idioma: string, slug: string):
       .replace(/<\/?html[^>]*>/gi, "")
       .replace(/<head[^>]*>[\s\S]*?<\/head>/gi, "")
       .replace(/<\/?body[^>]*>/gi, "");
-    const bodyPagina =
-      '<main class="blog-env"><article class="pagina-articulo">' + doc + "</article>" +
-      '<p class="volver"><a href="' + URL_LISTA(esEn) + '">← ' + (esEn ? "All articles" : "Todos los artículos") + "</a></p>" +
-      "</main>" +
-      '<script type="application/ld+json">' + JSON.stringify(jsonld).replace(/</g, "\\u003c") + "</script>";
-    return paginaHtml(p.titular + " | Topografía Especializada", p.resumen || p.titular, esEn ? "/en/blog/" + p.slug : "/blog/" + p.slug, bodyPagina, extraCss);
+    cuerpo = (extraCss ? '<style>' + extraCss + "</style>" : "") + '<div class="pagina-articulo">' + doc + "</div>";
+  } else {
+    cuerpo = '<h1>' + hm(p.titular) + "</h1>" +
+      '<p class="fecha">' + hm(fechaBonita(p.actualizado_en)) + (p.autor ? " · " + hm(p.autor) : "") + "</p>" +
+      '<div class="cuerpo">' + markdownAHtml(p.cuerpo) + "</div>";
   }
 
-  const body =
-    '<main class="blog-env"><article class="post">' +
-    '<p class="migas"><a href="' + URL_LISTA(esEn) + '">Blog</a></p>' +
-    "<h1>" + hm(p.titular) + "</h1>" +
-    '<p class="fecha">' + hm(fechaBonita(p.actualizado_en)) + (p.autor ? " · " + hm(p.autor) : "") + "</p>" +
-    tags +
-    '<div class="cuerpo">' + markdownAHtml(p.cuerpo) + "</div>" +
-    '<p class="volver"><a href="' + URL_LISTA(esEn) + '">← ' + (esEn ? "All articles" : "Todos los artículos") + "</a></p>" +
-    "</article></main>" +
-    '<script type="application/ld+json">' + JSON.stringify(jsonld).replace(/</g, "\\u003c") + "</script>";
+  const tags = p.etiquetas
+    ? '<p class="tags">' + p.etiquetas.split(",").map((t) => "<span>" + hm(t.trim()) + "</span>").join("") + "</p>"
+    : "";
 
-  return paginaHtml(p.titular + " | Topografía Especializada", p.resumen || p.titular, esEn ? "/en/blog/" + p.slug : "/blog/" + p.slug, body);
+  return '<div class="nube-blog"><main class="blog-env"><article class="post">' +
+    '<p class="migas"><a href="/blog/">Blog</a></p>' +
+    cuerpo + tags +
+    '<p class="volver"><a href="/blog/">← ' + (esEn ? "All articles" : "Todos los artículos") + "</a></p>" +
+    "</article></main></div>" +
+    '<script type="application/ld+json">' + JSON.stringify(jsonld).replace(/</g, "\\u003c") + "</script>";
 }
 
 const CSS_BLOG = `
@@ -327,6 +374,8 @@ header.top a{display:inline-block;padding:16px 18px;color:var(--verde);text-deco
 .volver{font-family:system-ui,sans-serif;font-size:15px;margin-top:34px}
 .volver a{color:var(--verde);text-decoration:none;font-weight:600}
 `;
+
+export const NUBE_CSS = "<style>" + CSS_BLOG + NUBE_CSS_EXTRA + "</style>";
 
 function paginaHtml(titulo: string, descripcion: string, ruta: string, body: string, extraCss = ""): Response {
   const html =

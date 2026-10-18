@@ -6,7 +6,18 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const base = 'src/content/blog';
-const archivos = fs.readdirSync(base).filter((f) => /\.(md|html)$/i.test(f)).sort();
+// Recorre también las subcarpetas: los .md de la colección de Astro siguen ahí, y
+// en plantillas/ quedan las copias que se pasan una vez a la base.
+const archivos = [];
+const recorrer = (dir) => {
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const ruta = path.join(dir, e.name);
+    if (e.isDirectory()) recorrer(ruta);
+    else if (/\.(md|html)$/i.test(e.name)) archivos.push(ruta.replace(base + path.sep, '').replace(/\\/g, '/'));
+  }
+};
+recorrer(base);
+archivos.sort();
 const items = archivos.map((archivo) => ({
   archivo,
   texto: fs.readFileSync(path.join(base, archivo), 'utf8'),

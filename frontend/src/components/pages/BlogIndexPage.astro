@@ -3,7 +3,7 @@ import MainLayout from "../../layouts/MainLayout.astro";
 import { getCollection } from "astro:content";
 import { ui, type Lang } from "../../i18n/ui";
 import { localePath, routeHref } from "../../i18n/utils";
-import { FICHAS } from "../../content/blog-fichas";
+
 
 interface Props { lang: Lang; }
 const { lang } = Astro.props;
@@ -12,31 +12,19 @@ const b = t.blog;
 
 type Ficha = { id: string; date: Date; title: string; summary: string; author: string; tag?: string };
 
+/* Los artículos del repo. Los que publica el dueño desde el panel los agrega el
+ * worker arriba de esta página, así que aquí solo se arma lo estático. */
 const coleccion = await getCollection(lang === "en" ? "blogEn" : "blog");
-const deRepo: Ficha[] = coleccion.map((p) => ({
-  id: p.id,
-  date: p.data.date,
-  title: p.data.title,
-  summary: p.data.summary,
-  author: p.data.author,
-  tag: p.data.tags?.[0],
-}));
-
-/* Artículos HTML (hechos a mano, con su propio diseño). Solo en español. */
-const archivosHtml = lang === "es" ? import.meta.glob("../../content/blog/*.html", { eager: true }) : {};
-const deHtml: Ficha[] = Object.keys(archivosHtml)
-  .map((ruta) => ruta.split("/").pop()!.replace(/\.html$/, ""))
-  .filter((id) => FICHAS[id])
-  .map((id) => ({
-    id,
-    date: new Date(FICHAS[id].fecha + "T12:00:00Z"),
-    title: FICHAS[id].titulo,
-    summary: FICHAS[id].resumen,
-    author: "Ricardo A. Sanjur A.",
-    tag: undefined,
-  }));
-
-const posts = [...deRepo, ...deHtml].sort((a, b) => b.date.valueOf() - a.date.valueOf());
+const posts: Ficha[] = coleccion
+  .map((p) => ({
+    id: p.id,
+    date: p.data.date,
+    title: p.data.title,
+    summary: p.data.summary,
+    author: p.data.author,
+    tag: p.data.tags?.[0],
+  }))
+  .sort((a, b) => b.date.valueOf() - a.date.valueOf());
 
 function formatDate(date: Date) {
   return date.toLocaleDateString(t.dateLocale, {

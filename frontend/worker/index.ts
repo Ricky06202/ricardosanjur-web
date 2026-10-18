@@ -6,7 +6,9 @@
 
 import RSQR from './qr.js';
 import { handleBlogLista, handleBlogForm, handleBlogGuardar, handleBlogBorrar } from './admin-blog';
-import { handleBlogIndex, handleBlogPost, BLOG_SCHEMA } from './blog';
+import { handleBlogIndex, handleBlogPost, BLOG_SCHEMA, handleBlogArchivo, handleBlogTarjeta, handleBlogPostHtml, NUBE_CSS } from './blog';
+import { ARCHIVOS_BLOG } from './blog-archivos';
+import { FICHAS } from '../src/content/blog-fichas';
 
 interface Env {
   ASSETS: { fetch: (request: Request) => Promise<Response> };
@@ -535,6 +537,60 @@ async function prepararBaseLocal(env: Env) {
     await env.DB.exec('ALTER TABLE blog_posts ADD COLUMN cuerpo_texto TEXT');
   } catch {
     /* ya existe */
+  }
+}
+
+/* Los artículos que ya estaban publicados como archivo del repo se pasan UNA vez a
+ * la base, para que el dueño los pueda editar desde el panel (antes solo se podían
+ * ver). Corre en cada petición pero no cuesta nada cuando ya están: consulta por la
+ * dirección y si existe no toca nada. La lista sale de worker/blog-archivos.ts. */
+async function sembrarArticulos(env: Env) {
+  let faltan: { archivo: string; texto: string }[] = [];
+  try {
+    const hay = await env.DB.prepare("SELECT slug FROM blog_posts").all();
+    const slugs = new Set(((hay && hay.results) || []).map((r: any) => String(r.slug)));
+    faltan = ARCHIVOS_BLOG.filter((a) => !slugs.has(a.archivo.replace(/\.(html?|md)$/, "")));
+  } catch {
+    return; // la tabla todavía no existe: el panel la crea
+  }
+  for (const item of faltan) {
+    const slug = item.archivo.replace(/\.(html?|md)$/, "").split("/").pop() || "";
+    const ficha = FICHAS[slug];
+    const esHtml = /\.html$/i.test(item.archivo);
+    const m = String(item.texto).match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+    const mdTitulo = String(item.texto).match(/^title:\s*"?([^"\n]+)"?/m);
+    const mdFecha = String(item.texto).match(/^date:\s*"?([0-9]{4}-[0-9]{2}-[0-9]{2})/m);
+    const mdResumen = String(item.texto).match(/^summary:\s*"?([^"\n]+)"?/m);
+    const titular = ficha?.titulo || (mdTitulo ? mdTitulo[1] : m ? m[1].replace(/<[^>]+>/g, "").trim() : slug);
+    let cuerpo = String(item.texto);
+    if (!esHtml) {
+      // El Markdown del repo trae su ficha al principio: el editor la pone aparte.
+      cuerpo = cuerpo.replace(/^---[\s\S]*?---\s*/, "");
+    }
+    const fecha = (ficha?.fecha || (mdFecha ? mdFecha[1] : "2026-01-01")) + "T12:00:00.000Z";
+    try {
+      await env.DB.prepare(
+        "INSERT INTO blog_posts (id, slug, idioma, titular, resumen, autor, etiquetas, cuerpo, cuerpo_texto, formato, publicado, borrado, creado_en, actualizado_en) " +
+          "VALUES (?,?,?,?,?,?,?,?,?,?,1,0,?,?)"
+      )
+        .bind(
+          "art" + crypto.randomUUID().replace(/-/g, "").slice(0, 12),
+          slug,
+          "es",
+          titular,
+          ficha?.resumen || (mdResumen ? mdResumen[1] : ""),
+          "Ricardo A. Sanjur A.",
+          "",
+          cuerpo,
+          esHtml ? "" : cuerpo,
+          esHtml ? "pagina" : "texto",
+          fecha,
+          fecha
+        )
+        .run();
+    } catch (e) {
+      console.log("[blog] no se pudo pasar el articulo " + slug + ": " + String((e as any) && (e as any).message || e));
+    }
   }
 }
 
@@ -1725,7 +1781,14 @@ export default {
     ctx: Ctx,
   ): Promise<Response> {
     const url = new URL(request.url);
-    await prepararBaseLocal(env);
+    // Primero se crean las tablas si faltan (en local) y luego se pasan los artículos
+    // que estaban como archivo a la base, para que todos se puedan editar desde el panel.
+    if (env.LOCAL_PRUEBA === '1') {
+      await prepararBaseLocal(env);
+      await sembrarArticulos(env);
+    } else {
+      await sembrarArticulos(env);
+    }
 
     // Host canonico: apex -> www.
     if (url.hostname === 'ricardosanjur.com') {
@@ -1862,6 +1925,48 @@ export default {
      * al sitio estatico, que sigue sirviendo los articulos .md del repo. */
     if (method === 'GET' && (path === '/blog-api' || path === '/blog-api/')) {
       return handleBlogIndex(env as any, str(url.searchParams.get('idioma')) === 'en' ? 'en' : 'es');
+    }
+    /* Blog: el dueño publica desde el panel y sale igual que con el sitio.
+     * - /blog y /blog/<dirección> los arma la página (menú, pie y tarjetas).
+     * - Con ?r=1 (la página ya se armó) el worker le suma los artículos de la
+     *   base: la misma tarjeta y, en el artículo, una pestaña de confianza.
+     * - /blog/<dirección>/<archivo> = foto o archivo subido (R2).
+     */
+    if (method === 'GET' && /^\/blog(\/[a-z0-9-]{3,80})?$/.test(path)) {
+      const slug = path === '/blog' ? '' : path.split('/').pop()!;
+      const tarjeta = slug ? await handleBlogPostHtml(env as any, 'es', slug) : await handleBlogTarjeta(env as any, 'es', slug);
+      if (tarjeta === null && slug) {
+        // No está en la base: el artículo estático del repo (o 404 si no existe).
+        return env.ASSETS.fetch(request);
+      }
+      // La página del sitio arma el marco (menú, pie, tarjetas del repo) y aquí se
+      // le agrega lo que vive en la base: la tarjeta nueva o el artículo completo.
+      // Al sitio se le pide /blog/ (la página en su estado normal): pedir /blog/<slug>
+      // traería el 404, porque ese artículo no existe como archivo.
+      let html = await (await env.ASSETS.fetch(new Request(url.origin + '/blog/' + url.search, { headers: request.headers }))).text();
+      html = html.split(url.origin + '/_astro/').join('/_astro/');
+      if (tarjeta) {
+        if (slug) {
+          // Un artículo: va ARRIBA, en el lugar de la portada del índice (si quedara
+          // abajo, la portada "Noticias y Artículos" aparecería en medio).
+          const hero = html.indexOf('<section class="relative h-[50vh]');
+          const abre = hero > -1 ? hero : html.lastIndexOf('</header>') + '</header>'.length;
+          const cierra = html.lastIndexOf('</main>');
+          html = html.slice(0, abre) + NUBE_CSS + tarjeta + (cierra > abre ? html.slice(cierra) : '');
+        } else {
+          // El índice: las tarjetas nuevas se suman a las del repo, al final.
+          html = html.replace('</body>', NUBE_CSS + tarjeta + '</body>');
+        }
+      }
+      const salida = html;
+      const headers: Record<string, string> = { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=60' };
+      if (slug) headers['x-robots-tag'] = 'noindex';
+      return new Response(salida, { headers });
+    }
+    // Fotos y archivos que el dueño subió con su artículo (viven en R2, carpeta del artículo).
+    const mBlogFoto = path.match(/^\/blog\/([a-z0-9-]{3,80})\/([A-Za-z0-9._-]{1,120})$/);
+    if (method === 'GET' && mBlogFoto && !/^(index\.html)?$/.test(mBlogFoto[2])) {
+      return handleBlogArchivo(env as any, mBlogFoto[1], mBlogFoto[2]);
     }
     const mBlogPub = path.match(/^\/blog-api\/([a-z0-9-]{3,80})\/?$/);
     if (method === 'GET' && mBlogPub) {

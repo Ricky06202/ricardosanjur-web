@@ -9,8 +9,6 @@
 
 import { BLOG_SCHEMA, markdownAHtml, slugDe } from "./blog";
 import { CSS, page } from "./index";
-import { FICHAS } from "../src/content/blog-fichas";
-import { ARCHIVOS_BLOG } from "./blog-archivos";
 
 /* Tipos mínimos de D1 (el proyecto usa `any` para env.DB en index.ts). */
 type D1Sentencia = {
@@ -41,8 +39,6 @@ type Fila = {
   creado_en: string;
   actualizado_en: string;
   formato?: string | null;
-  /** Solo en el listado: nombre del archivo del repo (.md / .html) que sirve ese enlace. */
-  cuerpo_archivo?: string;
 };
 
 /* Columna del formato: 'texto' (Markdown del editor) o 'pagina' (archivo HTML). */
@@ -53,38 +49,11 @@ const TEXTO_SCHEMA = "ALTER TABLE blog_posts ADD COLUMN cuerpo_texto TEXT";
 
 const MAX_HTML_BYTES = 2 * 1024 * 1024;
 
+/** Tope de la carpeta de fotos de un artículo: 25 MB entre todas. */
+const MAX_FOTOS_BYTES = 25 * 1024 * 1024;
+
 const ahora = () => new Date().toISOString();
 
-/* Los artículos del repo (los .md y los .html que escribí yo) no están en la base:
- * se listan igual para que el dueño vea TODO lo publicado. La lista sale de
- * worker/blog-archivos.ts, que arma scripts/empacar-blog.mjs: el worker no puede
- * leer la carpeta del sitio. */
-
-function articulosDelRepo(): Fila[] {
-  return ARCHIVOS_BLOG.map(({ archivo, texto: crudo }) => {
-    const slug = archivo.replace(/\.(html?|md)$/, "");
-    const ficha = FICHAS[slug];
-    const h1 = String(crudo).match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
-    const mdTitulo = String(crudo).match(/^title:\s*"?([^"\n]+)"?/m);
-    const mdFecha = String(crudo).match(/^date:\s*"?([0-9]{4}-[0-9]{2}-[0-9]{2})/m);
-    const fecha = ficha?.fecha || (mdFecha ? mdFecha[1] : "");
-    return {
-      id: "repo:" + slug,
-      slug,
-      idioma: "es",
-      titular: ficha?.titulo || (mdTitulo ? mdTitulo[1] : h1 ? h1[1].replace(/<[^>]+>/g, "").trim() : slug),
-      resumen: ficha?.resumen || "",
-      autor: "Ricardo A. Sanjur A.",
-      etiquetas: "",
-      cuerpo: "",
-      publicado: 1,
-      creado_en: fecha,
-      actualizado_en: fecha,
-      formato: /\.html$/.test(archivo) ? "pagina" : "texto",
-      cuerpo_archivo: archivo,
-    };
-  });
-}
 
 function esc(v: unknown): string {
   return String(v == null ? "" : v)
@@ -129,9 +98,9 @@ export async function handleBlogLista(env: Env, tok: string, aviso: string): Pro
   } catch {
     filas = [];
   }
-  filas = [...articulosDelRepo(), ...filas].sort((a, b) =>
-    String(b.actualizado_en || "").localeCompare(String(a.actualizado_en || ""))
-  );
+  // Todo lo que se ve en el panel vive en la base (los artículos que estaban como
+  // archivo se pasan solos la primera vez, ver sembrarArticulos en index.ts).
+  filas.sort((a, b) => String(b.actualizado_en || "").localeCompare(String(a.actualizado_en || "")));
 
   const accion = '<a class="btn sm" href="/admin/' + esc(tok) + '/blog/nuevo">Nuevo articulo</a>';
 
@@ -141,23 +110,16 @@ export async function handleBlogLista(env: Env, tok: string, aviso: string): Pro
   } else {
     for (let i = 0; i < filas.length; i++) {
       const f = filas[i];
-      const esArchivo = !!f.cuerpo_archivo;
-      // Los del repo se abren en el sitio con un botón dedicado (no son de la base).
-      const hrefVista = esArchivo
-        ? "/blog/" + f.slug + "/"
-        : (f.idioma === "en" ? "/en/blog/" : "/blog/") + f.slug;
+      const hrefVista = (f.idioma === "en" ? "/en/blog/" : "/blog/") + f.slug;
+      const esPagina = f.formato === "pagina";
       lista += '<tr><td data-l="Titulo"><strong>' + esc(f.titular) + '</strong>' +
-        '<div class="muted small">/' + esc(f.idioma === "en" ? "en/blog/" : "blog/") + esc(f.slug) + (esArchivo ? ' · archivo del sitio (' + esc(f.cuerpo_archivo!.split(".").pop()) + ')' : '') + '</div></td>' +
-        '<td data-l="Estado">' + (esArchivo
-          ? '<span class="pill">En el sitio</span>'
-          : (Number(f.publicado) ? '<span class="pill">Publicado</span>' : '<span class="pill tipos">Borrador</span>')) + '</td>' +
+        '<div class="muted small">/' + esc(f.idioma === "en" ? "en/blog/" : "blog/") + esc(f.slug) + (esPagina ? ' · archivo HTML' : '') + '</div></td>' +
+        '<td data-l="Estado">' + (Number(f.publicado) ? '<span class="pill">Publicado</span>' : '<span class="pill tipos">Borrador</span>') + '</td>' +
         '<td data-l="Actualizado" class="muted small">' + esc(String(f.actualizado_en || "").slice(0, 10)) + '</td>' +
-        '<td class="acciones">' +
-        (esArchivo
-          ? '<a class="btn ghost sm" target="_blank" rel="noopener" href="' + esc(hrefVista) + '">Ver</a>' +
-            '<span class="muted small" title="Es un archivo del sitio: se publica tal cual y no se edita aquí">No se edita aquí</span>'
-          : '<a class="btn ghost sm" href="/admin/' + esc(tok) + "/blog/" + esc(f.id) + '">Editar</a>' +
-            (Number(f.publicado) ? '<a class="btn ghost sm" target="_blank" rel="noopener" href="' + esc(hrefVista) + '">Ver</a>' : '')) +
+        '<td class="acciones"><a class="btn ghost sm" href="/admin/' + esc(tok) + "/blog/" + esc(f.id) + '">Editar</a>' +
+        (Number(f.publicado)
+          ? '<a class="btn ghost sm" target="_blank" rel="noopener" href="' + esc(hrefVista) + '">Ver</a>'
+          : "") +
         '</td></tr>';
     }
   }
@@ -176,11 +138,6 @@ export async function handleBlogLista(env: Env, tok: string, aviso: string): Pro
 /** GET /admin/<token>/blog/nuevo  o  /admin/<token>/blog/<id> */
 export async function handleBlogForm(env: Env, tok: string, id: string, aviso: string): Promise<Response> {
   await asegurarTabla(env.DB);
-  // Un artículo que es un archivo del sitio no se edita aquí: se abre en el sitio.
-  if (id.startsWith("repo:")) {
-    const slug = id.slice(5);
-    return new Response(null, { status: 303, headers: { location: "/blog/" + encodeURIComponent(slug) + "/" } });
-  }
   let f: Fila | null = null;
   if (id && id !== "nuevo") {
     try {
@@ -201,7 +158,7 @@ export async function handleBlogForm(env: Env, tok: string, id: string, aviso: s
     '<div class="row" style="gap:8px"><a class="btn ghost sm" href="/admin/' + esc(tok) + '/blog">Volver al blog</a>' +
     (f ? '<a class="btn ghost sm" target="_blank" rel="noopener" href="' + esc((idioma === "en" ? "/en/blog/" : "/blog/") + f.slug) + '">Ver en el sitio</a>' : "") +
     "</div></div>" +
-    '<p class="lead">Escriba el texto, revise la vista previa y guarde. Si marca "Publicado" sale en el sitio al instante.</p>' +
+    '<p class="lead">Suba el archivo del articulo (o escribalo como texto), revise la vista previa y guarde. Si marca "Publicado" sale en el sitio al instante.</p>' +
     (aviso ? '<div class="card errline"><p class="err small" style="margin:0;font-weight:600">' + esc(aviso) + "</p></div>" : "") +
     '<form method="POST" action="/admin/' + esc(tok) + '/blog/guardar" enctype="multipart/form-data" data-busy="Guardando...">' +
     (f ? '<input type="hidden" name="id" value="' + esc(f.id) + '">' : "") +
@@ -223,32 +180,43 @@ export async function handleBlogForm(env: Env, tok: string, id: string, aviso: s
     '<textarea id="b-resumen" name="resumen" rows="2" maxlength="200">' + valor("resumen") + "</textarea>" +
     '<label for="b-etiquetas">Etiquetas <span class="muted">(separadas por coma)</span></label><input id="b-etiquetas" name="etiquetas" maxlength="160" value="' + valor("etiquetas") + '">' +
     '<div class="pestanas" role="tablist">' +
-    '<button type="button" class="pestana activa" data-tab="texto">Escribir texto</button>' +
-    '<button type="button" class="pestana" data-tab="archivo">Subir archivo HTML</button></div>' +
-    '<div class="tab-panel" data-panel="texto">' +
+    '<button type="button" class="pestana activa" data-tab="archivo">Archivo HTML</button>' +
+    '<button type="button" class="pestana" data-tab="texto">Escribir texto</button></div>' +
+    '<div class="tab-panel" data-panel="texto" hidden>' +
     '<label for="b-cuerpo">Texto del articulo</label>' +
     '<p class="hint">Formato simple: <span class="code">## Titulo</span> <span class="code">**negrita**</span> <span class="code">- lista</span> <span class="code">&gt; cita</span></p>' +
     '<textarea id="b-cuerpo" name="cuerpo" rows="18" class="editor-texto">' + textoEditor + "</textarea>" +
     '</div>' +
-    '<div class="tab-panel" data-panel="archivo" hidden>' +
+    '<div class="tab-panel" data-panel="archivo">' +
+    '<div class="subir" id="zona">' +
     '<label for="b-archivo">Archivo HTML del articulo</label>' +
-    '<p class="hint">Seleccione el archivo y el articulo queda <strong>igualito al archivo</strong>: su diseño, sus colores y sus tablas se publican tal cual.</p>' +
+    '<p class="hint">Elija el archivo <strong>.html</strong> del articulo. Queda igualito: su diseño, sus colores y sus tablas se publican tal cual.</p>' +
     '<input id="b-archivo" type="file" name="archivo" accept=".html,.htm,text/html">' +
-    // Nombre del archivo elegido (el navegador pone su propio botón en inglés).
     '<p class="hint archivo-msg" id="archivo-msg"></p>' +
-    '<p class="hint" id="archivo-estado">' + (formato === "pagina" && f ? "Este articulo se publica desde un archivo HTML. Si sube otro, lo reemplaza. " : "") +
-    'Para volver a editarlo como texto: escribalo en la otra pestaña y marque "Quitar el archivo HTML".</p>' +
+    '</div>' +
+    '<div class="subir" id="zona-fotos">' +
+    '<label for="b-fotos">Fotos del articulo <span class="muted">(opcional)</span></label>' +
+    '<p class="hint">Si el documento usa fotos, elija tambien la carpeta donde estan (o las fotos sueltas). Quedan guardadas con el articulo y el documento las encuentra solo.</p>' +
+    '<input id="b-fotos" type="file" name="adjuntos" multiple accept="image/*,.css,.js,.woff,.woff2,.ttf,.otf">' +
+    '<p class="hint archivo-msg" id="fotos-msg"></p>' +
+    '</div>' +
+    '<p class="hint" id="archivo-estado">' + (formato === "pagina" && f ? "Este articulo se publica desde su archivo HTML. Si sube otro, lo reemplaza. " : "") +
+    'Para publicar solo texto, use la pestaña "Escribir texto".</p>' +
     (formato === "pagina" && f ? '<label class="switch"><input type="checkbox" name="quitar_archivo" value="1"> Quitar el archivo HTML y publicar el texto</label>' : '') +
     '</div>' +
     '<div class="row" style="margin-top:16px;justify-content:flex-start">' +
     '<label class="switch"><input type="checkbox" name="publicado" value="1"' + (Number(f?.publicado) ? " checked" : "") + '> Publicado</label>' +
     "</div>" +
     '<div class="acciones-movil" style="margin-top:16px">' +
-    '<button class="btn ghost" type="button" id="ver">Actualizar vista previa</button>' +
+    (formato === "pagina" && f ? '' : '<button class="btn ghost" type="button" id="ver">Actualizar vista previa</button>') +
     '<button class="btn" type="submit">Guardar</button></div>' +
     "</div>" +
-    '<div class="card previa-card" id="previa-card"><div class="sec"><div class="h"><h2>Vista previa</h2><span class="pill tipos">Como se vera</span></div></div>' +
-    '<div class="previa-articulo" id="previa"></div></div>' +
+    '<div class="card previa-card" id="previa-card"><div class="sec"><div class="h"><h2>Vista previa</h2><span class="pill tipos" id="previa-tipo">' + (formato === "pagina" && f ? "Asi se ve en el sitio" : "Como se vera") + '</span></div></div>' +
+    (formato === "pagina" && f
+      ? '<iframe class="previa-marco" id="previa-marco" title="Vista previa del articulo" src="' + esc((idioma === "en" ? "/en/blog/" : "/blog/") + f.slug) + '"></iframe>' +
+        '<p class="hint"><a href="' + esc((idioma === "en" ? "/en/blog/" : "/blog/") + f.slug) + '" target="_blank" rel="noopener">Abrir en una pestaña nueva</a></p>'
+      : '<div class="previa-articulo" id="previa"></div>') +
+    "</div>" +
     "</div></form>" +
     (f
       ? '<form method="POST" action="/admin/' + esc(tok) + '/blog/borrar" class="form-borrar" onsubmit="return confirm(\'Sacar este articulo del sitio?\');">' +
@@ -267,9 +235,19 @@ export async function handleBlogForm(env: Env, tok: string, id: string, aviso: s
     "function md(v){return String(v||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,70);}" +
     "if(sl){sl.addEventListener('input',function(){tocado=sl.value.trim()!=='';});}" +
     "if(ti&&sl){ti.addEventListener('input',function(){if(!tocado||!sl.value.trim()){sl.value=md(ti.value);}});}" +
+    "function pesos(n){return n<1024?'menos de 1 KB':(n<1048576?Math.round(n/1024)+' KB':(Math.round(n/1048576*10)/10)+' MB');}" +
+    "function decir(id,msg){var e=document.getElementById(id);if(e){e.textContent=msg;}}" +
     "var ar=document.getElementById('b-archivo');" +
-    "if(ar){ar.addEventListener('change',function(){var f=ar.files&&ar.files[0];if(!f)return;var e=document.getElementById('archivo-msg');if(e){e.textContent='Archivo elegido: '+f.name+' ('+(f.size<1024?'menos de 1 KB':Math.round(f.size/1024)+' KB')+'). Se publica al guardar.';}" +
-    "if(ti&&!ti.value.trim()){var n=f.name.replace(/\\.html?$/i,'').replace(/[-_]+/g,' ');ti.value=n.charAt(0).toUpperCase()+n.slice(1);if(ti.dispatchEvent)ti.dispatchEvent(new Event('input'));}});}" +
+    "function ponerArchivo(f){if(!f)return;decir('archivo-msg','Archivo elegido: '+f.name+' ('+pesos(f.size)+'). Se publica al guardar.');" +
+    "if(ti&&!ti.value.trim()){var n=f.name.replace(/\\.html?$/i,'').replace(/[-_]+/g,' ');ti.value=n.charAt(0).toUpperCase()+n.slice(1);if(ti.dispatchEvent)ti.dispatchEvent(new Event('input'));}}" +
+    "if(ar){ar.addEventListener('change',function(){ponerArchivo(ar.files&&ar.files[0]);});}" +
+    "var fo=document.getElementById('b-fotos');" +
+    "function decirFotos(fs){var n=fs?fs.length:0;if(!n)return;var tot=0;for(var i=0;i<n;i++){tot+=fs[i].size;}decir('fotos-msg',n+(n===1?' archivo':' archivos')+' ('+pesos(tot)+'). Se guardan con el articulo.');}" +
+    "if(fo){fo.addEventListener('change',function(){decirFotos(fo.files);});}" +
+    "var zona=document.getElementById('zona'),zonaF=document.getElementById('zona-fotos');" +
+    "function soltar(el,alSoltar){if(!el)return;['dragenter','dragover'].forEach(function(ev){el.addEventListener(ev,function(e){e.preventDefault();el.classList.add('encima');});});['dragleave','drop'].forEach(function(ev){el.addEventListener(ev,function(e){e.preventDefault();el.classList.remove('encima');});});el.addEventListener('drop',function(e){var fs=e.dataTransfer&&e.dataTransfer.files;if(fs&&fs.length){alSoltar(fs);}});}" +
+    "soltar(zona,function(fs){for(var i=0;i<fs.length;i++){if(/\\.html?$/i.test(fs[i].name)){var dt=new DataTransfer();dt.items.add(fs[i]);if(ar){ar.files=dt.files;}ponerArchivo(fs[i]);return;}}alert('Suelte el archivo .html del articulo.');});" +
+    "soltar(zonaF,function(fs){if(!fo)return;var dt=new DataTransfer();for(var i=0;i<fs.length;i++){dt.items.add(fs[i]);}fo.files=dt.files;decirFotos(fs);});" +
     "})();" +
     "var t=document.querySelector('textarea[name=cuerpo]');" +
     "var x=document.getElementById('previa');" +
@@ -284,77 +262,129 @@ export async function handleBlogForm(env: Env, tok: string, id: string, aviso: s
   return page(esNuevo ? "Nuevo articulo" : "Editar articulo", body, 200, CSS_PANEL);
 }
 
+/* ================== archivos del artículo ==================
+ * El dueño sube su HTML junto a la carpeta de fotos que usa ("Insertar" en el
+ * editor de documentos saca imágenes de esa carpeta). Todo se guarda en R2 bajo
+ * blog/<dirección>/ y el HTML se reescribe para que encuentre sus imágenes en el
+ * sitio. Así el artículo queda editable desde el panel (no es un archivo del repo).
+ */
+const EXT_ARTICULO: Record<string, string> = {
+  jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", gif: "image/gif", svg: "image/svg+xml",
+  avif: "image/avif", bmp: "image/bmp", ico: "image/x-icon",
+  css: "text/css", js: "text/javascript", json: "application/json", txt: "text/plain",
+  woff: "font/woff", woff2: "font/woff2", ttf: "font/ttf", otf: "font/otf", eot: "application/vnd.ms-fontobject",
+  pdf: "application/pdf", mp4: "video/mp4", webm: "video/webm", mp3: "audio/mpeg",
+};
+
+/** Reescribe las rutas del HTML para que las fotos salgan de blog/<dir>/<archivo>. */
+function reescribirRutas(html: string, slug: string, nombres: Set<string>): string {
+  const base = "/blog/" + slug + "/";
+  return html.replace(/(src|srcset|href|poster)\s*=\s*(["'])([^"']*)\2/gi, (todo, attr, q, valor) => {
+    // Varios srcset: se procesa cada parte
+    const partes = String(valor).split(",");
+    let cambio = false;
+    const nuevos = partes.map((parte) => {
+      const trozos = parte.trim().split(/\s+/);
+      const limpio = decodeURIComponent((trozos[0] || "").split(/[?#]/)[0]).replace(/^(file:|https?:\/\/file:\/+)/i, "");
+      const nombre = limpio.split(/[\\/]/).pop() || "";
+      if (nombre && nombres.has(nombre) && !/^https?:/i.test(trozos[0]) && !trozos[0].startsWith("/blog/")) {
+        cambio = true;
+        trozos[0] = base + encodeURIComponent(nombre);
+        return trozos.join(" ");
+      }
+      return parte.trim();
+    });
+    return cambio ? attr + "=" + q + nuevos.join(", ") + q : todo;
+  });
+}
+
 /** POST /admin/<token>/blog/guardar */
 export async function handleBlogGuardar(request: Request, env: Env, tok: string): Promise<Response> {
   await asegurarTabla(env.DB);
   const fd = await request.formData();
   const id = String(fd.get("id") || "").trim();
+  if (id && !/^art[0-9a-f]{8,20}$/.test(id)) {
+    return new Response(null, { status: 303, headers: { location: "/admin/" + tok + "/blog?aviso=" + encodeURIComponent("Ese artículo ya no existe. Cree uno nuevo.") } });
+  }
   const titular = String(fd.get("titular") || "").trim();
-  let cuerpo = String(fd.get("cuerpo") || "").trim();
   const idioma = String(fd.get("idioma") || "es") === "en" ? "en" : "es";
   const resumen = String(fd.get("resumen") || "").trim();
   const autor = String(fd.get("autor") || "").trim();
   const etiquetas = String(fd.get("etiquetas") || "").trim();
   const publicado = fd.get("publicado") ? 1 : 0;
   const quitarArchivo = !!fd.get("quitar_archivo");
+  const textoEditor = String(fd.get("cuerpo") || "").trim();
 
-  const volverA = "/admin/" + tok + "/blog" + (id ? "/" + id : "/nuevo");
+  let volverA = "/admin/" + tok + "/blog" + (id ? "/" + id : "/nuevo");
+  const fallar = (mensaje: string) =>
+    new Response(null, { status: 303, headers: { location: volverA + "?aviso=" + encodeURIComponent(mensaje) } });
 
-  // Archivo HTML (opcional). Es la pestaña "Subir un archivo HTML".
-  let formato = "texto";
-  const archivo = fd.get("archivo");
-  if (archivo && typeof archivo !== "string" && Number((archivo as File).size) > 0) {
-    const f = archivo as File;
-    const nombre = String(f.name || "");
-    if (!/\.html?$/i.test(nombre)) {
-      return new Response(null, { status: 303, headers: { location: volverA + "?aviso=" + encodeURIComponent("El archivo tiene que ser .html (.htm también sirve).") } });
-    }
-    if (f.size > MAX_HTML_BYTES) {
-      return new Response(null, { status: 303, headers: { location: volverA + "?aviso=" + encodeURIComponent("El archivo pesa más de 2 MB. Achique las fotos y vuelva a subirlo.") } });
-    }
+  // Lo que había antes (si se está editando)
+  let previo: { slug: string; formato: string | null; cuerpo: string; cuerpo_texto: string | null } | null = null;
+  if (id) {
+    previo = await env.DB.prepare("SELECT slug, formato, cuerpo, cuerpo_texto FROM blog_posts WHERE id=? AND borrado=0").bind(id).first();
+  }
+
+  if (!titular) return fallar("Falta el título.");
+
+  // Dirección: la escribe o sale del título. Se arma ANTES de guardar archivos
+  // porque la carpeta de fotos lleva la dirección. Si ya existe, no cambia.
+  let slug = previo ? String(previo.slug) : (slugDe(String(fd.get("slug") || "").trim() || titular) || "articulo").slice(0, 70);
+
+  // --- Archivos: el HTML y la carpeta de fotos ---
+  const archivoHtml = fd.get("archivo");
+  const fotos = fd.getAll("adjuntos").filter((x) => typeof x !== "string" && (x as File).size > 0) as File[];
+  const paginaSubida = archivoHtml && typeof archivoHtml !== "string" && (archivoHtml as File).size > 0;
+  const teniaPagina = !!previo && previo.formato === "pagina";
+  const publicaPagina = paginaSubida || (teniaPagina && !quitarArchivo);
+
+  let cuerpoPagina = paginaSubida ? "" : previo && teniaPagina ? String(previo.cuerpo || "") : "";
+  if (paginaSubida) {
+    const f = archivoHtml as File;
+    if (!/\.html?$/i.test(String(f.name || ""))) return fallar("El archivo tiene que ser .html (.htm también sirve). Renuévelo");
+    if (f.size > MAX_HTML_BYTES) return fallar("El archivo pesa más de 2 MB. Saque las fotos grandes del documento y vuelva a guardarlo.");
     const leido = String(await f.text());
-    if (!/<[a-z!][\s\S]*>/i.test(leido)) {
-      return new Response(null, { status: 303, headers: { location: volverA + "?aviso=" + encodeURIComponent("Ese archivo no parece HTML.") } });
+    if (!/<[a-z!][\s\S]*>/i.test(leido)) return fallar("Ese archivo no parece HTML.");
+    cuerpoPagina = leido;
+  }
+  if (!publicaPagina && !textoEditor) return fallar("Falta el contenido: suba el archivo HTML o escriba el texto.");
+
+  if (!env.PLANOS && (fotos.length || paginaSubida)) return fallar("El almacenamiento de archivos no está disponible ahora.");
+
+  if (fotos.length || (paginaSubida && publicaPagina)) {
+    if (env.PLANOS) {
+      const nombres = new Set<string>();
+      let bytes = 0;
+      for (const foto of fotos) {
+        // Nombre tal como lo nombró él (el HTML lo busca así), sin rutas ni cosas raras.
+        let nombre = String(foto.name || "").split(/[\\/]/).pop() || "";
+        nombre = nombre.replace(/[^A-Za-z0-9._ -]/g, "_").replace(/^[.]+/, "").slice(-120);
+        const ext = (nombre.split(".").pop() || "").toLowerCase();
+        if (!nombre || !EXT_ARTICULO[ext]) continue;
+        bytes += foto.size;
+        if (bytes > MAX_FOTOS_BYTES) return fallar("Las fotos suman más de 25 MB. Quite alguna o achíquelas y vuelva a guardar.");
+        nombres.add(nombre);
+        try {
+          await env.PLANOS.put("blog/" + slug + "/" + nombre, await foto.arrayBuffer(), {
+            httpMetadata: { contentType: EXT_ARTICULO[ext] },
+          });
+        } catch (e) {
+          console.log("[blog] no se pudo guardar la foto " + nombre + ": " + String((e as any) && (e as any).message || e));
+          return fallar("No se pudo guardar la foto " + nombre + ". Vuelva a intentarlo.");
+        }
+      }
+      if (paginaSubida) cuerpoPagina = reescribirRutas(cuerpoPagina, slug, nombres);
     }
-    cuerpo = leido;
-    formato = "pagina";
   }
 
   // Qué guarda cada columna: `cuerpo` es lo que se publica y `cuerpo_texto` lo
   // escrito en el editor. Van aparte para no perder uno al usar el otro.
-  // Un artículo que ya era una página sigue siéndolo mientras no se pida quitar
-  // el archivo y se escriba texto.
-  const textoEditor = String(fd.get("cuerpo") || "").trim();
-  const paginaSubida = formato === "pagina";
-  let publicadoComoPagina = paginaSubida;
-  let cuerpoPublicado = paginaSubida ? cuerpo : textoEditor;
-  let cuerpoTexto = paginaSubida ? textoEditor : cuerpoPublicado;
+  let cuerpoTexto = textoEditor;
+  if (publicaPagina && !cuerpoTexto && previo) cuerpoTexto = String(previo.cuerpo_texto || "");
+  const cuerpoPublicado = publicaPagina ? cuerpoPagina : textoEditor;
+  const formatoFinal = publicaPagina ? "pagina" : "texto";
 
-  if (id) {
-    const previo = await env.DB.prepare("SELECT formato, cuerpo, cuerpo_texto FROM blog_posts WHERE id=? AND borrado=0").bind(id).first<{ formato: string | null; cuerpo: string; cuerpo_texto: string | null }>();
-    const teniaPagina = !!previo && previo.formato === "pagina";
-    if (teniaPagina && !quitarArchivo && !paginaSubida) {
-      // Se edita los datos (título, resumen, dirección) y sigue publicando el mismo archivo.
-      publicadoComoPagina = true;
-      cuerpoPublicado = String((previo as any).cuerpo || "");
-      if (!cuerpoTexto) cuerpoTexto = String((previo as any).cuerpo_texto || "");
-    } else if (paginaSubida && !cuerpoTexto && previo) {
-      cuerpoTexto = String((previo as any).cuerpo_texto || "");
-    }
-  }
-  const formatoFinal = publicadoComoPagina ? "pagina" : "texto";
-
-  if (!titular || !cuerpoPublicado) {
-    return new Response(null, { status: 303, headers: { location: volverA + "?aviso=" + encodeURIComponent("Falta el título o el contenido (el texto o el archivo HTML).") } });
-  }
-
-  // Dirección del artículo (el final del enlace): se escribe a mano o se completa
-  // sola con el título al crearlo. Una vez creado NO cambia: así el enlace que ya
-  // se compartió o que Google ya conoce sigue abriendo el mismo artículo.
-  const slugEscrito = String(fd.get("slug") || "").trim();
-  const slugQuerido = (slugDe(slugEscrito || titular) || "articulo").slice(0, 70);
   const t = ahora();
-
   if (id) {
     await env.DB.prepare(
       "UPDATE blog_posts SET titular=?, idioma=?, resumen=?, autor=?, etiquetas=?, cuerpo=?, cuerpo_texto=?, formato=?, publicado=?, actualizado_en=? WHERE id=? AND borrado=0"
@@ -362,11 +392,11 @@ export async function handleBlogGuardar(request: Request, env: Env, tok: string)
       .bind(titular, idioma, resumen, autor, etiquetas, cuerpoPublicado, cuerpoTexto, formatoFinal, publicado, t, id)
       .run();
   } else {
-    let slug = slugQuerido;
     let n = 1;
+    const base = slug;
     while (await env.DB.prepare("SELECT id FROM blog_posts WHERE slug=?").bind(slug).first()) {
       n++;
-      slug = slugQuerido + "-" + n;
+      slug = base + "-" + n;
     }
     // Id corto sin guion extra: la ruta /admin/<token>/blog/<id> solo acepta uno.
     const nuevoId = "art" + crypto.randomUUID().replace(/-/g, "").slice(0, 12);
@@ -377,8 +407,9 @@ export async function handleBlogGuardar(request: Request, env: Env, tok: string)
       .bind(nuevoId, slug, idioma, titular, resumen, autor, etiquetas, cuerpoPublicado, cuerpoTexto, formatoFinal, publicado, t, t)
       .run();
   }
+  const cuantas = fotos.length ? " con " + fotos.length + " foto" + (fotos.length === 1 ? "" : "s") : "";
   const aviso = formatoFinal === "pagina"
-    ? (publicado ? "Artículo publicado desde el archivo HTML." : "Borrador guardado (archivo HTML).")
+    ? (publicado ? "Artículo publicado desde el archivo HTML" + cuantas + "." : "Borrador guardado (archivo HTML)" + cuantas + ".")
     : (publicado ? "Artículo guardado y publicado." : "Borrador guardado.");
   return new Response(null, { status: 303, headers: { location: "/admin/" + tok + "/blog?aviso=" + encodeURIComponent(aviso) } });
 }
@@ -415,6 +446,9 @@ export const CSS_PANEL = [
   '.tab-panel[hidden]{display:none}',
   '.archivo-msg:empty{display:none}',
   '.archivo-msg{font-weight:600;color:#067647}',
+  '.subir{border:1.5px dashed var(--line);border-radius:12px;padding:12px;margin-bottom:12px;background:#fff}',
+  '.subir.encima{border-color:var(--brand);background:#EFF4FF}',
+  '.previa-marco{width:100%;height:60vh;min-height:360px;border:0;border-radius:10px;background:#fff}',
   'input[type=file]{width:100%;padding:12px;border:1.5px dashed var(--line);border-radius:10px;background:#fff;font:inherit}',
   '.previa-articulo{max-height:60vh;overflow:auto;padding:4px 2px}',
   '.previa-articulo p{margin:0 0 12px;white-space:pre-wrap}',

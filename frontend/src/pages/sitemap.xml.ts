@@ -1,6 +1,5 @@
 import type { APIRoute } from "astro";
 import { getCollection } from "astro:content";
-import { FICHAS } from "../content/blog-fichas";
 
 export const prerender = true;
 
@@ -48,14 +47,6 @@ export const GET: APIRoute = async () => {
     const enLoc = enPost ? origin + `/en/blog/${slug}/` : null;
     if (esLoc) add(esLoc, lastmod, esLoc, enLoc);
     if (enLoc) add(enLoc, lastmod, esLoc, enLoc);
-  }
-
-  // Artículos HTML (solo español: hechos a mano, sin versión en inglés).
-  const htmlEs = import.meta.glob("/src/content/blog/*.html", { eager: true });
-  for (const slug of Object.keys(htmlEs).map((r) => r.split("/").pop()!.replace(/\.html$/, ""))) {
-    const ficha = FICHAS[slug];
-    const loc = origin + `/blog/${slug}/`;
-    add(loc, ficha ? new Date(ficha.fecha + "T12:00:00Z").toISOString() : now, loc, null);
   }
 
   const body =
