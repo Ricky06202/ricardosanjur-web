@@ -30,6 +30,8 @@ type BlogRow = {
   publicado: number;
   creado_en: string;
   actualizado_en: string;
+  /** 'pagina' = archivo HTML entero que subio el dueno (se sirve tal cual). */
+  formato?: string | null;
 };
 
 export const BLOG_SCHEMA = `
@@ -58,6 +60,12 @@ export function slugDe(titulo: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 70);
+}
+
+/* Un <style> que viene de un archivo subido no puede escaparse de su bloque:
+ * si trae "</style>" (o el bloque se corta), se corta ahí mismo. */
+function cssDeArchivo(css: string): string {
+  return String(css || "").replace(/<\/style/gi, "").replace(/<!\-/g, "").replace(/<script/gi, "");
 }
 
 /** Markdown mínimo y seguro: escapa HTML y aplica títulos, negrita, listas y párrafos. */
@@ -138,6 +146,7 @@ type D1Fila = {
   etiquetas: string;
   cuerpo: string;
   actualizado_en: string;
+  formato: string;
 };
 
 const SITIO = "https://www.ricardosanjur.com";
@@ -169,7 +178,7 @@ function fechaBonita(iso: string): string {
 async function postsPublicados(db: D1, idioma: string): Promise<D1Fila[]> {
   try {
     const r = await db
-      .prepare("SELECT slug, idioma, titular, resumen, autor, etiquetas, cuerpo, actualizado_en FROM blog_posts WHERE publicado = 1 AND borrado = 0 AND idioma = ? ORDER BY actualizado_en DESC")
+      .prepare("SELECT slug, idioma, titular, resumen, autor, etiquetas, cuerpo, actualizado_en, COALESCE(formato, 'texto') AS formato FROM blog_posts WHERE publicado = 1 AND borrado = 0 AND idioma = ? ORDER BY actualizado_en DESC")
       .bind(idioma)
       .all<D1Fila>();
     return r.results || [];
@@ -218,7 +227,7 @@ export async function handleBlogPost(env: EnvPub, idioma: string, slug: string):
   let p: D1Fila | null = null;
   try {
     p = await env.DB.prepare(
-      "SELECT slug, idioma, titular, resumen, autor, etiquetas, cuerpo, actualizado_en FROM blog_posts WHERE slug = ? AND publicado = 1 AND borrado = 0 AND idioma = ?"
+      "SELECT slug, idioma, titular, resumen, autor, etiquetas, cuerpo, actualizado_en, COALESCE(formato, 'texto') AS formato FROM blog_posts WHERE slug = ? AND publicado = 1 AND borrado = 0 AND idioma = ?"
     )
       .bind(slug, idioma)
       .first<D1Fila>();
@@ -245,6 +254,31 @@ export async function handleBlogPost(env: EnvPub, idioma: string, slug: string):
   const tags = p.etiquetas
     ? '<p class="tags">' + p.etiquetas.split(",").map((t) => "<span>" + hm(t.trim()) + "</span>").join("") + "</p>"
     : "";
+
+  /* Página subida como archivo HTML: se publica tal cual (el dueño la diseñó así
+   * y así tiene que verse). Solo se quitan las etiquetas de documento que
+   * romperían la página (doctype, html, head, body): el resto queda igual. */
+  if (p.formato === "pagina") {
+    let doc = String(p.cuerpo || "");
+    let extraCss = "";
+    const estilo = doc.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
+    if (estilo) {
+      extraCss = cssDeArchivo(estilo.map((b) => b.replace(/^<style[^>]*>|<\/style>$/gi, "")).join("\n"));
+      doc = doc.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "");
+    }
+    doc = doc
+      .replace(/<\?xml[^>]*\?>/gi, "")
+      .replace(/<!doctype[^>]*>/gi, "")
+      .replace(/<\/?html[^>]*>/gi, "")
+      .replace(/<head[^>]*>[\s\S]*?<\/head>/gi, "")
+      .replace(/<\/?body[^>]*>/gi, "");
+    const bodyPagina =
+      '<main class="blog-env"><article class="pagina-articulo">' + doc + "</article>" +
+      '<p class="volver"><a href="' + URL_LISTA(esEn) + '">← ' + (esEn ? "All articles" : "Todos los artículos") + "</a></p>" +
+      "</main>" +
+      '<script type="application/ld+json">' + JSON.stringify(jsonld).replace(/</g, "\\u003c") + "</script>";
+    return paginaHtml(p.titular + " | Topografía Especializada", p.resumen || p.titular, esEn ? "/en/blog/" + p.slug : "/blog/" + p.slug, bodyPagina, extraCss);
+  }
 
   const body =
     '<main class="blog-env"><article class="post">' +
@@ -294,7 +328,7 @@ header.top a{display:inline-block;padding:16px 18px;color:var(--verde);text-deco
 .volver a{color:var(--verde);text-decoration:none;font-weight:600}
 `;
 
-function paginaHtml(titulo: string, descripcion: string, ruta: string, body: string): Response {
+function paginaHtml(titulo: string, descripcion: string, ruta: string, body: string, extraCss = ""): Response {
   const html =
     '<!doctype html><html lang="es"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width, initial-scale=1">' +
@@ -306,7 +340,7 @@ function paginaHtml(titulo: string, descripcion: string, ruta: string, body: str
     '<meta property="og:url" content="' + SITIO + ruta + '">' +
     '<meta property="og:image" content="' + SITIO + '/og/og-default.jpg">' +
     '<meta name="twitter:card" content="summary_large_image">' +
-    '<style>' + CSS_BLOG + "</style></head><body>" +
+    '<style>' + CSS_BLOG + extraCss + "</style></head><body>" +
     '<header class="top"><a href="' + SITIO + '/">Topografía Especializada</a></header>' +
     body +
     "</body></html>";

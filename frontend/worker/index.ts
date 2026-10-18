@@ -6,11 +6,13 @@
 
 import RSQR from './qr.js';
 import { handleBlogLista, handleBlogForm, handleBlogGuardar, handleBlogBorrar } from './admin-blog';
-import { handleBlogIndex, handleBlogPost } from './blog';
+import { handleBlogIndex, handleBlogPost, BLOG_SCHEMA } from './blog';
 
 interface Env {
   ASSETS: { fetch: (request: Request) => Promise<Response> };
   DB: any;
+  // Corriendo en la maquina del desarrollador (wrangler dev), no en produccion.
+  LOCAL_PRUEBA?: string;
   // Cloudflare Email Service (binding send_email). Opcional: si no esta, el
   // mensaje igual queda guardado en la base (con avisado = 0).
   EMAIL?: { send: (msg: Record<string, unknown>) => Promise<{ messageId?: string } | null> };
@@ -505,6 +507,37 @@ async function firmaArchivo(env: Env, id: string, exp: number): Promise<string> 
   return hmacSign(secreto, 'archivo.' + id + '.' + exp);
 }
 
+/* En local (wrangler dev) la base arranca vacia: se crean las tablas del blog la
+ * primera vez para poder probar el formulario sin tocar la base de produccion. */
+async function prepararBaseLocal(env: Env) {
+  if (env.LOCAL_PRUEBA !== '1') return;
+  try {
+    await env.DB.prepare('SELECT formato, cuerpo_texto FROM blog_posts LIMIT 1').all();
+    return; // ya tiene todo
+  } catch {
+    /* falta algo: se intenta completar */
+  }
+  // D1 local no acepta varias sentencias en un exec: se borran los comentarios y se van una por una.
+  const sentencias = BLOG_SCHEMA.replace(/--[^\n]*/g, '').split(';').map((x) => x.trim()).filter(Boolean);
+  for (const sql of sentencias) {
+    try {
+      await env.DB.prepare(sql).run();
+    } catch (e) {
+      console.log('[local] BLOG_SCHEMA: ' + String((e as any) && (e as any).message || e));
+    }
+  }
+  try {
+    await env.DB.exec('ALTER TABLE blog_posts ADD COLUMN formato TEXT NOT NULL DEFAULT \'texto\'');
+  } catch {
+    /* ya existe */
+  }
+  try {
+    await env.DB.exec('ALTER TABLE blog_posts ADD COLUMN cuerpo_texto TEXT');
+  } catch {
+    /* ya existe */
+  }
+}
+
 async function handleDescargaArchivo(request: Request, env: Env, id: string): Promise<Response> {
   const url = new URL(request.url);
   const exp = Number(url.searchParams.get('e') || 0) || 0;
@@ -655,7 +688,7 @@ async function handleContact(request: Request, env: Env, ctx: Ctx): Promise<Resp
 
 /* Panel del dueno: misma cara que RS ID (mismo azul, mismas tarjetas blancas,
  * misma tipografia) para que todo lo de la familia se sienta un solo producto. */
-export const CSS = [
+const CSS = [
   ':root{--brand:#2563EB;--cyan:#06B6D4;--violet:#8B5CF6;--ink:#0F172A;--mut:#667085;--line:#E4E7EC;',
   '--bg:#F6F8FB;--soft:#F1F5F9;--ok:#059669;--err:#DC2626;--warn:#B45309;',
   '--grad-btn:linear-gradient(135deg,#2563EB 0%,#06B6D4 100%);',
@@ -1692,6 +1725,7 @@ export default {
     ctx: Ctx,
   ): Promise<Response> {
     const url = new URL(request.url);
+    await prepararBaseLocal(env);
 
     // Host canonico: apex -> www.
     if (url.hostname === 'ricardosanjur.com') {
