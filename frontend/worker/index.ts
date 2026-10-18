@@ -664,7 +664,7 @@ const CSS = [
   '.btn{display:inline-block;background:linear-gradient(180deg,#2b5cff,#0a2fd6);color:#fff;border:0;border-radius:.7rem;padding:11px 18px;font-weight:600;text-decoration:none;cursor:pointer;font:inherit}',
   '.btn.ghost{background:transparent;border:1px solid rgba(150,175,255,.3);color:#cfe0ff}',
   '.pill{font-size:.78rem;color:#9db4ff;border:1px solid rgba(150,175,255,.25);border-radius:999px;padding:3px 10px}',
-  'input,select,textarea{width:100%;padding:11px 12px;border-radius:.7rem;border:1px solid rgba(150,175,255,.22);background:rgba(5,7,15,.7);color:#e7ecf7;font:inherit}',
+  'input,select,textarea{width:100%;padding:11px 12px;border-radius:.7rem;border:1px solid rgba(150,175,255,.22);background:rgba(5,7,15,.7);color:#e7ecf7;font:inherit;font-size:16px}',
   'label{display:block;font-size:.85rem;margin:12px 0 6px;color:#aebbdc}',
   '.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}',
   'table{width:100%;border-collapse:collapse;font-size:.92rem}',
@@ -672,7 +672,21 @@ const CSS = [
   'th{color:#93a0bd;font-weight:600;font-size:.78rem;text-transform:uppercase;letter-spacing:.04em}',
   '.err{color:#ff9b9b}',
   '.ok{color:#7ee0b0}',
-  '.code{font-family:ui-monospace,SFMono-Regular,monospace;font-size:.82rem;background:rgba(5,7,15,.7);border:1px solid rgba(150,175,255,.2);border-radius:.6rem;padding:5px 9px;display:inline-block;word-break:break-all}',
+  '.code{font-family:ui-monospace,SFMono-Regular,monospace;font-size:.82rem;background:rgba(5,7,15,.7);border:1px solid rgba(150,175,255,.2);border-radius:.6rem;padding:5px 9px;display:inline-block;max-width:100%;min-width:0;overflow-wrap:anywhere;word-break:break-word}',
+  /* Tabla de clientes: en movil deja de ser tabla y pasa a tarjetas (el link ya no se parte letra por letra). */
+  '@media(max-width:760px){',
+  '.tabla-clientes thead{display:none}',
+  '.tabla-clientes,.tabla-clientes tbody,.tabla-clientes tr,.tabla-clientes td{display:block;width:100%}',
+  '.tabla-clientes tr{border:1px solid rgba(150,175,255,.16);border-radius:1rem;padding:14px;margin-top:12px;background:rgba(10,16,32,.5)}',
+  '.tabla-clientes td{border:0;padding:0;margin:0}',
+  '.tabla-clientes td::before{content:attr(data-l);display:block;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:#93a0bd;margin-bottom:2px;margin-top:10px}',
+  '.tabla-clientes td:first-child::before,.tabla-clientes td:last-child::before{display:none}',
+  '.tabla-clientes td:first-child{font-size:1.02rem;margin-bottom:2px}',
+  '.tabla-clientes td[data-l="Clientes"]::before{display:none}',
+  '.tabla-clientes td:last-child{margin-top:12px}',
+  '.tabla-clientes td:last-child .btn{width:100%;text-align:center}',
+  '.tabla-clientes .code{display:block;font-size:.76rem}',
+  '}',
   '@media(max-width:640px){.grid2{grid-template-columns:1fr}}',
 ].join('\n');
 
@@ -1000,19 +1014,18 @@ async function handleInicio(request: Request, env: Env, tok: string, opts?: { sa
 
   let rows = '';
   if (clients.length === 0) {
-    rows = '<tr><td colspan="5" class="muted">Sin clientes todavia.</td></tr>';
-  } else {
+    rows = '<tr><td colspan="5" class="muted">Sin clientes todavia.</td></tr>';  } else {
     for (let i = 0; i < clients.length; i++) {
       const c = clients[i];
       const link = SITE_ORIGIN + '/mis-planos/' + c.token;
       const active = Number(c.activo) === 1;
-      rows += '<tr><td><strong>' + esc(c.nombre || '') + '</strong>' +
+      rows += '<tr><td data-l="Cliente"><strong>' + esc(c.nombre || '') + '</strong>' +
         (c.correo ? '<div class="muted" style="font-size:.8rem">' + esc(c.correo) + '</div>' : '') +
         (c.telefono ? '<div class="muted" style="font-size:.8rem">' + esc(c.telefono) + '</div>' : '') +
         '</td>' +
-        '<td>' + esc(c.planos) + '</td>' +
-        '<td>' + esc(c.descargas) + '</td>' +
-        '<td><a class="code" href="' + esc(link) + '">' + esc(link) + '</a>' +
+        '<td data-l="Planos">' + esc(c.planos) + '</td>' +
+        '<td data-l="Descargas">' + esc(c.descargas) + '</td>' +
+        '<td data-l="Link del cliente"><a class="code" href="' + esc(link) + '">' + esc(link) + '</a>' +
         '<div style="margin-top:6px">' + (active ? '<span class="ok">activo</span>' : '<span class="err">revocado</span>') + '</div></td>' +
         '<td><form method="POST" action="/admin/' + tok + '/revocar">' +
         '<input type="hidden" name="client_id" value="' + esc(c.id) + '">' +
@@ -1131,7 +1144,7 @@ async function handleInicio(request: Request, env: Env, tok: string, opts?: { sa
     '<p class="muted">Clientes, planos y descargas.</p>' +
     certBanner +
     '<div class="card"><div class="row"><h2>Clientes</h2><span class="pill">' + clients.length + ' registrados</span></div>' +
-    '<div style="overflow-x:auto"><table><thead><tr><th>Cliente</th><th>#Planos</th><th>#Descargas</th><th>Link del cliente</th><th></th></tr></thead>' +
+    '<div style="overflow-x:auto"><table class="tabla-clientes"><thead><tr><th>Cliente</th><th>#Planos</th><th>#Descargas</th><th>Link del cliente</th><th></th></tr></thead>' +
     '<tbody>' + rows + '</tbody></table></div></div>' +
     '<div class="card"><h2>Nuevo cliente</h2><form method="POST" action="/admin/' + tok + '/cliente"><div class="grid2">' +
     '<div><label>Nombre</label><input name="nombre" required></div>' +
