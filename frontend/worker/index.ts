@@ -5,6 +5,8 @@
 // aditiva certificados (huella SHA-256 de documentos, pagina publica y verificacion).
 
 import RSQR from './qr.js';
+import { handleBlogLista, handleBlogForm, handleBlogGuardar, handleBlogBorrar } from './admin-blog';
+import { handleBlogIndex, handleBlogPost } from './blog';
 
 interface Env {
   ASSETS: { fetch: (request: Request) => Promise<Response> };
@@ -986,7 +988,7 @@ function handleAdminSalir(request: Request, env: Env): Response {
   return new Response(null, { status: 303, headers: headers });
 }
 
-async function handleInicio(request: Request, env: Env, tok: string, opts?: { salir?: boolean }): Promise<Response> {
+async function handleInicio(request: Request, env: Env, tok: string, opts?: { salir?: boolean; blog?: boolean }): Promise<Response> {
   const url = new URL(request.url);
   const cRes = await env.DB
     .prepare('SELECT c.id, c.nombre, c.correo, c.telefono, c.token, c.activo, c.creado_en, ' +
@@ -1120,7 +1122,12 @@ async function handleInicio(request: Request, env: Env, tok: string, opts?: { sa
   const salirLink = (opts && opts.salir)
     ? ' <a class="pill" href="/admin/salir" style="text-decoration:none">Cerrar sesion</a>'
     : '';
-  const body = '<h1><span>Admin de planos</span>' + salirLink + '</h1>' +
+  /* Link al blog: se ve solo cuando se entra con sesion (no con el token suelto,
+   * para no andar pegando links con token por ahi). */
+  const blogLink = (opts && opts.blog)
+    ? ' <a class="pill" href="/admin/' + esc(tok) + '/blog" style="text-decoration:none">Blog</a>'
+    : '';
+  const body = '<h1><span>Admin de planos</span>' + salirLink + blogLink + '</h1>' +
     '<p class="muted">Clientes, planos y descargas.</p>' +
     certBanner +
     '<div class="card"><div class="row"><h2>Clientes</h2><span class="pill">' + clients.length + ' registrados</span></div>' +
@@ -1492,7 +1499,7 @@ export default {
     }
 
     // Admin por token en la URL (sin login, sin cookies).
-    const mAdmin = path.match(/^\/admin\/([A-Za-z0-9_-]{16,})(\/(cliente|plano|revocar|certificado))?$/);
+    const mAdmin = path.match(/^\/admin\/([A-Za-z0-9_-]{16,})(\/(cliente|plano|revocar|certificado|blog)(\/(nuevo|[A-Za-z0-9_-]{3,}))?)?$/);
     if (mAdmin) {
       const token = String(env.ADMIN_TOKEN || '');
       if (!token || !constantTimeEqual(mAdmin[1], token)) {
@@ -1502,6 +1509,21 @@ export default {
       if (!sub && method === 'GET') return handleInicio(request, env, mAdmin[1]);
       if (sub === '/cliente' && method === 'POST') return handleCreateClient(request, env, mAdmin[1]);
       if (sub === '/plano' && method === 'POST') return handleUpload(request, env, ctx, mAdmin[1]);
+      // Blog: el papa escribe y publica desde el mismo panel (sin tocar codigo).
+      const mBlog = path.match(/^\/admin\/([A-Za-z0-9_-]{16,})\/blog(?:\/(nuevo|[A-Za-z0-9_-]{3,}))?$/);
+      if (mBlog) {
+        const mBlogAccion = path.match(/^\/admin\/([A-Za-z0-9_-]{16,})\/blog\/(guardar|borrar)$/);
+        if (mBlogAccion && method === 'POST') {
+          if (mBlogAccion[2] === 'guardar') return handleBlogGuardar(request, env as any, mAdmin[1]);
+          return handleBlogBorrar(request, env as any, mAdmin[1]);
+        }
+        if (method === 'GET') {
+          const aviso = str(url.searchParams.get('aviso'));
+          const sub2 = mBlog[2];
+          if (!sub2) return handleBlogLista(env as any, mAdmin[1], aviso);
+          return handleBlogForm(env as any, mAdmin[1], sub2, aviso);
+        }
+      }
       if (sub === '/revocar' && method === 'POST') return handleRevoke(request, env, mAdmin[1]);
       if (sub === '/certificado' && method === 'POST') return handleEmitirCertificado(request, env, mAdmin[1]);
     }
@@ -1520,7 +1542,7 @@ export default {
       const adminToken = String(env.ADMIN_TOKEN || '');
       const email = await adminAutorizado(request, env);
       // Con sesion valida: el panel se abre aqui mismo (sin token en la URL).
-      if (email && adminToken) return handleInicio(request, env, adminToken, { salir: true });
+      if (email && adminToken) return handleInicio(request, env, adminToken, { salir: true, blog: true });
       if (email && !adminToken) return adminLoginPage('El panel no esta configurado (falta ADMIN_TOKEN).', 500);
       const err = str(url.searchParams.get('error'));
       const aviso = err ? adminAvisoDeError(err) : '';
@@ -1558,6 +1580,18 @@ export default {
     if (path === '/api/quote') {
       if (method === 'POST') return handleContact(request, env, ctx);
       return jsonResponse({ ok: false, error: 'method' }, 405);
+    }
+
+    /* Blog publico: lo que el papa publica desde el panel vive en D1 y se sirve
+     * desde aca. Si no hay nada en la base (o la tabla no existe todavia), cae
+     * al sitio estatico, que sigue sirviendo los articulos .md del repo. */
+    if (method === 'GET' && (path === '/blog-api' || path === '/blog-api/')) {
+      return handleBlogIndex(env as any, str(url.searchParams.get('idioma')) === 'en' ? 'en' : 'es');
+    }
+    const mBlogPub = path.match(/^\/blog-api\/([a-z0-9-]{3,80})\/?$/);
+    if (method === 'GET' && mBlogPub) {
+      const r = await handleBlogPost(env as any, str(url.searchParams.get('idioma')) === 'en' ? 'en' : 'es', mBlogPub[1]);
+      if (r) return r;
     }
 
     return env.ASSETS.fetch(request);
