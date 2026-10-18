@@ -645,49 +645,112 @@ async function handleContact(request: Request, env: Env, ctx: Ctx): Promise<Resp
 
 /* ============================ UI ============================ */
 
+/* Panel del dueno: misma cara que RS ID (mismo azul, mismas tarjetas blancas,
+ * misma tipografia) para que todo lo de la familia se sienta un solo producto. */
 const CSS = [
+  ':root{--brand:#2563EB;--cyan:#06B6D4;--violet:#8B5CF6;--ink:#0F172A;--mut:#667085;--line:#E4E7EC;',
+  '--bg:#F6F8FB;--soft:#F1F5F9;--ok:#059669;--err:#DC2626;--warn:#B45309;',
+  '--grad-btn:linear-gradient(135deg,#2563EB 0%,#06B6D4 100%);',
+  '--shadow:0 10px 30px rgba(15,23,42,.07);--r:14px;--r-lg:22px}',
   '*{box-sizing:border-box}',
-  'html,body{margin:0;padding:0}',
-  'body{min-height:100vh;background:#05070f;color:#e7ecf7;font-family:Inter,ui-sans-serif,system-ui,sans-serif;',
-  'background-image:radial-gradient(1100px 620px at 12% -8%,rgba(43,92,255,.28),transparent 60%),radial-gradient(900px 560px at 100% 0%,rgba(0,212,255,.16),transparent 55%);}',
-  'a{color:#8fb0ff}',
-  '.brand{font-weight:700;letter-spacing:.02em;padding:20px;font-size:1rem}',
-  '.brand small{color:#93a0bd;font-weight:500}',
-  'main{max-width:980px;margin:0 auto;padding:24px 20px 80px}',
-  'h1{font-size:clamp(1.5rem,4vw,2.2rem);margin:0 0 8px}',
-  'h1 span{background:linear-gradient(100deg,#fff,#9db4ff 45%,#5b83ff);-webkit-background-clip:text;background-clip:text;color:transparent}',
-  'h2{font-size:1.1rem;margin:0 0 4px}',
-  '.muted{color:#93a0bd}',
-  '.card{background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border:1px solid rgba(150,175,255,.14);border-radius:1.25rem;padding:20px;margin-top:18px;backdrop-filter:blur(12px)}',
-  '.row{display:flex;gap:14px;flex-wrap:wrap;align-items:center;justify-content:space-between}',
-  '.plan{border:1px solid rgba(150,175,255,.16);border-radius:1rem;padding:16px;margin-top:12px;background:rgba(10,16,32,.5)}',
-  '.btn{display:inline-block;background:linear-gradient(180deg,#2b5cff,#0a2fd6);color:#fff;border:0;border-radius:.7rem;padding:11px 18px;font-weight:600;text-decoration:none;cursor:pointer;font:inherit}',
-  '.btn.ghost{background:transparent;border:1px solid rgba(150,175,255,.3);color:#cfe0ff}',
-  '.pill{font-size:.78rem;color:#9db4ff;border:1px solid rgba(150,175,255,.25);border-radius:999px;padding:3px 10px}',
-  'input,select,textarea{width:100%;padding:11px 12px;border-radius:.7rem;border:1px solid rgba(150,175,255,.22);background:rgba(5,7,15,.7);color:#e7ecf7;font:inherit;font-size:16px}',
-  'label{display:block;font-size:.85rem;margin:12px 0 6px;color:#aebbdc}',
-  '.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}',
+  'html{-webkit-text-size-adjust:100%}',
+  'body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.55;',
+  'font-family:Inter,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}',
+  'body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;',
+  'background:radial-gradient(760px 340px at 12% -8%,rgba(37,99,235,.12),transparent 62%),',
+  'radial-gradient(680px 320px at 92% 2%,rgba(6,182,212,.14),transparent 60%)}',
+  'a{color:var(--brand);text-decoration:none}',
+  'a:hover{text-decoration:underline}',
+  'h1,h2{font-family:"Space Grotesk",Inter,"Segoe UI",Arial,sans-serif;letter-spacing:-.4px}',
+  'h1{font-size:clamp(24px,5vw,30px);line-height:1.2;margin:0 0 6px}',
+  'h1 span{background:linear-gradient(135deg,#2563EB,#06B6D4);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}',
+  'h2{font-size:18px;margin:0;line-height:1.3}',
+  'p{margin:0 0 10px;color:#344054}',
+  '.lead{color:var(--mut);margin:0}',
+  '.muted{color:var(--mut)}',
+  '.small{font-size:.86rem}',
+  '.hint{font-size:.82rem;color:var(--mut);margin:6px 0 0}',
+  '.ok{color:var(--ok)}',
+  '.err{color:var(--err)}',
+  /* barra superior */
+  '.top{position:sticky;top:0;z-index:20;background:rgba(246,248,251,.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}',
+  '.top .in{max-width:960px;margin:0 auto;padding:14px 18px;display:flex;align-items:center;gap:10px}',
+  '.logo{display:inline-flex;align-items:center;gap:11px;font-family:"Space Grotesk",Inter,sans-serif;font-weight:700;font-size:1.02rem;color:var(--ink);letter-spacing:-.3px}',
+  '.logo:hover{text-decoration:none}',
+  '.logo .mark{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;flex:0 0 auto;',
+  'background:linear-gradient(135deg,#2563EB,#06B6D4);color:#fff;font-size:.8rem;font-weight:700;letter-spacing:.02em;box-shadow:0 6px 16px rgba(37,99,235,.28)}',
+  '.logo small{color:var(--mut);font-weight:500;font-size:.86rem}',
+  'main{max-width:960px;margin:0 auto;padding:26px 18px 80px}',
+  /* bloques */
+  '.card{background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);padding:22px;margin-top:16px;box-shadow:var(--shadow)}',
+  '.card.okline{border-color:#B7E4CF}',
+  '.card.errline{border-color:#F3C2C2}',
+  '.sec{display:flex;gap:10px 14px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:6px}',
+  '.sec .h{display:flex;align-items:center;gap:10px;flex-wrap:wrap}',
+  '.row{display:flex;gap:8px 10px;flex-wrap:wrap;align-items:center;justify-content:space-between}',
+  '.pill{display:inline-block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#1D4ED8;background:#EAF1FE;border:1px solid #D6E4FD;border-radius:999px;padding:6px 11px;white-space:nowrap}',
+  '.acc{margin-top:16px;background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow);overflow:hidden}',
+  '.acc>summary{cursor:pointer;padding:18px 22px;display:flex;align-items:center;gap:12px;justify-content:space-between;list-style:none}',
+  '.acc>summary::-webkit-details-marker{display:none}',
+  '.acc>summary .t{display:flex;flex-direction:column;gap:2px;font-family:"Space Grotesk",Inter,sans-serif;font-weight:600;font-size:1rem;letter-spacing:-.2px}',
+  '.acc>summary .t small{color:var(--mut);font-weight:400;font-size:.83rem;font-family:Inter,sans-serif;letter-spacing:0}',
+  '.acc>summary .chev{color:var(--mut);transition:transform .18s;flex:0 0 auto}',
+  '.acc[open]>summary .chev{transform:rotate(180deg)}',
+  '.acc[open]>summary{border-bottom:1px solid var(--line)}',
+  '.acc>div{padding:18px 22px 22px}',
+  /* botones */
+  '.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--grad-btn);color:#fff;border:0;border-radius:12px;padding:12px 18px;font:inherit;font-weight:700;cursor:pointer;min-height:46px;box-shadow:0 6px 16px rgba(37,99,235,.22)}',
+  '.btn:hover{text-decoration:none;filter:brightness(1.05)}',
+  '.btn.ghost{background:#fff;border:1px solid var(--line);color:var(--ink);box-shadow:none}',
+  '.btn.ghost:hover{border-color:#CBD5E1;background:var(--soft)}',
+  '.btn.sm{padding:9px 14px;min-height:40px;font-size:.85rem;border-radius:11px}',
+  '.btn.danger{color:var(--err);border-color:#F3C2C2}',
+  '.btn.danger:hover{background:#FEF2F2;border-color:#F0B4B4}',
+  '.btn:disabled{opacity:.65;cursor:progress}',
+  'input,select,textarea{width:100%;padding:12px 13px;border-radius:12px;border:1px solid #D0D5DD;background:#fff;color:var(--ink);font:inherit;font-size:16px}',
+  'input:focus,select:focus,textarea:focus{outline:3px solid rgba(37,99,235,.18);border-color:var(--brand)}',
+  'input[type=file]{padding:11px;font-size:.92rem;color:var(--mut)}',
+  'input[type=file]::file-selector-button{background:var(--soft);color:#1D4ED8;border:1px solid #D6E4FD;border-radius:10px;padding:9px 13px;margin-right:11px;font:inherit;font-weight:700;cursor:pointer}',
+  'label{display:block;font-size:.86rem;font-weight:600;margin:16px 0 6px;color:#344054}',
+  'label .muted{font-weight:400}',
+  '.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}',
+  /* datos */
+  '.code{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,monospace;font-size:.8rem;background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:8px 10px;display:inline-block;max-width:100%;min-width:0;overflow-wrap:anywhere;word-break:break-word;color:#1D4ED8}',
+  'a.code:hover{text-decoration:none;border-color:#BFD3FD;background:#EAF1FE}',
+  '.stats-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}',
+  '.stat{display:flex;flex-direction:column;gap:1px}',
+  '.stat b{font-family:"Space Grotesk",Inter,sans-serif;font-size:1.4rem;line-height:1.2;font-weight:700}',
+  '.stat span{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--mut)}',
+  '.empty{text-align:center;padding:24px 10px;color:var(--mut);font-size:.92rem}',
+  /* tabla escritorio */
   'table{width:100%;border-collapse:collapse;font-size:.92rem}',
-  'th,td{text-align:left;padding:10px 8px;border-bottom:1px solid rgba(150,175,255,.12);vertical-align:top}',
-  'th{color:#93a0bd;font-weight:600;font-size:.78rem;text-transform:uppercase;letter-spacing:.04em}',
-  '.err{color:#ff9b9b}',
-  '.ok{color:#7ee0b0}',
-  '.code{font-family:ui-monospace,SFMono-Regular,monospace;font-size:.82rem;background:rgba(5,7,15,.7);border:1px solid rgba(150,175,255,.2);border-radius:.6rem;padding:5px 9px;display:inline-block;max-width:100%;min-width:0;overflow-wrap:anywhere;word-break:break-word}',
-  /* Tabla de clientes: en movil deja de ser tabla y pasa a tarjetas (el link ya no se parte letra por letra). */
+  'th,td{text-align:left;padding:13px 9px;border-bottom:1px solid var(--line);vertical-align:top}',
+  'tbody tr:last-child td{border-bottom:0}',
+  'th{color:var(--mut);font-weight:700;font-size:.7rem;text-transform:uppercase;letter-spacing:.07em}',
+  'td strong{font-weight:600}',
+  '.only-mobile{display:none}',
+  /* movil: la tabla de clientes pasa a tarjetas */
   '@media(max-width:760px){',
   '.tabla-clientes thead{display:none}',
   '.tabla-clientes,.tabla-clientes tbody,.tabla-clientes tr,.tabla-clientes td{display:block;width:100%}',
-  '.tabla-clientes tr{border:1px solid rgba(150,175,255,.16);border-radius:1rem;padding:14px;margin-top:12px;background:rgba(10,16,32,.5)}',
+  '.tabla-clientes tr{border:1px solid var(--line);border-radius:16px;padding:15px;margin-top:12px;background:#FCFDFF}',
+  '.tabla-clientes tr:first-child{margin-top:6px}',
   '.tabla-clientes td{border:0;padding:0;margin:0}',
-  '.tabla-clientes td::before{content:attr(data-l);display:block;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:#93a0bd;margin-bottom:2px;margin-top:10px}',
+  '.tabla-clientes td[data-l]:not(.noet)::before{content:attr(data-l);display:block;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin:12px 0 3px}',
   '.tabla-clientes td:first-child::before,.tabla-clientes td:last-child::before{display:none}',
-  '.tabla-clientes td:first-child{font-size:1.02rem;margin-bottom:2px}',
-  '.tabla-clientes td[data-l="Clientes"]::before{display:none}',
-  '.tabla-clientes td:last-child{margin-top:12px}',
-  '.tabla-clientes td:last-child .btn{width:100%;text-align:center}',
+  '.tabla-clientes td:first-child{font-size:1.04rem}',
+  '.tabla-clientes .stats-inline{display:flex;gap:28px;margin-top:10px}',
+  '.tabla-clientes .stats-inline>div{font-weight:700}',
+  '.tabla-clientes .stats-inline>div::before{content:attr(data-l);display:block;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-bottom:2px}',
+  '.tabla-clientes td.noet::before{display:none}',
+  '.tabla-clientes td:last-child{margin-top:14px}',
+  '.tabla-clientes td:last-child .btn{width:100%}',
   '.tabla-clientes .code{display:block;font-size:.76rem}',
+  '.only-desktop{display:none!important}',
+  '.only-mobile{display:block}',
   '}',
-  '@media(max-width:640px){.grid2{grid-template-columns:1fr}}',
+  '@media(max-width:640px){.grid2{grid-template-columns:1fr}.stats-row{grid-template-columns:1fr 1fr;gap:12px 10px}',
+  'main{padding:20px 14px 72px}.card{padding:18px 16px;border-radius:18px}.acc>summary{padding:16px 16px}.acc>div{padding:16px}h1{font-size:25px}}',
 ].join('\n');
 
 function page(title: string, body: string, status: number): Response {
@@ -695,20 +758,34 @@ function page(title: string, body: string, status: number): Response {
     '<meta name="viewport" content="width=device-width, initial-scale=1">' +
     '<meta name="robots" content="noindex">' +
     '<title>' + esc(title) + ' | Topografia Especializada</title>' +
+    '<link rel="preconnect" href="https://fonts.googleapis.com">' +
+    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
+    '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">' +
     '<style>' + CSS + '</style></head><body>' +
-    '<header class="brand">Topografia Especializada <small>S.A.</small></header>' +
-    '<main>' + body + '</main></body></html>';
+    '<header class="top"><div class="in">' + adminBarra() + '</div></header>' +
+    '<main>' + body + '</main>\n' +
+    '<script>(function(){var bs=document.querySelectorAll("[data-copy]");for(var i=0;i<bs.length;i++){(function(b){b.addEventListener("click",function(){var t=b.getAttribute("data-copy")||"";if(!(navigator.clipboard&&navigator.clipboard.writeText)){window.prompt("Copie el enlace",t);return;}navigator.clipboard.writeText(t).then(function(){var o=b.textContent;b.textContent="Copiado";b.classList.add("ok");setTimeout(function(){b.textContent=o;},1600);});});})(bs[i]);}})();' +
+    '(function(){var fs=document.querySelectorAll("form[data-busy]");for(var i=0;i<fs.length;i++){fs[i].addEventListener("submit",function(){var b=this.querySelector("button[type=submit]");if(b){b.disabled=true;b.textContent=b.getAttribute("data-busy")||"Guardando...";}}});})();</script>' +
+    '</body></html>';
   return new Response(html, {
     status: status || 200,
     headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
   });
 }
 
+// Barra superior del panel: marca + navegacion (visible siempre).
+function adminBarra(): string {
+  return '<a class="logo" href="/admin"><span class="mark">TE</span>Topografia Especializada <small>S.A.</small></a>';
+}
+
 function notFoundPage(message: string): Response {
   const body = '<h1><span>No encontrado</span></h1>' +
     '<p class="muted">' + esc(message || 'Este enlace no es valido o fue desactivado.') + '</p>' +
     '<p><a class="btn ghost" href="' + SITE_ORIGIN + '/">Ir al sitio</a></p>';
-  return page('No encontrado', body, 404);
+  const aviso = '<div class="card" style="max-width:520px"><h1><span>Enlace no disponible</span></h1>' +
+    '<p class="hint">' + esc(message || 'Este enlace no es valido o fue desactivado.') + '</p>' +
+    '<p style="margin-top:16px"><a class="btn ghost" href="' + SITE_ORIGIN + '/">Ir al sitio</a></p></div>';
+  return page('Enlace no disponible', aviso, 404);
 }
 
 /* ====================== pagina del cliente ====================== */
@@ -892,21 +969,22 @@ async function handleZip(token: string, env: Env): Promise<Response> {
 /* ============================ panel ============================ */
 
 function loginPage(error: string): Response {
-  const body = '<h1><span>Panel de planos</span></h1>' +
-    '<p class="muted">Acceso privado.</p>' +
-    '<div class="card" style="max-width:420px">' +
-    (error ? '<p class="err">' + esc(error) + '</p>' : '') +
+  const body = '<div style="max-width:420px;margin:0 auto">' +
+    '<h1><span>Panel de planos</span></h1><p class="lead">Acceso privado.</p>' +
+    '<div class="card' + (error ? ' errline' : '') + '">' +
+    (error ? '<p class="err small" style="margin:0 0 12px;font-weight:600">' + esc(error) + '</p>' : '') +
     '<form method="POST" action="/panel-planos/login">' +
     '<label for="clave">Contrasena</label>' +
     '<input type="password" id="clave" name="clave" required autocomplete="current-password">' +
-    '<p style="margin-top:16px"><button class="btn" type="submit">Entrar</button></p>' +
-    '</form></div>';
+    '<p style="margin-top:18px"><button class="btn" style="width:100%" type="submit">Entrar</button></p>' +
+    '</form></div></div>';
   return page('Panel', body, error ? 401 : 200);
 }
 
 async function handleLogin(request: Request, env: Env): Promise<Response> {
   if (!env.PANEL_CLAVE || !env.PANEL_SECRET) {
-    return page('Panel', '<h1><span>Panel no configurado</span></h1><p class="muted">Faltan los secretos PANEL_CLAVE / PANEL_SECRET.</p>', 500);
+    return page('Panel', '<div class="card errline"><h1><span>Panel no configurado</span></h1>' +
+      '<p class="hint">Faltan los secretos PANEL_CLAVE / PANEL_SECRET.</p></div>', 500);
   }
   const form = await request.formData();
   const clave = String(form.get('clave') || '');
@@ -951,18 +1029,18 @@ function adminLoginPage(aviso: string, status: number): Response {
   const msg = aviso === 'sin_lista'
     ? 'El panel no tiene correos autorizados todavia. Falta cargar la lista blanca (ADMIN_EMAILS).'
     : aviso;
-  const body = '<h1><span>Panel de planos</span></h1>' +
-    '<p class="muted">Acceso privado para el ingeniero y administradores.</p>' +
-    '<div class="card" style="max-width:480px">' +
-    (msg ? '<p class="err">' + esc(msg) + '</p>' : '') +
+  const body = '<div style="max-width:460px;margin:0 auto">' +
+    '<div class="sec" style="display:block;margin-bottom:2px"><h1><span>Panel de planos</span></h1></div>' +
+    '<p class="lead">Acceso privado para el ingeniero y administradores.</p>' +
+    '<div class="card' + (msg ? ' errline' : '') + '">' +
+    (msg ? '<p class="err small" style="margin:0 0 12px;font-weight:600">' + esc(msg) + '</p>' : '') +
     '<h2>Entrar con mi cuenta rsanjur</h2>' +
-    '<p class="muted" style="margin-top:0">Use su cuenta RS ID. El panel se abre solo si su correo esta en la lista de autorizados.</p>' +
-    '<p style="margin-top:16px"><a class="btn" href="' + esc(entrarHref()) + '">Entrar con mi cuenta rsanjur</a></p>' +
-    '<p class="muted" style="font-size:.82rem">RS ID le pedira su correo y le enviara un codigo. Al entrar, <strong>vuelve solo</strong> a este panel si su correo esta autorizado.</p>' +
-    '</div>' +
-    '<div class="card" style="max-width:480px"><details><summary class="muted" style="cursor:pointer">Acceso por token (respaldo)</summary>' +
-    '<p class="muted" style="font-size:.86rem;margin-bottom:0">El enlace directo con token <span class="code">/admin/&lt;token&gt;</span> sigue funcionando como respaldo para quien ya lo tenga.</p>' +
-    '</details></div>';
+    '<p class="muted small" style="margin-top:4px">Use su cuenta RS ID. El panel se abre solo si su correo esta en la lista de autorizados.</p>' +
+    '<p style="margin-top:16px"><a class="btn" style="width:100%" href="' + esc(entrarHref()) + '">Entrar con mi cuenta rsanjur</a></p>' +
+    '<p class="hint">RS ID le pedira su correo y le enviara un codigo. Al entrar, <strong>vuelve solo</strong> a este panel si su correo esta autorizado.</p>' +
+    '<details style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px"><summary class="muted small" style="cursor:pointer">Acceso por token (respaldo)</summary>' +
+    '<p class="hint" style="margin-top:8px">El enlace directo con token <span class="code">/admin/&lt;token&gt;</span> sigue funcionando como respaldo para quien ya lo tenga.</p>' +
+    '</details></div></div>';
   return page('Panel', body, status || 200);
 }
 
@@ -1014,22 +1092,25 @@ async function handleInicio(request: Request, env: Env, tok: string, opts?: { sa
 
   let rows = '';
   if (clients.length === 0) {
-    rows = '<tr><td colspan="5" class="muted">Sin clientes todavia.</td></tr>';  } else {
+    rows = '<tr><td colspan="6"><div class="empty">Todavia no hay clientes. Cree el primero abajo.</div></td></tr>';
+  } else {
     for (let i = 0; i < clients.length; i++) {
       const c = clients[i];
       const link = SITE_ORIGIN + '/mis-planos/' + c.token;
       const active = Number(c.activo) === 1;
       rows += '<tr><td data-l="Cliente"><strong>' + esc(c.nombre || '') + '</strong>' +
-        (c.correo ? '<div class="muted" style="font-size:.8rem">' + esc(c.correo) + '</div>' : '') +
-        (c.telefono ? '<div class="muted" style="font-size:.8rem">' + esc(c.telefono) + '</div>' : '') +
+        (c.correo ? '<div class="muted small">' + esc(c.correo) + '</div>' : '') +
+        (c.telefono ? '<div class="muted small">' + esc(c.telefono) + '</div>' : '') +
+        '<div class="only-desktop" style="margin-top:4px">' + (active ? '<span class="ok small">activo</span>' : '<span class="err small">revocado</span>') + '</div>' +
         '</td>' +
-        '<td data-l="Planos">' + esc(c.planos) + '</td>' +
-        '<td data-l="Descargas">' + esc(c.descargas) + '</td>' +
-        '<td data-l="Link del cliente"><a class="code" href="' + esc(link) + '">' + esc(link) + '</a>' +
-        '<div style="margin-top:6px">' + (active ? '<span class="ok">activo</span>' : '<span class="err">revocado</span>') + '</div></td>' +
+        '<td class="only-mobile noet"><div class="stats-inline"><div data-l="Planos">' + esc(c.planos) + '</div>' +
+        '<div data-l="Descargas">' + esc(c.descargas) + '</div></div></td>' +
+        '<td class="only-desktop">' + esc(c.planos) + '</td>' +
+        '<td class="only-desktop">' + esc(c.descargas) + '</td>' +
+        '<td class="link" data-l="Link del cliente"><a class="code" href="' + esc(link) + '">' + esc(link) + '</a></td>' +
         '<td><form method="POST" action="/admin/' + tok + '/revocar">' +
         '<input type="hidden" name="client_id" value="' + esc(c.id) + '">' +
-        '<button class="btn ghost" type="submit">' + (active ? 'Revocar' : 'Reactivar') + '</button>' +
+        '<button class="btn ghost sm ' + (active ? 'danger' : '') + '" type="submit">' + (active ? 'Revocar' : 'Reactivar') + '</button>' +
         '</form></td></tr>';
     }
   }
@@ -1090,19 +1171,17 @@ async function handleInicio(request: Request, env: Env, tok: string, opts?: { sa
     try {
       qr = RSQR.svg(link, { size: 168, margin: 2, ecl: 'M', dark: '#0b1220', light: '#ffffff' });
     } catch (e) { qr = ''; }
-    return '<div class="plan">' +
-      '<strong>' + esc(c.nombre) + '</strong>' +
-      (duplicado
-        ? '<div class="ok" style="font-size:.84rem">Ya tenia certificado (misma huella). No se duplico.</div>'
-        : '<div class="ok" style="font-size:.84rem">Certificado creado automaticamente.</div>') +
-      '<div class="muted" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;margin-top:10px">Huella SHA-256</div>' +
+    return '<details class="acc" style="margin-top:0"><summary><span class="t">' + esc(c.nombre) +
+      '<small>' + (duplicado ? 'Ya tenia certificado (misma huella)' : 'Certificado creado automaticamente') + '</small></span>' +
+      '<span class="chev">&#9662;</span></summary><div>' +
+      '<div class="hint" style="margin-top:4px;font-weight:700;text-transform:uppercase;letter-spacing:.07em">Huella SHA-256</div>' +
       '<div class="code">' + esc(c.huella) + '</div>' +
       '<div style="margin-top:10px"><a class="code" href="' + esc(link) + '">/certificado/' + esc(c.id) + '</a></div>' +
       '<div class="row" style="margin-top:12px">' +
       '<a class="btn" href="' + esc(link) + '">Ver certificado</a>' +
       '<button class="btn ghost" type="button" data-copy="' + esc(link) + '">Copiar link</button></div>' +
-      (qr ? '<div style="margin-top:12px;background:#fff;border-radius:.7rem;padding:10px;display:inline-block">' + qr + '</div>' : '') +
-      '</div>';
+      (qr ? '<div style="margin-top:12px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px;display:inline-block">' + qr + '</div>' : '') +
+      '</div></details>';
   }
 
   let certBanner = '';
@@ -1121,56 +1200,73 @@ async function handleInicio(request: Request, env: Env, tok: string, opts?: { sa
     if (tarjetas) {
       const n = nuevosIds.length;
       const d = dupIds.length;
-      certBanner = '<div class="card" style="border-color:rgba(120,255,190,.35)">' +
-        '<div class="row"><h2>Plano subido y certificado emitido</h2><span class="pill">' + n + ' nuevo(s)</span></div>' +
-        '<p class="muted" style="margin-top:-4px">El certificado se creo en la misma accion: huella, link publico y QR listos. Comparta el enlace.' +
+      certBanner = '<div class="card okline">' +
+        '<div class="sec"><div class="h"><h2>Plano subido y certificado emitido</h2><span class="pill">' + n + ' nuevo(s)</span></div></div>' +
+        '<p class="hint" style="margin:0 0 8px">El certificado se creo en la misma accion: huella, link publico y QR listos. Comparta el enlace.' +
         (d ? ' ' + d + ' archivo(s) ya tenian certificado (misma huella): no se duplicaron, se muestra el vigente.' : '') + '</p>' +
-        '<div class="grid2">' + tarjetas + '</div></div>';
+        tarjetas + '</div>';
     }
   } else if (subidosN) {
-    certBanner = '<div class="card" style="border-color:rgba(120,255,190,.3)"><p class="ok" style="margin:0">' +
+    certBanner = '<div class="card okline"><p class="ok" style="margin:0">' +
       esc(subidosN) + ' archivo(s) subido(s).</p></div>';
   }
 
-  const salirLink = (opts && opts.salir)
-    ? ' <a class="pill" href="/admin/salir" style="text-decoration:none">Cerrar sesion</a>'
+  /* Acciones de la sesion: solo con cuenta (no con el token suelto). */
+  const acciones = (opts && opts.salir)
+    ? '<a class="btn ghost sm" href="/admin/salir">Cerrar sesion</a>' +
+      ((opts && opts.blog) ? '<a class="btn ghost sm" href="/admin/' + esc(tok) + '/blog">Blog</a>' : '')
     : '';
-  /* Link al blog: se ve solo cuando se entra con sesion (no con el token suelto,
-   * para no andar pegando links con token por ahi). */
-  const blogLink = (opts && opts.blog)
-    ? ' <a class="pill" href="/admin/' + esc(tok) + '/blog" style="text-decoration:none">Blog</a>'
-    : '';
-  const body = '<h1><span>Admin de planos</span>' + salirLink + blogLink + '</h1>' +
-    '<p class="muted">Clientes, planos y descargas.</p>' +
-    certBanner +
-    '<div class="card"><div class="row"><h2>Clientes</h2><span class="pill">' + clients.length + ' registrados</span></div>' +
-    '<div style="overflow-x:auto"><table class="tabla-clientes"><thead><tr><th>Cliente</th><th>#Planos</th><th>#Descargas</th><th>Link del cliente</th><th></th></tr></thead>' +
-    '<tbody>' + rows + '</tbody></table></div></div>' +
-    '<div class="card"><h2>Nuevo cliente</h2><form method="POST" action="/admin/' + tok + '/cliente"><div class="grid2">' +
-    '<div><label>Nombre</label><input name="nombre" required></div>' +
-    '<div><label>Correo</label><input name="correo" type="email"></div>' +
-    '<div><label>Telefono</label><input name="telefono"></div>' +
-    '</div><p style="margin-top:16px"><button class="btn" type="submit">Crear cliente</button></p></form></div>' +
-    '<div class="card"><h2>Subir plano y emitir certificado</h2>' +
-    '<p class="muted" style="margin-top:-6px">Al guardar se calcula la huella SHA-256 de cada archivo y <strong>el certificado se crea automaticamente</strong> en la misma accion: sin segundo paso. Puedes elegir varios archivos a la vez.</p>' +
-    '<form method="POST" action="/admin/' + tok + '/plano" enctype="multipart/form-data">' +
-    '<label>Cliente</label><select name="client_id" required>' + (options || '<option value="">Crea un cliente primero</option>') + '</select>' +
-    '<label>Titulo (opcional: si lo dejas vacio se usa el nombre del archivo)</label><input name="titulo">' +
-    '<label>Descripcion (opcional)</label><textarea name="descripcion" rows="2"></textarea>' +
-    '<label>Archivos (PDF / DWG / ZIP - selecciona varios con Ctrl o manteniendo)</label><input type="file" name="archivos" multiple required>' +
-    '<p style="margin-top:16px"><button class="btn" type="submit">Subir plano y emitir certificado</button></p></form></div>' +
-    '<div class="card"><div class="row"><h2>Certificados emitidos</h2><span class="pill">' + certs.length + ' total</span></div>' +
-    '<p class="muted" style="margin-top:-4px">Cada certificado es una pagina publica con la huella SHA-256 del documento. Comparta el enlace: cualquiera verifica el archivo sin subirlo.</p>' +
-    '<div style="overflow-x:auto"><table><thead><tr><th>Documento</th><th>Huella</th><th>Emitido</th><th>Link publico</th></tr></thead><tbody>' +
-    certRows + '</tbody></table></div></div>' +
-    '<div class="card"><h2>Certificar un archivo sin subirlo (opcional)</h2>' +
-    '<p class="muted" style="margin-top:-4px">Via secundaria para certificar un archivo que no se sube al portal. Cualquier archivo (PDF, DWG, JPG, ZIP, DOCX...): se calcula su huella SHA-256 y <strong>el archivo no se guarda</strong> en el sistema. El camino normal es subir el plano arriba.</p>' +
-    '<form method="POST" action="/admin/' + tok + '/certificado" enctype="multipart/form-data">' +
-    '<label>Documento</label><input type="file" name="archivo" required>' +
-    '<label>Nombre visible (opcional: si lo deja vacio se usa el nombre del archivo)</label><input name="nombre">' +
-    '<label>Cliente o descripcion (opcional)</label><input name="descripcion">' +
-    '<p style="margin-top:16px"><button class="btn" type="submit">Emitir certificado</button></p></form></div>' +
-    '<script>(function(){var bs=document.querySelectorAll("[data-copy]");for(var i=0;i<bs.length;i++){(function(b){b.addEventListener("click",function(){var t=b.getAttribute("data-copy")||"";if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(function(){var o=b.textContent;b.textContent="Copiado";setTimeout(function(){b.textContent=o;},1500);});}});})(bs[i]);}})();</script>';
+
+  const totalPlanos = clients.reduce(function (a: any, c: any) { return a + Number(c.planos || 0); }, 0);
+  const totalDescargas = clients.reduce(function (a: any, c: any) { return a + Number(c.descargas || 0); }, 0);
+
+  const resumen = '<div class="card"><div class="stats-row">' +
+    '<div class="stat"><b>' + clients.length + '</b><span>Clientes</span></div>' +
+    '<div class="stat"><b>' + totalPlanos + '</b><span>Planos</span></div>' +
+    '<div class="stat"><b>' + totalDescargas + '</b><span>Descargas</span></div>' +
+    '<div class="stat"><b>' + certs.length + '</b><span>Certificados</span></div>' +
+    '</div></div>';
+
+  const tablaClientes = '<div class="card"><div class="sec"><div class="h"><h2>Clientes</h2>' +
+    '<span class="pill">' + clients.length + ' registrados</span></div></div>' +
+    '<div style="overflow-x:auto;margin-top:6px"><table class="tabla-clientes"><thead><tr><th>Cliente</th><th class="only-mobile">Planos y descargas</th><th class="only-desktop">Planos</th><th class="only-desktop">Descargas</th><th>Link del cliente</th><th></th></tr></thead>' +
+    '<tbody>' + rows + '</tbody></table></div></div>';
+
+  const tablaCerts = '<div class="card"><div class="sec"><div class="h"><h2>Certificados emitidos</h2>' +
+    '<span class="pill">' + certs.length + ' total</span></div>' +
+    '<p class="hint" style="margin:0">Cada certificado es una pagina publica con la huella SHA-256 del documento.</p></div>' +
+    '<div style="overflow-x:auto;margin-top:6px"><table><thead><tr><th>Documento</th><th>Huella</th><th>Emitido</th><th>Link publico</th></tr></thead><tbody>' +
+    certRows + '</tbody></table></div></div>';
+
+  const formCliente = '<details class="acc"' + (clients.length === 0 ? ' open' : '') + '><summary>' +
+    '<span class="t">Nuevo cliente<small>Nombre obligatorio; correo y telefono son opcionales.</small></span><span class="chev">&#9662;</span></summary>' +
+    '<div><form method="POST" action="/admin/' + tok + '/cliente" data-busy="Creando...">' +
+    '<label for="n-nombre">Nombre</label><input id="n-nombre" name="nombre" required autocomplete="off" placeholder="Ej. Felix Abadia">' +
+    '<div class="grid2"><div><label for="n-correo">Correo</label><input id="n-correo" name="correo" type="email" autocomplete="off" placeholder="cliente@correo.com"></div>' +
+    '<div><label for="n-tel">Telefono</label><input id="n-tel" name="telefono" type="tel" autocomplete="off" placeholder="6000-0000"></div></div>' +
+    '<p style="margin-top:16px"><button class="btn" type="submit">Crear cliente</button></p></form></div></details>';
+
+  const formPlano = '<details class="acc" open><summary>' +
+    '<span class="t">Subir plano<small>Al subir se emite el certificado automaticamente (huella SHA-256 en la misma accion).</small></span><span class="chev">&#9662;</span></summary>' +
+    '<div><form method="POST" action="/admin/' + tok + '/plano" enctype="multipart/form-data" data-busy="Subiendo y certificando...">' +
+    '<label for="p-cliente">Cliente</label><select id="p-cliente" name="client_id" required>' + (options || '<option value="">Crea un cliente primero</option>') + '</select>' +
+    '<label for="p-titulo">Titulo <span class="muted">(opcional)</span></label><input id="p-titulo" name="titulo" placeholder="Si lo dejas vacio se usa el nombre del archivo">' +
+    '<label for="p-desc">Descripcion <span class="muted">(opcional)</span></label><textarea id="p-desc" name="descripcion" rows="2"></textarea>' +
+    '<label for="p-arch">Archivos</label><input id="p-arch" type="file" name="archivos" multiple required accept=".pdf,.dwg,.dxf,.zip,.jpg,.jpeg,.png">' +
+    '<p class="hint">PDF, DWG, DXF, ZIP o imagenes. Puedes elegir varios a la vez.</p>' +
+    '<p style="margin-top:16px"><button class="btn" type="submit">Subir y emitir certificado</button></p></form></div></details>';
+
+  const formCert = '<details class="acc"><summary>' +
+    '<span class="t">Certificar un archivo sin subirlo<small>Via secundaria: solo se guarda la huella, el archivo no se almacena.</small></span><span class="chev">&#9662;</span></summary>' +
+    '<div><form method="POST" action="/admin/' + tok + '/certificado" enctype="multipart/form-data" data-busy="Emitiendo...">' +
+    '<label for="c-arch">Documento</label><input id="c-arch" type="file" name="archivo" required>' +
+    '<div class="grid2"><div><label for="c-nombre">Nombre visible <span class="muted">(opcional)</span></label><input id="c-nombre" name="nombre"></div>' +
+    '<div><label for="c-desc">Cliente o descripcion <span class="muted">(opcional)</span></label><input id="c-desc" name="descripcion"></div></div>' +
+    '<p style="margin-top:16px"><button class="btn ghost" type="submit">Emitir certificado</button></p></form></div></details>';
+
+  const body = '<div class="sec"><h1><span>Admin de planos</span></h1><div class="row" style="gap:8px">' + acciones + '</div></div>' +
+    '<p class="lead">Clientes, planos y certificados de Topografia Especializada.</p>' +
+    certBanner + resumen + tablaClientes + formCliente + formPlano + formCert + tablaCerts;
   return page('Admin', body, 200);
 }
 
@@ -1178,7 +1274,9 @@ async function handleCreateClient(request: Request, env: Env, tok: string): Prom
   const form = await request.formData();
   const nombre = str(form.get('nombre'));
   if (!nombre) {
-    return page('Admin', '<h1><span>Falta el nombre</span></h1><p><a class="btn ghost" href="/admin/' + tok + '">Volver</a></p>', 400);
+    return page('Admin', '<div class="card errline"><h1><span>Falta el nombre</span></h1>' +
+      '<p class="hint">El cliente necesita un nombre para crearlo.</p>' +
+      '<p style="margin-top:14px"><a class="btn ghost" href="/admin/' + tok + '">Volver</a></p></div>', 400);
   }
   const id = crypto.randomUUID();
   const token = crypto.randomUUID().replace(/-/g, '');
@@ -1198,11 +1296,15 @@ async function handleUpload(request: Request, env: Env, ctx: Ctx, tok: string): 
   const files = (form.getAll('archivos') as any[]).concat(form.getAll('archivo') as any[])
     .filter((f) => f && typeof f !== 'string' && typeof f.arrayBuffer === 'function');
   if (!clientId || files.length === 0) {
-    return page('Admin', '<h1><span>Datos incompletos</span></h1><p class="muted">Elige un cliente y al menos un archivo.</p><p><a class="btn ghost" href="' + back + '">Volver</a></p>', 400);
+    return page('Admin', '<div class="card errline"><h1><span>Datos incompletos</span></h1>' +
+      '<p class="hint">Elige un cliente y al menos un archivo.</p>' +
+      '<p style="margin-top:14px"><a class="btn ghost" href="' + back + '">Volver</a></p></div>', 400);
   }
   const client = await env.DB.prepare('SELECT id, nombre FROM clients WHERE id = ?').bind(clientId).first();
   if (!client) {
-    return page('Admin', '<h1><span>Cliente no encontrado</span></h1><p><a class="btn ghost" href="' + back + '">Volver</a></p>', 400);
+    return page('Admin', '<div class="card errline"><h1><span>Cliente no encontrado</span></h1>' +
+      '<p class="hint">Ese cliente ya no existe. Vuelve a elegir uno en la lista.</p>' +
+      '<p style="margin-top:14px"><a class="btn ghost" href="' + back + '">Volver</a></p></div>', 400);
   }
   const ahora = new Date().toISOString();
   try {
@@ -1432,8 +1534,9 @@ async function handleEmitirCertificado(request: Request, env: Env, tok: string):
   const descripcion = str(form.get('descripcion'));
   const nombreManual = str(form.get('nombre'));
   if (!file || typeof file === 'string' || typeof file.arrayBuffer !== 'function') {
-    return page('Admin', '<h1><span>Falta el archivo</span></h1><p class="muted">Elige el documento a certificar.</p>' +
-      '<p><a class="btn ghost" href="' + back + '">Volver</a></p>', 400);
+    return page('Admin', '<div class="card errline"><h1><span>Falta el archivo</span></h1>' +
+      '<p class="hint">Elige el documento a certificar.</p>' +
+      '<p style="margin-top:14px"><a class="btn ghost" href="' + back + '">Volver</a></p></div>', 400);
   }
   try {
     await ensureCertificados(env);
@@ -1449,9 +1552,9 @@ async function handleEmitirCertificado(request: Request, env: Env, tok: string):
       new Date().toISOString(), tok).run();
     return redirect(back + '?cert=' + id, 303);
   } catch (e) {
-    return page('Admin', '<h1><span>No se pudo emitir</span></h1><p class="muted">' +
-      esc(String((e as any) && (e as any).message || e)) + '</p>' +
-      '<p><a class="btn ghost" href="' + back + '">Volver</a></p>', 500);
+    return page('Admin', '<div class="card errline"><h1><span>No se pudo emitir</span></h1>' +
+      '<p class="hint">' + esc(String((e as any) && (e as any).message || e)) + '</p>' +
+      '<p style="margin-top:14px"><a class="btn ghost" href="' + back + '">Volver</a></p></div>', 500);
   }
 }
 
