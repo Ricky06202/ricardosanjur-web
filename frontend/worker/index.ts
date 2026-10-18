@@ -731,8 +731,16 @@ const CSS = [
   '.only-mobile{display:none}',
   /* movil: la tabla de clientes pasa a tarjetas */
   '@media(max-width:760px){',
-  '.tabla-clientes thead{display:none}',
+  '.tabla-clientes thead,.tabla-certificados thead{display:none}',
   '.tabla-clientes,.tabla-clientes tbody,.tabla-clientes tr,.tabla-clientes td{display:block;width:100%}',
+  '.tabla-certificados,.tabla-certificados tbody,.tabla-certificados tr,.tabla-certificados td{display:block;width:100%}',
+  '.tabla-certificados tr{border:1px solid var(--line);border-radius:16px;padding:15px;margin-top:12px;background:#FCFDFF}',
+  '.tabla-certificados tr:first-child{margin-top:6px}',
+  '.tabla-certificados td{border:0;padding:0;margin:0}',
+  '.tabla-certificados .code{display:block;font-size:.76rem;margin-top:4px}',
+  '.tabla-certificados .labelc{margin:12px 0 3px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;font-size:.68rem}',
+  '.acciones-movil{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}',
+  '.acciones-movil .btn{flex:1 1 140px;min-height:40px;padding:9px 12px;font-size:.85rem}',
   '.tabla-clientes tr{border:1px solid var(--line);border-radius:16px;padding:15px;margin-top:12px;background:#FCFDFF}',
   '.tabla-clientes tr:first-child{margin-top:6px}',
   '.tabla-clientes td{border:0;padding:0;margin:0}',
@@ -750,6 +758,8 @@ const CSS = [
   '.only-mobile{display:block}',
   '}',
   '@media(max-width:640px){.grid2{grid-template-columns:1fr}.stats-row{grid-template-columns:1fr 1fr;gap:12px 10px}',
+  '.acc>summary .t small{display:none}',
+  '.acc>summary .t{font-size:.98rem}',
   'main{padding:20px 14px 72px}.card{padding:18px 16px;border-radius:18px}.acc>summary{padding:16px 16px}.acc>div{padding:16px}h1{font-size:25px}}',
 ].join('\n');
 
@@ -1133,19 +1143,28 @@ async function handleInicio(request: Request, env: Env, tok: string, opts?: { sa
 
   let certRows = '';
   if (certs.length === 0) {
-    certRows = '<tr><td colspan="4" class="muted">Sin certificados emitidos todavia.</td></tr>';
+    certRows = '<tr><td colspan="4"><div class="empty">Todavia no hay certificados emitidos.</div></td></tr>';
   } else {
     for (let i = 0; i < certs.length; i++) {
       const k = certs[i];
       const link = SITE_ORIGIN + '/certificado/' + k.id;
-      certRows += '<tr><td><strong>' + esc(k.nombre || 'Documento') + '</strong>' +
-        (k.descripcion ? '<div class="muted" style="font-size:.8rem">' + esc(k.descripcion) + '</div>' : '') +
-        (k.tamano ? '<div class="muted" style="font-size:.78rem">' + esc(formatBytes(Number(k.tamano))) + '</div>' : '') +
-        '</td>' +
-        '<td><span class="code" title="' + esc(k.huella) + '">' + esc(String(k.huella).slice(0, 12)) + '&hellip;</span></td>' +
-        '<td class="muted" style="font-size:.84rem">' + esc(dateFmt(k.emitido_en)) + '</td>' +
-        '<td><a class="code" href="' + esc(link) + '">/certificado/' + esc(k.id) + '</a>' +
-        '<div style="margin-top:6px"><button class="btn ghost" type="button" data-copy="' + esc(link) + '">Copiar link</button></div></td></tr>';
+      certRows += '<tr><td data-l="Documento"><strong>' + esc(k.nombre || 'Documento') + '</strong>' +
+        (k.descripcion ? '<div class="muted small">' + esc(k.descripcion) + '</div>' : '') +
+        (k.tamano ? '<div class="muted small">' + esc(formatBytes(Number(k.tamano))) + '</div>' : '') +
+        '<div class="only-mobile">' +
+        '<div class="hint labelc">Huella SHA-256</div>' +
+        '<span class="code" title="' + esc(k.huella) + '">' + esc(String(k.huella).slice(0, 12)) + '&hellip;</span>' +
+        '<div class="hint labelc">Emitido</div>' +
+        '<div class="muted small">' + esc(dateFmt(k.emitido_en)) + '</div>' +
+        '<div class="hint labelc">Link publico</div>' +
+        '<a class="code" href="' + esc(link) + '">/certificado/' + esc(k.id) + '</a>' +
+        '<div class="acciones-movil"><a class="btn sm" href="' + esc(link) + '">Ver certificado</a>' +
+        '<button class="btn ghost sm" type="button" data-copy="' + esc(link) + '">Copiar link</button></div>' +
+        '</div></td>' +
+        '<td class="only-desktop"><span class="code" title="' + esc(k.huella) + '">' + esc(String(k.huella).slice(0, 12)) + '&hellip;</span></td>' +
+        '<td class="only-desktop muted small">' + esc(dateFmt(k.emitido_en)) + '</td>' +
+        '<td class="only-desktop"><a class="code" href="' + esc(link) + '">/certificado/' + esc(k.id) + '</a>' +
+        '<div style="margin-top:8px"><button class="btn ghost sm" type="button" data-copy="' + esc(link) + '">Copiar link</button></div></td></tr>';
     }
   }
 
@@ -1235,7 +1254,8 @@ async function handleInicio(request: Request, env: Env, tok: string, opts?: { sa
   const tablaCerts = '<div class="card"><div class="sec"><div class="h"><h2>Certificados emitidos</h2>' +
     '<span class="pill">' + certs.length + ' total</span></div>' +
     '<p class="hint" style="margin:0">Cada certificado es una pagina publica con la huella SHA-256 del documento.</p></div>' +
-    '<div style="overflow-x:auto;margin-top:6px"><table><thead><tr><th>Documento</th><th>Huella</th><th>Emitido</th><th>Link publico</th></tr></thead><tbody>' +
+    '<div style="overflow-x:auto;margin-top:6px"><table class="tabla-certificados"><thead><tr><th>Documento</th>' +
+    '<th class="only-desktop">Huella</th><th class="only-desktop">Emitido</th><th class="only-desktop">Link publico</th></tr></thead><tbody>' +
     certRows + '</tbody></table></div></div>';
 
   const formCliente = '<details class="acc"' + (clients.length === 0 ? ' open' : '') + '><summary>' +
