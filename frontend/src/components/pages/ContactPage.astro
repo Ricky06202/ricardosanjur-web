@@ -1,5 +1,6 @@
 ---
 import MainLayout from "../../layouts/MainLayout.astro";
+import MapaOsm from "../MapaOsm.astro";
 import { ui, type Lang } from "../../i18n/ui";
 import { routeHref } from "../../i18n/utils";
 
@@ -8,6 +9,9 @@ const { lang } = Astro.props;
 const t = ui[lang];
 const c = t.contact;
 const mapsUrl = "https://www.google.com/maps/search/?api=1&query=Topografia%20Especializada%2C%20Geomatic%20Mall%2C%20C.%20B%20Sur%2C%20David%2C%20Chiriqui";
+/* El mapa se dibuja con OpenStreetMap (componente MapaOsm). El link de Google
+ * queda SOLO para "abrir en tu app de mapas": es lo que el telefono entiende y
+ * le da indicaciones al chofer. El iframe de Google ya no se usa. */
 const mapEmbed = "https://www.google.com/maps?q=8.4270199,-82.4296357&z=17&hl=es&output=embed";
 ---
 
@@ -93,12 +97,8 @@ const mapEmbed = "https://www.google.com/maps?q=8.4270199,-82.4296357&z=17&hl=es
           <div class="mt-8">
             <h3 class="font-semibold text-lg mb-4">{c.locationHeading}</h3>
             <div class="card bg-base-100 shadow-xl overflow-hidden">
-              <figure class="h-64 bg-base-200">
-                <iframe src={mapEmbed}
-                        title="Ubicación de Topografía Especializada en el mapa"
-                        loading="lazy"
-                        referrerpolicy="no-referrer-when-downgrade"
-                        class="h-full w-full border-0"></iframe>
+              <figure class="bg-base-200">
+                <MapaOsm altura="16rem" titulo="Ubicación de Topografía Especializada en el mapa" />
               </figure>
               <div class="card-body py-4">
                 <a href={mapsUrl} target="_blank" rel="noopener noreferrer" class="touch-link link link-primary text-sm">{c.viewMaps} &rarr;</a>
@@ -164,12 +164,8 @@ const mapEmbed = "https://www.google.com/maps?q=8.4270199,-82.4296357&z=17&hl=es
         <p class="text-base-content/70">{c.howToGetLead}</p>
       </div>
       <div class="card bg-base-100 shadow-xl overflow-hidden">
-        <div class="aspect-video bg-base-200">
-          <iframe src={mapEmbed}
-                  title="Mapa de la oficina de Topografía Especializada"
-                  loading="lazy"
-                  referrerpolicy="no-referrer-when-downgrade"
-                  class="h-full w-full border-0"></iframe>
+        <div class="bg-base-200">
+          <MapaOsm altura="22rem" titulo="Mapa de la oficina de Topografía Especializada" />
         </div>
         <div class="card-body items-center text-center">
           <p class="text-lg font-medium">Topografía Especializada S.A.</p>

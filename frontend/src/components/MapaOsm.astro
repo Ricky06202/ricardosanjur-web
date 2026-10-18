@@ -1,0 +1,102 @@
+---
+/* Mapa de la oficina con OpenStreetMap (Leaflet).
+ *
+ * Antes era un iframe de Google Maps. Se cambió por esto (18/10):
+ *   - Sin API key ni cuenta de Google: nada que se rompa ni que cobre.
+ *   - Sin cookies de terceros ni letra chiquita de licencia.
+ *   - Carga más liviano: Leaflet pesa ~40 KB y se puede cargar diferido.
+ *
+ * Lo que se pierde: OSM es solo calles, no hay foto satelital. Para "¿dónde
+ * quedan?" alcanza y sobra; si algún día quieren satélite, ahí sí hay que pagar
+ * tiles (y se cambia solo la URL de `tiles`).
+ *
+ * El marcador va con las MISMAS coordenadas que tenía el Google embed
+ * (8.4270199, -82.4296357), no con las que uno "cree" que son.
+ */
+
+interface Props {
+  lat?: number;
+  lng?: number;
+  zoom?: number;
+  altura?: string;
+  titulo?: string;
+}
+
+const {
+  lat = 8.4270199,
+  lng = -82.4296357,
+  zoom = 17,
+  altura = "16rem",
+  titulo = "Ubicación de Topografía Especializada en el mapa"
+} = Astro.props;
+
+const punto = { lat, lng, zoom };
+---
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+<div
+  class="mapa-osm relative overflow-hidden rounded-box bg-base-200"
+  data-punto={JSON.stringify(punto)}
+  style={`height:${altura}`}
+  role="application"
+  aria-label={titulo}
+>
+  <noscript>
+    <a
+      class="absolute inset-0 flex items-center justify-center text-sm link link-primary"
+      href={`https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=${zoom}/${lat}/${lng}`}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      Ver la ubicación en OpenStreetMap
+    </a>
+  </noscript>
+</div>
+
+<script>
+  import L from "leaflet";
+
+  /* Los mapas se inicializan cuando aparecen en pantalla: si alguien abre la
+   * página de contacto y no baja hasta el mapa, no se descarga nada. */
+  function iniciar(el: HTMLElement) {
+    const dato = JSON.parse(el.dataset.punto || "{}");
+    if (!dato.lat || !dato.lng) return;
+
+    const mapa = L.map(el, {
+      center: [dato.lat, dato.lng],
+      zoom: dato.zoom || 17,
+      scrollWheelZoom: false, // que no secuestre el scroll de la página
+      attributionControl: true
+    });
+
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
+    }).addTo(mapa);
+
+    L.marker([dato.lat, dato.lng]).addTo(mapa);
+    // Leaflet mide mal si el contenedor cambia de tamaño después: recalcular.
+    setTimeout(() => mapa.invalidateSize(), 250);
+  }
+
+  const pendientes = new Set<HTMLElement>();
+  const observador = new IntersectionObserver(
+    (entradas) => {
+      for (const e of entradas) {
+        if (e.isIntersecting) {
+          iniciar(e.target as HTMLElement);
+          observador.unobserve(e.target);
+          pendientes.delete(e.target as HTMLElement);
+        }
+      }
+    },
+    { rootMargin: "200px" }
+  );
+
+  document.querySelectorAll<HTMLElement>(".mapa-osm").forEach((el) => {
+    pendientes.add(el);
+    observador.observe(el);
+  });
+</script>
