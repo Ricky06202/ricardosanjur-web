@@ -9,6 +9,8 @@
 
 import { BLOG_SCHEMA, markdownAHtml, slugDe } from "./blog";
 import { CSS, page } from "./index";
+import { FICHAS } from "../src/content/blog-fichas";
+import { ARCHIVOS_BLOG } from "./blog-archivos";
 
 /* Tipos mínimos de D1 (el proyecto usa `any` para env.DB en index.ts). */
 type D1Sentencia = {
@@ -39,6 +41,8 @@ type Fila = {
   creado_en: string;
   actualizado_en: string;
   formato?: string | null;
+  /** Solo en el listado: nombre del archivo del repo (.md / .html) que sirve ese enlace. */
+  cuerpo_archivo?: string;
 };
 
 /* Columna del formato: 'texto' (Markdown del editor) o 'pagina' (archivo HTML). */
@@ -50,6 +54,37 @@ const TEXTO_SCHEMA = "ALTER TABLE blog_posts ADD COLUMN cuerpo_texto TEXT";
 const MAX_HTML_BYTES = 2 * 1024 * 1024;
 
 const ahora = () => new Date().toISOString();
+
+/* Los artículos del repo (los .md y los .html que escribí yo) no están en la base:
+ * se listan igual para que el dueño vea TODO lo publicado. La lista sale de
+ * worker/blog-archivos.ts, que arma scripts/empacar-blog.mjs: el worker no puede
+ * leer la carpeta del sitio. */
+
+function articulosDelRepo(): Fila[] {
+  return ARCHIVOS_BLOG.map(({ archivo, texto: crudo }) => {
+    const slug = archivo.replace(/\.(html?|md)$/, "");
+    const ficha = FICHAS[slug];
+    const h1 = String(crudo).match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+    const mdTitulo = String(crudo).match(/^title:\s*"?([^"\n]+)"?/m);
+    const mdFecha = String(crudo).match(/^date:\s*"?([0-9]{4}-[0-9]{2}-[0-9]{2})/m);
+    const fecha = ficha?.fecha || (mdFecha ? mdFecha[1] : "");
+    return {
+      id: "repo:" + slug,
+      slug,
+      idioma: "es",
+      titular: ficha?.titulo || (mdTitulo ? mdTitulo[1] : h1 ? h1[1].replace(/<[^>]+>/g, "").trim() : slug),
+      resumen: ficha?.resumen || "",
+      autor: "Ricardo A. Sanjur A.",
+      etiquetas: "",
+      cuerpo: "",
+      publicado: 1,
+      creado_en: fecha,
+      actualizado_en: fecha,
+      formato: /\.html$/.test(archivo) ? "pagina" : "texto",
+      cuerpo_archivo: archivo,
+    };
+  });
+}
 
 function esc(v: unknown): string {
   return String(v == null ? "" : v)
@@ -94,6 +129,9 @@ export async function handleBlogLista(env: Env, tok: string, aviso: string): Pro
   } catch {
     filas = [];
   }
+  filas = [...articulosDelRepo(), ...filas].sort((a, b) =>
+    String(b.actualizado_en || "").localeCompare(String(a.actualizado_en || ""))
+  );
 
   const accion = '<a class="btn sm" href="/admin/' + esc(tok) + '/blog/nuevo">Nuevo articulo</a>';
 
@@ -103,14 +141,23 @@ export async function handleBlogLista(env: Env, tok: string, aviso: string): Pro
   } else {
     for (let i = 0; i < filas.length; i++) {
       const f = filas[i];
+      const esArchivo = !!f.cuerpo_archivo;
+      // Los del repo se abren en el sitio con un botón dedicado (no son de la base).
+      const hrefVista = esArchivo
+        ? "/blog/" + f.slug + "/"
+        : (f.idioma === "en" ? "/en/blog/" : "/blog/") + f.slug;
       lista += '<tr><td data-l="Titulo"><strong>' + esc(f.titular) + '</strong>' +
-        '<div class="muted small">/' + esc(f.idioma === "en" ? "en/blog/" : "blog/") + esc(f.slug) + '</div></td>' +
-        '<td data-l="Estado">' + (Number(f.publicado) ? '<span class="pill">Publicado</span>' : '<span class="pill tipos">Borrador</span>') + '</td>' +
+        '<div class="muted small">/' + esc(f.idioma === "en" ? "en/blog/" : "blog/") + esc(f.slug) + (esArchivo ? ' · archivo del sitio (' + esc(f.cuerpo_archivo!.split(".").pop()) + ')' : '') + '</div></td>' +
+        '<td data-l="Estado">' + (esArchivo
+          ? '<span class="pill">En el sitio</span>'
+          : (Number(f.publicado) ? '<span class="pill">Publicado</span>' : '<span class="pill tipos">Borrador</span>')) + '</td>' +
         '<td data-l="Actualizado" class="muted small">' + esc(String(f.actualizado_en || "").slice(0, 10)) + '</td>' +
-        '<td class="acciones"><a class="btn ghost sm" href="/admin/' + esc(tok) + "/blog/" + esc(f.id) + '">Editar</a>' +
-        (Number(f.publicado)
-          ? '<a class="btn ghost sm" target="_blank" rel="noopener" href="' + esc((f.idioma === "en" ? "/en/blog/" : "/blog/") + f.slug) + '">Ver</a>'
-          : "") +
+        '<td class="acciones">' +
+        (esArchivo
+          ? '<a class="btn ghost sm" target="_blank" rel="noopener" href="' + esc(hrefVista) + '">Ver</a>' +
+            '<span class="muted small" title="Es un archivo del sitio: se publica tal cual y no se edita aquí">No se edita aquí</span>'
+          : '<a class="btn ghost sm" href="/admin/' + esc(tok) + "/blog/" + esc(f.id) + '">Editar</a>' +
+            (Number(f.publicado) ? '<a class="btn ghost sm" target="_blank" rel="noopener" href="' + esc(hrefVista) + '">Ver</a>' : '')) +
         '</td></tr>';
     }
   }
@@ -129,6 +176,11 @@ export async function handleBlogLista(env: Env, tok: string, aviso: string): Pro
 /** GET /admin/<token>/blog/nuevo  o  /admin/<token>/blog/<id> */
 export async function handleBlogForm(env: Env, tok: string, id: string, aviso: string): Promise<Response> {
   await asegurarTabla(env.DB);
+  // Un artículo que es un archivo del sitio no se edita aquí: se abre en el sitio.
+  if (id.startsWith("repo:")) {
+    const slug = id.slice(5);
+    return new Response(null, { status: 303, headers: { location: "/blog/" + encodeURIComponent(slug) + "/" } });
+  }
   let f: Fila | null = null;
   if (id && id !== "nuevo") {
     try {
