@@ -201,7 +201,11 @@ const NUBE_CSS_EXTRA =
   '.nube-blog .tarjeta{max-width:820px;margin:18px auto}' +
   '.nube-blog .post{max-width:820px;margin:0 auto;font-family:Georgia,"Times New Roman",serif;color:#1c2b33;line-height:1.65}' +
   '.nube-blog .post h1{font-size:clamp(26px,4.4vw,38px);line-height:1.18;color:#123b4a;margin:18px 0 10px}' +
-  '.nube-blog .post .volver a{color:#157377;text-decoration:none;font-weight:600}';
+  '.nube-blog .post .volver a{color:#157377;text-decoration:none;font-weight:600}' +
+  '.nube-articulo .blog-post h2{margin:34px 0 10px;line-height:1.25}' +
+  '.nube-articulo .blog-post h2,.nube-articulo .blog-post h3{font-family:"Space Grotesk",Inter,sans-serif}' +
+  '.nube-articulo .blog-post p{margin:0 0 16px}' +
+  '.nube-articulo .blog-post hr{border:0;border-top:1px solid #e3e8ee;margin:26px 0}';
 
 /** Lo que se le agrega a /blog (índice): las tarjetas de los artículos de la base. */
 /** GET /blog-api -> lista de artículos de la base (JSON de la página /blog-api). */

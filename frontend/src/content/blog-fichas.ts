@@ -8,6 +8,12 @@
  * entrada con el mismo nombre de archivo, sin .html.
  */
 export const FICHAS: Record<string, { fecha: string; titulo: string; resumen: string }> = {
+  'guia-segregar-finca-panama': {
+    fecha: '2026-10-18',
+    titulo: 'Guía paso a paso para segregar una finca en Panamá (ANATI, MIVIOT y Municipio)',
+    resumen:
+      'Paso a paso para segregar una finca en Panamá: análisis en campo, levantamiento, expediente y la ruta MIVIOT ➔ ANATI ➔ MIVIOT, con la advertencia de oro antes de escriturar.',
+  },
   'levantamiento-html': {
     fecha: '2026-10-18',
     titulo: '¿Cuánto cuesta un levantamiento topográfico en Panamá y qué factores influyen en el precio?',

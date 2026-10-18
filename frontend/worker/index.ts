@@ -1995,6 +1995,8 @@ export default {
           const abre = hero > -1 ? hero : html.lastIndexOf('</header>') + '</header>'.length;
           const cierra = html.lastIndexOf('</main>');
           html = html.slice(0, abre) + NUBE_CSS + tarjeta + (cierra > abre ? html.slice(cierra) : '');
+          // El artículo tiene su propio diseño: que respire como en el resto del sitio.
+          html = html.replace('<body', '<body class="nube-articulo"');
         } else {
           // El índice: el artículo de la base REEMPLAZA a su tarjeta del repo (no se
           // repite) y todo queda con la misma cara del sitio. Va primero, que es lo más
