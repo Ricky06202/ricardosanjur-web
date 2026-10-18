@@ -1996,10 +1996,33 @@ export default {
           const cierra = html.lastIndexOf('</main>');
           html = html.slice(0, abre) + NUBE_CSS + tarjeta + (cierra > abre ? html.slice(cierra) : '');
         } else {
-          // El índice: las tarjetas de la base se suman a las del repo, dentro de la
-          // misma lista (si van al final del body, quedan después del pie y no se ven).
-          let fin = html.indexOf('</section>', html.indexOf('<div class="grid grid-cols-1 md:grid-cols-2'));
-          if (fin < 0) fin = html.lastIndexOf('</main>');
+          // El índice: el artículo de la base REEMPLAZA a su tarjeta del repo (no se
+          // repite) y todo queda con la misma cara del sitio. Va primero, que es lo más
+          // nuevo. La tarjeta del repo se reconoce por su link /blog/<dirección>/.
+          const deLaBase = new Set<string>();
+          for (const m of tarjeta.matchAll(/data-slug="([a-z0-9-]+)"/g)) deLaBase.add(m[1]);
+          for (const slugBase of deLaBase) {
+            const link = '<a href="/blog/' + slugBase + '/"';
+            let desde = 0;
+            while (true) {
+              const i = html.indexOf(link, desde);
+              if (i < 0) break;
+              const abre = html.lastIndexOf('<article', i);
+              const cierra = abre > -1 ? html.indexOf('</article>', i) : -1;
+              if (abre > -1 && cierra > -1) {
+                html = html.slice(0, abre) + html.slice(cierra + '</article>'.length);
+                desde = abre;
+              } else {
+                desde = i + link.length;
+              }
+            }
+          }
+          let fin = html.indexOf('<div class="grid grid-cols-1 md:grid-cols-2');
+          if (fin > -1) {
+            fin = html.indexOf('>', fin) + 1;
+          } else {
+            fin = html.lastIndexOf('</main>');
+          }
           if (fin < 0) fin = html.indexOf('</body>');
           if (fin < 0) html += NUBE_CSS + tarjeta;
           else html = html.slice(0, fin) + NUBE_CSS + tarjeta + html.slice(fin);

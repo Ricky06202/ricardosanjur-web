@@ -255,7 +255,7 @@ export async function handleBlogTarjeta(env: EnvPub, idioma: string, slug: strin
 
 function tarjetaHtml(p: D1Fila, esEn: boolean): string {
   const url = "/blog/" + p.slug + "/";
-  return '<article class="tarjeta nube-tarjeta">' +
+  return '<article class="tarjeta nube-tarjeta" data-slug="' + hm(p.slug) + '">' +
     '<p class="fecha">' + hm(fechaBonita(p.actualizado_en)) + "</p>" +
     "<h2><a href=\"" + url + '">' + hm(p.titular) + "</a></h2>" +
     (p.resumen ? '<p class="resumen">' + hm(p.resumen) + "</p>" : "") +
