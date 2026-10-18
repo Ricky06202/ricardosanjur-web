@@ -287,31 +287,31 @@ const jsonLd = { "@context": "https://schema.org", "@graph": [...graph, ...extra
         const boton = document.getElementById("wa-flotante") as HTMLAnchorElement | null;
         if (!boton) return;
         const camino = (window.location.pathname || "/").replace(/\/+$/, "") || "/";
-        const paginas: Record<string, string> = {
-          "/": "la página principal",
-          "/services": "la página de servicios",
-          "/about": "la página de nosotros",
-          "/contact": "la página de contacto",
-          "/blog": "el blog",
-          "/en": "the home page",
-          "/en/services": "the services page",
-          "/en/about": "the about page",
-          "/en/contact": "the contact page",
-          "/en/blog": "the blog",
+        const paginas: Record<string, [string, string]> = {
+          // [español, inglés]
+          "/": ["la página principal", "the home page"],
+          "/services": ["la página de servicios", "the services page"],
+          "/about": ["la página de nosotros", "the about page"],
+          "/contact": ["la página de contacto", "the contact page"],
+          "/blog": ["el blog", "the blog"],
+          "/en": ["la página principal", "the home page"],
+          "/en/services": ["la página de servicios", "the services page"],
+          "/en/about": ["la página de nosotros", "the about page"],
+          "/en/contact": ["la página de contacto", "the contact page"],
+          "/en/blog": ["el blog", "the blog"],
         };
-        const esEn = camino.startsWith("/en");
-        const donde = paginas[camino] || (/^\/blog\//.test(camino) ? (esEn ? "the blog" : "el blog") : (esEn ? "the website" : "la página web"));
-        const texto = esEn
-          ? `Hola, escribo desde ${donde} (${location.hostname}${camino === "/" ? "" : camino}). Vi su sitio web y quiero consultarles.`
-          : `Hola, escribo desde ${donde} (${location.hostname}${camino === "/" ? "" : camino}). Vi su página web y quiero consultarles.`;
+        // El mensaje va SIEMPRE en español: es el canal de la oficina (Doña Eysbel).
+        // Dice la página y el enlace completo, así se sabe de dónde viene.
+        const esBlogYa = /^\/blog\//.test(camino) || /^\/en\/blog\//.test(camino);
+        const donde = paginas[camino] ? paginas[camino][0] : esBlogYa ? "el blog" : "la página web";
+        const enlace = location.origin + (camino === "/" ? "" : camino);
+        const texto = `Hola, escribo desde ${donde} (${enlace}). Vi su página web y quiero consultarles.`;
         boton.href = "https://wa.me/50766714646?text=" + encodeURIComponent(texto);
         const globo = document.getElementById("wa-globo");
         const textoGlobo = document.getElementById("wa-globo-texto");
         const cerrar = document.getElementById("wa-globo-cerrar");
         if (globo && textoGlobo) {
-          textoGlobo.textContent = esEn
-            ? "Tap and the message is ready: it already says you're writing from this page."
-            : "Toque y el mensaje va listo: ya dice desde qué página nos escribe.";
+          textoGlobo.textContent = "Toque y el mensaje va listo: ya dice desde qué página nos escribe.";
           // Se muestra a los 2 s (sin tapar la pantalla al entrar) y vuelve cada 5 visitas.
           const visto = Number(localStorage.getItem("wa_globo_visto") || "0");
           localStorage.setItem("wa_globo_visto", String(visto + 1));
