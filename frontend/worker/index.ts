@@ -594,6 +594,39 @@ async function sembrarArticulos(env: Env) {
   }
 }
 
+/* GET /sitemap.xml -> todo lo que está publicado, incluidos los artículos del blog
+ * de la base (el mapa que arma el sitio solo conoce los archivos del repo). */
+async function handleSitemap(env: Env, url: URL): Promise<Response> {
+  const origen = SITE_ORIGIN;
+  const ruta = (r: string) => origen + r;
+  const hoy = new Date().toISOString();
+  const filas: { loc: string; lastmod: string }[] = [];
+  const agregar = (loc: string, lastmod: string) => filas.push({ loc, lastmod });
+  for (const [es, en] of [
+    ['/', '/en/'], ['/services/', '/en/services/'], ['/about/', '/en/about/'],
+    ['/blog/', '/en/blog/'], ['/contact/', '/en/contact/'],
+  ]) {
+    agregar(ruta(es), hoy);
+    agregar(ruta(en), hoy);
+  }
+  try {
+    const r = await env.DB.prepare(
+      "SELECT slug, idioma, actualizado_en FROM blog_posts WHERE publicado = 1 AND borrado = 0 ORDER BY actualizado_en DESC"
+    ).all<{ slug: string; idioma: string; actualizado_en: string }>();
+    for (const p of (r && r.results) || []) {
+      const base = p.idioma === 'en' ? '/en/blog/' : '/blog/';
+      agregar(ruta(base + p.slug + '/'), String(p.actualizado_en || '').slice(0, 10) || hoy.slice(0, 10));
+    }
+  } catch {
+    /* sin tabla: solo las páginas fijas */
+  }
+  const cuerpo = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+    filas.map((f) => '  <url>\n    <loc>' + f.loc + '</loc>\n    <lastmod>' + f.lastmod + '</lastmod>\n  </url>').join('\n') +
+    '\n</urlset>\n';
+  return new Response(cuerpo, { headers: { 'content-type': 'application/xml; charset=utf-8', 'cache-control': 'public, max-age=300' } });
+}
+
 async function handleDescargaArchivo(request: Request, env: Env, id: string): Promise<Response> {
   const url = new URL(request.url);
   const exp = Number(url.searchParams.get('e') || 0) || 0;
@@ -1783,6 +1816,7 @@ export default {
     const url = new URL(request.url);
     // Primero se crean las tablas si faltan (en local) y luego se pasan los artículos
     // que estaban como archivo a la base, para que todos se puedan editar desde el panel.
+    // El mapa del sitio se arma aquí (incluye los artículos de la base), no en el sitio.
     if (env.LOCAL_PRUEBA === '1') {
       await prepararBaseLocal(env);
       await sembrarArticulos(env);
@@ -1799,6 +1833,9 @@ export default {
     const method = request.method;
     let path = url.pathname;
     if (path.length > 1 && path.slice(-1) === '/') path = path.replace(/\/+$/, '');
+
+    // El mapa del sitio se arma aquí (incluye los artículos de la base), no en el sitio.
+    if (method === 'GET' && path === '/sitemap.xml') return handleSitemap(env, url);
 
     // Redirect por pais en "/" (sin bots, sin cookie lang).
     const ua = request.headers.get('User-Agent') ?? '';
@@ -1943,7 +1980,12 @@ export default {
       // le agrega lo que vive en la base: la tarjeta nueva o el artículo completo.
       // Al sitio se le pide /blog/ (la página en su estado normal): pedir /blog/<slug>
       // traería el 404, porque ese artículo no existe como archivo.
-      let html = await (await env.ASSETS.fetch(new Request(url.origin + '/blog/' + url.search, { headers: request.headers }))).text();
+      // /blog/ pedido internamente como navegación vuelve con el 404 del sitio: se pide
+      // directamente blog/index.html, que es la página de verdad.
+      let html = await (await env.ASSETS.fetch(new Request(url.origin + '/blog/index.html', { headers: request.headers }))).text();
+      if (html.indexOf('<html') < 0) {
+        html = await (await env.ASSETS.fetch(new Request(url.origin + '/blog/' + url.search, { headers: request.headers }))).text();
+      }
       html = html.split(url.origin + '/_astro/').join('/_astro/');
       if (tarjeta) {
         if (slug) {
@@ -1954,8 +1996,13 @@ export default {
           const cierra = html.lastIndexOf('</main>');
           html = html.slice(0, abre) + NUBE_CSS + tarjeta + (cierra > abre ? html.slice(cierra) : '');
         } else {
-          // El índice: las tarjetas nuevas se suman a las del repo, al final.
-          html = html.replace('</body>', NUBE_CSS + tarjeta + '</body>');
+          // El índice: las tarjetas de la base se suman a las del repo, dentro de la
+          // misma lista (si van al final del body, quedan después del pie y no se ven).
+          let fin = html.indexOf('</section>', html.indexOf('<div class="grid grid-cols-1 md:grid-cols-2'));
+          if (fin < 0) fin = html.lastIndexOf('</main>');
+          if (fin < 0) fin = html.indexOf('</body>');
+          if (fin < 0) html += NUBE_CSS + tarjeta;
+          else html = html.slice(0, fin) + NUBE_CSS + tarjeta + html.slice(fin);
         }
       }
       const salida = html;
