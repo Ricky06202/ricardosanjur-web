@@ -63,7 +63,7 @@ const org = {
   image: absImage,
   description: t.meta.defaultDescription,
   telephone: "+50766714646",
-  email: "gerencia@ricardosanjur.com",
+  email: "asistente@ricardosanjur.com",
   foundingDate: "1970",
   address: {
     "@type": "PostalAddress",
@@ -256,7 +256,7 @@ const jsonLd = { "@context": "https://schema.org", "@graph": [...graph, ...extra
             <li>Calle B Sur y Segunda Oeste, Diag. al Colegio Sucre</li>
             <li>David, Chiriquí, Panamá</li>
             <li><a href="tel:+50766714646" class="touch-link transition-colors hover:text-primary">+507 6671-4646</a></li>
-            <li><a href="mailto:gerencia@ricardosanjur.com" class="touch-link transition-colors hover:text-primary">gerencia@ricardosanjur.com</a></li>
+            <li><a href="mailto:asistente@ricardosanjur.com" class="touch-link transition-colors hover:text-primary">asistente@ricardosanjur.com</a></li>
           </ul>
         </div>
       </div>
@@ -310,12 +310,27 @@ const jsonLd = { "@context": "https://schema.org", "@graph": [...graph, ...extra
         const globo = document.getElementById("wa-globo");
         const textoGlobo = document.getElementById("wa-globo-texto");
         const cerrar = document.getElementById("wa-globo-cerrar");
+        const formularios = document.querySelectorAll("#printQuoteForm, #quoteForm, #contactForm, #copias-planos, #destacado-copias-planos");
+        let formularioVisible = false;
+        if (formularios.length) {
+          const visibles = new Set<Element>();
+          const observarFormularios = new IntersectionObserver((entradas) => {
+            entradas.forEach((entrada) => {
+              if (entrada.isIntersecting) visibles.add(entrada.target);
+              else visibles.delete(entrada.target);
+            });
+            formularioVisible = visibles.size > 0;
+            boton.classList.toggle("hidden", formularioVisible);
+            globo?.classList.toggle("hidden", formularioVisible);
+          }, { threshold: 0 });
+          formularios.forEach((formulario) => observarFormularios.observe(formulario));
+        }
         if (globo && textoGlobo) {
           textoGlobo.textContent = "Toque y el mensaje va listo: ya dice desde qué página nos escribe.";
           // Se muestra a los 2 s (sin tapar la pantalla al entrar) y vuelve cada 5 visitas.
           const visto = Number(localStorage.getItem("wa_globo_visto") || "0");
           localStorage.setItem("wa_globo_visto", String(visto + 1));
-          if (visto % 5 === 0) setTimeout(() => globo.classList.remove("hidden"), 2000);
+          if (visto % 5 === 0) setTimeout(() => { if (!formularioVisible) globo.classList.remove("hidden"); }, 2000);
         }
         cerrar?.addEventListener("click", (e) => {
           e.preventDefault();

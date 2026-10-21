@@ -1,0 +1,238 @@
+---
+import { ui, type Lang } from "../i18n/ui";
+
+interface Props { lang: Lang; }
+const { lang } = Astro.props;
+const p = ui[lang].services.print;
+---
+
+<div id="mini-cotizacion" class="scroll-mt-24">
+  <div class="card border border-base-300 bg-base-100 shadow-xl">
+    <div class="card-body gap-5 p-5 sm:p-7">
+      <div>
+        <h3 class="font-display text-2xl font-bold text-base-content">{p.quoteHeading}</h3>
+        <p class="mt-2 text-sm leading-relaxed text-base-content/70">{p.quoteLead}</p>
+      </div>
+
+      <form id="printQuoteForm" method="post" action="/api/contact" data-lang={lang} data-success={p.success} data-error={p.error}
+        data-connection-error={p.connectionError} data-contact-required={p.contactRequired}
+        data-items-required={p.itemsRequired} data-quantity-error={p.quantityError}
+        data-max-items={p.maxItems} data-sending={lang === "en" ? "Sending…" : "Enviando…"}>
+        <div class="space-y-5">
+          <fieldset class="space-y-3">
+            <legend class="font-semibold text-base-content">{p.itemsHeading}</legend>
+            <div id="printQuoteItems" class="space-y-3">
+              <div class="print-quote-item rounded-2xl border border-base-300 bg-base-200/40 p-4">
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(6rem,.65fr)_auto] sm:items-end">
+                  <label class="form-control min-w-0">
+                    <span class="label-text mb-1.5">{p.serviceLabel} *</span>
+                    <select name="servicio" class="select select-bordered w-full" required>
+                      <option value="">{lang === "en" ? "Choose a service" : "Seleccione un servicio"}</option>
+                      {p.serviceOptions.map((option) => <option value={option.value}>{option.label}</option>)}
+                    </select>
+                  </label>
+                  <label class="form-control min-w-0">
+                    <span class="label-text mb-1.5">{p.formatLabel}</span>
+                    <input name="formato" type="text" maxlength="120" class="input input-bordered w-full" placeholder={p.formatPlaceholder} />
+                  </label>
+                  <label class="form-control min-w-0">
+                    <span class="label-text mb-1.5">{p.quantityLabel} *</span>
+                    <input name="cantidad" type="number" min="1" max="1000000" step="1" value="1" required class="input input-bordered w-full" inputmode="numeric" />
+                  </label>
+                  <button type="button" data-remove-item class="btn btn-ghost min-h-11 w-full sm:w-11" aria-label={p.removeItem} title={p.removeItem} hidden>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <path d="M3 6h18M8 6V4h8v2m-9 0 1 14h8l1-14M10 11v5m4-5v5" />
+                    </svg>
+                    <span class="sm:hidden">{p.removeItem}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <button id="addPrintQuoteItem" type="button" class="btn btn-outline btn-primary btn-sm min-h-11 w-full sm:w-auto">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              {p.addItem}
+            </button>
+          </fieldset>
+
+          <div class="border-t border-base-300 pt-5">
+            <h4 class="font-semibold text-base-content">{p.contactHeading}</h4>
+            <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label class="form-control min-w-0 sm:col-span-2">
+                <span class="label-text mb-1.5">{p.nameLabel}</span>
+                <input name="nombre" type="text" maxlength="120" autocomplete="name" required class="input input-bordered w-full" placeholder={p.namePlaceholder} />
+              </label>
+              <label class="form-control min-w-0">
+                <span class="label-text mb-1.5">{p.emailLabel}</span>
+                <input name="email" type="email" maxlength="254" autocomplete="email" class="input input-bordered w-full" placeholder={p.emailPlaceholder} />
+              </label>
+              <label class="form-control min-w-0">
+                <span class="label-text mb-1.5">{p.phoneLabel}</span>
+                <input name="telefono" type="tel" maxlength="32" autocomplete="tel" class="input input-bordered w-full" placeholder={p.phonePlaceholder} />
+              </label>
+            </div>
+            <p class="mt-2 text-xs leading-relaxed text-base-content/65">{p.contactHint}</p>
+          </div>
+
+          <label class="form-control min-w-0">
+            <span class="label-text mb-1.5">{p.notesLabel}</span>
+            <textarea name="detalle" maxlength="1000" rows="3" class="textarea textarea-bordered w-full" placeholder={p.notesPlaceholder}></textarea>
+          </label>
+
+          <p class="rounded-xl border border-base-300 bg-base-200/70 p-3 text-xs leading-relaxed text-base-content/70">{p.privacyNotice}</p>
+          <p id="printQuoteStatus" class="min-h-6 text-sm font-medium" role="status" aria-live="polite"></p>
+          <button type="submit" data-submit-label class="btn btn-primary min-h-12 w-full">{p.submit}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  const form = document.getElementById("printQuoteForm") as HTMLFormElement | null;
+  const rowsRoot = document.getElementById("printQuoteItems");
+  const addItemButton = document.getElementById("addPrintQuoteItem") as HTMLButtonElement | null;
+  const status = document.getElementById("printQuoteStatus");
+
+  if (form && rowsRoot && addItemButton && status) {
+    const initialRow = rowsRoot.querySelector<HTMLElement>(".print-quote-item");
+    const rowTemplate = initialRow?.cloneNode(true) as HTMLElement | undefined;
+    const submitButton = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+    const submitLabel = submitButton?.textContent?.trim() || "Send request";
+
+    const setStatus = (message: string, isError = false) => {
+      status.textContent = message;
+      status.classList.toggle("text-error", isError);
+      status.classList.toggle("text-success", !isError && Boolean(message));
+    };
+
+    const updateRows = () => {
+      const rows = Array.from(rowsRoot.querySelectorAll<HTMLElement>(".print-quote-item"));
+      rows.forEach((row) => {
+        const removeButton = row.querySelector<HTMLButtonElement>("[data-remove-item]");
+        if (removeButton) removeButton.hidden = rows.length <= 1;
+      });
+      addItemButton.disabled = rows.length >= 10;
+    };
+
+    addItemButton.addEventListener("click", () => {
+      const rows = rowsRoot.querySelectorAll(".print-quote-item");
+      if (rows.length >= 10 || !rowTemplate) {
+        setStatus(form.dataset.maxItems || "", true);
+        return;
+      }
+      const row = rowTemplate.cloneNode(true) as HTMLElement;
+      const select = row.querySelector<HTMLSelectElement>('select[name="servicio"]');
+      const format = row.querySelector<HTMLInputElement>('input[name="formato"]');
+      const quantity = row.querySelector<HTMLInputElement>('input[name="cantidad"]');
+      if (select) select.selectedIndex = 0;
+      if (format) format.value = "";
+      if (quantity) quantity.value = "1";
+      rowsRoot.append(row);
+      updateRows();
+      select?.focus();
+      setStatus("");
+    });
+
+    rowsRoot.addEventListener("click", (event) => {
+      const target = event.target as HTMLElement;
+      const removeButton = target.closest<HTMLButtonElement>("[data-remove-item]");
+      if (!removeButton || rowsRoot.querySelectorAll(".print-quote-item").length <= 1) return;
+      removeButton.closest(".print-quote-item")?.remove();
+      updateRows();
+      setStatus("");
+    });
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      setStatus("");
+      if (!form.reportValidity()) return;
+
+      const value = (name: string) => String(new FormData(form).get(name) || "").trim();
+      const nombre = value("nombre");
+      const email = value("email");
+      const telefono = value("telefono");
+      if (!email && !telefono) {
+        setStatus(form.dataset.contactRequired || "", true);
+        form.querySelector<HTMLInputElement>('input[name="email"]')?.focus();
+        return;
+      }
+
+      const rows = Array.from(rowsRoot.querySelectorAll<HTMLElement>(".print-quote-item"));
+      if (rows.length === 0) {
+        setStatus(form.dataset.itemsRequired || "", true);
+        return;
+      }
+
+      const services = rows.map((row) => {
+        const select = row.querySelector<HTMLSelectElement>('select[name="servicio"]');
+        const quantity = row.querySelector<HTMLInputElement>('input[name="cantidad"]');
+        const format = row.querySelector<HTMLInputElement>('input[name="formato"]');
+        const cantidad = Number(quantity?.value);
+        const label = select?.selectedOptions[0]?.textContent?.trim() || "";
+        if (!label || !Number.isInteger(cantidad) || cantidad < 1 || cantidad > 1_000_000) return null;
+        return { label, cantidad, formato: String(format?.value || "").trim() };
+      });
+
+      if (services.some((item) => item === null)) {
+        setStatus(form.dataset.quantityError || "", true);
+        return;
+      }
+      const validServices = services.filter((item): item is NonNullable<typeof item> => item !== null);
+
+      const notes = value("detalle");
+      const en = form.dataset.lang === "en";
+      const lines = [
+        en ? "Quote request: plan copies, scanning and printing" : "Solicitud de cotización: copias, escaneo e impresión de planos",
+        ...validServices.map((item, index) => {
+          const detalleFormato = item.formato ? ` · ${en ? "Size or format" : "Tamaño o formato"}: ${item.formato}` : "";
+          return `${index + 1}. ${item.label} · ${en ? "Quantity" : "Cantidad"}: ${item.cantidad}${detalleFormato}`;
+        }),
+        ...(notes ? ["", en ? "Additional details:" : "Detalle adicional:", notes] : []),
+      ];
+
+      const payload = {
+        nombre,
+        email,
+        telefono,
+        tema: "cotizacion_copias_planos",
+        mensaje: lines.join("\n"),
+      };
+
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = form.dataset.sending || "Enviando…";
+      }
+
+      try {
+        const response = await fetch("/api/contact", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const result = await response.json().catch(() => null) as { ok?: boolean } | null;
+        if (!response.ok || !result?.ok) {
+          setStatus(form.dataset.error || "", true);
+          return;
+        }
+
+        setStatus(form.dataset.success || "");
+        form.reset();
+        rowsRoot.querySelectorAll(".print-quote-item").forEach((row, index) => {
+          if (index > 0) row.remove();
+        });
+        updateRows();
+      } catch {
+        setStatus(form.dataset.connectionError || "", true);
+      } finally {
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.textContent = submitLabel;
+        }
+      }
+    });
+
+    updateRows();
+  }
+</script>

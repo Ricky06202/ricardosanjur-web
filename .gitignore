@@ -1,5 +1,5 @@
 # Dependencies
-node_modules/
+node_modules
 *.lock
 
 # Build outputs
@@ -28,4 +28,5 @@ npm-debug.log*
 # Cache
 .cache/
 .turbo/
+.codegraph/
 .wrangler/

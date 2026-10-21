@@ -13,6 +13,7 @@ const heroImages = [
   "/images/20250130_121614.jpg",
   "/images/20240824_125553-1.jpg",
 ];
+const printWhatsAppUrl = `https://wa.me/50766714646?text=${encodeURIComponent("Hola, quiero cotizar copias, escaneo o impresión de planos.")}`;
 ---
 
 <MainLayout title={h.title} description={h.description} lang={lang}>
@@ -120,6 +121,29 @@ const heroImages = [
           <div class="pointer-events-none absolute inset-0 rounded-3xl ring-1 ring-inset ring-transparent transition group-hover:ring-primary/40"></div>
         </article>
       ))}
+    </div>
+  </section>
+
+  <!-- Servicio destacado: copias, escaneo e impresión de planos -->
+  <section id="destacado-copias-planos" class="mx-auto max-w-7xl px-4 pb-16 sm:px-6">
+    <div class="reveal relative overflow-hidden rounded-[2rem] border border-primary/20 bg-base-200 p-6 sm:p-10">
+      <div class="grid-bg pointer-events-none absolute inset-0 opacity-40"></div>
+      <div class="relative grid gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+        <div>
+          <p class="font-mono text-xs uppercase tracking-[0.25em] text-primary">{h.print.kicker}</p>
+          <h2 class="mt-3 max-w-3xl font-display text-3xl font-bold sm:text-4xl" set:html={h.print.heading} />
+          <p class="mt-4 max-w-2xl text-base-content/70">{h.print.lead}</p>
+          <ul class="mt-5 flex flex-wrap gap-2">
+            {h.print.items.map((item) => (
+              <li class="rounded-full border border-primary/15 bg-base-100 px-3 py-2 text-sm font-medium text-base-content/80">{item}</li>
+            ))}
+          </ul>
+        </div>
+        <div class="flex w-full flex-col gap-3 lg:w-56">
+          <a href={routeHref("services", lang) + "#mini-cotizacion"} class="btn btn-primary min-h-12 rounded-full">{h.print.cta}</a>
+          <a href={printWhatsAppUrl} target="_blank" rel="noopener noreferrer" class="btn min-h-12 rounded-full border border-[#25D366]/40 bg-[#25D366]/10 text-[#116b37] hover:bg-[#25D366]/15">{h.print.whatsapp}</a>
+        </div>
+      </div>
     </div>
   </section>
 

@@ -87,7 +87,7 @@ const mapEmbed = "https://www.google.com/maps?q=8.4270199,-82.4296357&z=17&hl=es
               <div>
                 <h3 class="font-semibold text-lg">{c.emailHeading}</h3>
                 <p class="text-base-content/70">
-                  <a href="mailto:gerencia@ricardosanjur.com" class="touch-link link link-primary">gerencia@ricardosanjur.com</a>
+                  <a href="mailto:asistente@ricardosanjur.com" class="touch-link link link-primary">asistente@ricardosanjur.com</a>
                 </p>
               </div>
             </div>
@@ -111,7 +111,7 @@ const mapEmbed = "https://www.google.com/maps?q=8.4270199,-82.4296357&z=17&hl=es
         <div>
           <h2 class="text-2xl font-bold mb-8">{c.formHeading}</h2>
 
-          <form class="card bg-base-100 shadow-xl" id="contactForm" data-msg-sent={c.msgSent} data-msg-error={c.msgError} data-msg-conn={c.msgConnError}>
+          <form class="card bg-base-100 shadow-xl" id="contactForm" method="post" action="/api/contact" data-msg-sent={c.msgSent} data-msg-error={c.msgError} data-msg-conn={c.msgConnError}>
             <div class="card-body space-y-4">
               <div class="form-control">
                 <label class="label"><span class="label-text">{c.labelFullName}</span></label>
@@ -149,6 +149,7 @@ const mapEmbed = "https://www.google.com/maps?q=8.4270199,-82.4296357&z=17&hl=es
                   {c.submit}
                 </button>
               </div>
+              <p class="text-xs leading-relaxed text-base-content/60">{c.privacyNotice}</p>
             </div>
           </form>
         </div>

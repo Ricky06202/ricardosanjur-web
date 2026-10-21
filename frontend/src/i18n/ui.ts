@@ -7,7 +7,7 @@ export const ui = {
     meta: {
       siteName: "Topografía Especializada, S.A.",
       defaultDescription:
-        "Topografía Especializada S.A. — Más de 55 años de experiencia en topografía, geodesia, GNSS y geomática en David, Chiriquí y todo Panamá.",
+        "Topografía Especializada S.A. — Más de 55 años en topografía, geodesia, drones y copias, escaneo e impresión de planos en Chiriquí y Panamá.",
       titleSuffix: "Topografía Especializada",
     },
     navLabels: { home: "Inicio", services: "Servicios", about: "Nosotros", blog: "Blog", contact: "Contacto" },
@@ -27,7 +27,7 @@ export const ui = {
     home: {
       title: "Topografía Especializada en Chiriquí y Panamá | Agrimensura, GNSS y Drones",
       description:
-        "Más de 50 años realizando levantamientos topográficos, planos catastrales, fotogrametría con drones y peritajes en David, Boquete y todo Panamá.",
+        "Más de 50 años en topografía, planos, geodesia GNSS, fotogrametría con drones, peritajes y copias, escaneo e impresión de planos en Chiriquí y todo Panamá.",
       heroImageAlt: "Topografía en campo",
       sliderImageAlt: "Imagen",
       heroBadge: "Desde 1970 · David, Chiriquí · Panamá",
@@ -59,6 +59,14 @@ export const ui = {
       servicesKicker: "/ Servicios",
       servicesHeading: 'Soluciones topográficas <span class="text-gradient">de punta a punta</span>',
       servicesViewAll: "Ver todos →",
+      print: {
+        kicker: "/ Copias y planos",
+        heading: 'Copias, escaneo e <span class="text-primary">impresión de planos</span>',
+        lead: "Solicita copias, escaneo o impresión de planos. Indica qué necesitas y cuántas unidades; cotizamos según el servicio y la cantidad.",
+        items: ["Copias de planos", "Escaneo de planos", "Impresión de planos"],
+        cta: "Solicitar cotización",
+        whatsapp: "Consultar por WhatsApp",
+      },
       services: [
         {
           title: "Topografía de Obras Civiles",
@@ -204,11 +212,65 @@ export const ui = {
     services: {
       title: "Servicios de Topografía en David y Chiriquí",
       description:
-        "Levantamientos, planos catastrales, geodesia GNSS, fotogrametría con drones, catastro, SIG y peritajes topográficos en Chiriquí y todo Panamá.",
+        "Topografía, geodesia GNSS, drones y peritajes en Chiriquí. También ofrecemos copias, escaneo e impresión de planos, además de calibración y equipos.",
       heroImageAlt: "Servicios de Topografía",
       badge: "Nuestros Servicios",
       heading: 'Soluciones Integrales en <span class="text-primary">Topografía</span>',
       lead: "Más de 55 años de experiencia respaldan cada levantamiento topográfico que realizamos.",
+      print: {
+        kicker: "Copias y planos",
+        heading: "Copias, escaneo e impresión de planos",
+        description:
+          "Copias, escaneo e impresión de planos en Chiriquí. Solicite una cotización según el servicio y la cantidad.",
+        serviceType: "Copias de planos, escaneo de planos e impresión de planos",
+        lead:
+          "Solicite copias, escaneo o impresión de planos. Indique qué necesita y cuántas unidades; la cotización depende del servicio y la cantidad, por eso no publicamos precios fijos.",
+        items: ["Copias de planos", "Escaneo de planos", "Impresión de planos"],
+        otherHeading: "Otros servicios",
+        otherItems: [
+          "Titulación, segregaciones, nivelaciones, replanteo de lotes y estructuras, y medición de áreas",
+          "Fotogrametría, ortofotos, modelos de terreno y vuelos multiespectrales",
+          "Calibración, venta y alquiler de equipos topográficos (Leica, Topcon, Geomax y Trimble)",
+          "Impresión 3D, grabado y corte láser, y banners",
+        ],
+        cta: "Cotizar copias y planos",
+        whatsapp: "Consultar por WhatsApp",
+        quoteHeading: "Solicitar cotización de copias y planos",
+        quoteLead:
+          "Elija uno o varios servicios e indique las cantidades. Esta solicitud no calcula un precio ni genera una compra.",
+        itemsHeading: "Servicios solicitados",
+        serviceLabel: "Servicio",
+        serviceOptions: [
+          { value: "copias", label: "Copias de planos" },
+          { value: "escaneo", label: "Escaneo de planos" },
+          { value: "impresion", label: "Impresión de planos" },
+        ],
+        formatLabel: "Tamaño o formato (opcional)",
+        formatPlaceholder: "Indique el formato si lo conoce",
+        quantityLabel: "Cantidad",
+        addItem: "Agregar otro servicio",
+        removeItem: "Quitar",
+        nameLabel: "Nombre *",
+        contactHeading: "Datos de contacto",
+        namePlaceholder: "Su nombre",
+        emailLabel: "Correo (opcional)",
+        emailPlaceholder: "nombre@ejemplo.com",
+        phoneLabel: "Teléfono o WhatsApp (opcional)",
+        phonePlaceholder: "+507 6000-0000",
+        contactHint: "Déjenos al menos un correo o teléfono/WhatsApp para responderle.",
+        notesLabel: "Detalle adicional (opcional)",
+        notesPlaceholder: "Cuéntenos cualquier detalle útil para preparar la cotización.",
+        privacyNotice:
+          "Usaremos su nombre, correo o teléfono y los servicios/cantidades para responderle. La solicitud se guarda para atenderla y el sistema intenta avisar a asistente@ricardosanjur.com. También se registra su IP y navegador. No es un pedido ni confirma un precio.",
+        submit: "Enviar solicitud",
+        success: "Solicitud recibida. Nos pondremos en contacto para cotizar.",
+        error: "No se pudo enviar. Inténtelo nuevamente o llámenos al +507 6671-4646.",
+        connectionError: "Error de conexión. Inténtelo más tarde.",
+        contactRequired: "Déjenos un correo o teléfono para poder responderle.",
+        itemsRequired: "Agregue al menos un servicio.",
+        quantityError: "La cantidad debe ser un número entero entre 1 y 1,000,000.",
+        maxItems: "Puede agregar hasta 10 servicios por solicitud.",
+      },
       items: [
         {
           id: "obras-civiles",
@@ -231,12 +293,12 @@ export const ui = {
           icon: "📊",
           image: "/images/Home3-2.jpg",
           description:
-            "Elaboración de planos con curvas de nivel, puntos de control, detalles planimétricos y altimétricos con precisión certificado.",
+            "Elaboración de planos con curvas de nivel, puntos de control y detalles planimétricos y altimétricos. Apoyo en titulación y segregaciones.",
           features: [
-            "Curvas de nivel cada 1m, 2m o 5m",
-            "Puntos de elevación",
-            "Detalles planimétricos",
-            "Coordenadas UTM",
+            "Curvas de nivel y puntos de control",
+            "Detalles planimétricos y coordenadas UTM",
+            "Titulación y segregaciones",
+            "Medición de áreas y linderos",
           ],
           price: "Desde $250",
         },
@@ -276,7 +338,7 @@ export const ui = {
             "Ortofotografía de alta resolución",
             "Modelos digitales de terreno (MDT)",
             "Modelos digitales de superficie (MDS)",
-            "Nubes de puntos 3D",
+            "Nubes de puntos 3D y vuelos multiespectrales",
           ],
           price: "Desde $800",
         },
@@ -338,6 +400,8 @@ export const ui = {
       labelMessage: "Mensaje Adicional",
       placeholderMessage: "Detalles adicionales sobre su proyecto...",
       submit: "Enviar solicitud",
+      quotePrivacyNotice:
+        "Usaremos sus datos y documentos para revisar el proyecto y responder la cotización. La solicitud se guarda para atenderla y el sistema intenta avisar por correo a asistente@ricardosanjur.com. También se registra su IP y navegador.",
       alertContact: "Nos pondremos en contacto con usted en un máximo de 24 horas hábiles.",
       alertUrgent: "Para consultas urgentes, llámenos al",
       msgSent: "¡Solicitud enviada exitosamente! Nos pondremos en contacto pronto.",
@@ -359,6 +423,8 @@ export const ui = {
       phoneHeading: "Teléfono",
       hours: "Lunes a Viernes: 8:00 AM - 5:00 PM",
       emailHeading: "Correo Electrónico",
+      privacyNotice:
+        "Usaremos su nombre y los datos de contacto y mensaje para responderle. El envío se guarda para atenderlo y el sistema intenta avisar por correo a asistente@ricardosanjur.com. También se registra su IP y navegador.",
       locationHeading: "Ubicación",
       viewMaps: "Ver en Google Maps",
       formHeading: "Envíenos un Mensaje",
@@ -425,7 +491,7 @@ export const ui = {
     meta: {
       siteName: "Topografía Especializada, S.A.",
       defaultDescription:
-        "Topografía Especializada S.A. — More than 55 years of experience in surveying, geodesy, GNSS and geomatics in David, Chiriquí and all of Panama.",
+        "Topografía Especializada S.A. — More than 55 years in surveying, geodesy, drones, plan copies, scanning and printing in Chiriquí, Panama.",
       titleSuffix: "Topografía Especializada",
     },
     navLabels: { home: "Home", services: "Services", about: "About", blog: "Blog", contact: "Contact" },
@@ -445,7 +511,7 @@ export const ui = {
     home: {
       title: "Land Surveying & GIS Services in Chiriquí, Panama | Topografía Especializada",
       description:
-        "Topografía Especializada S.A. — More than 55 years of experience in surveying, geodesy, GNSS and geomatics in David, Chiriquí and all of Panama.",
+        "Topografía Especializada S.A. — More than 55 years in surveying, geodesy, drone mapping, plan copies, scanning and printing in Chiriquí, Panama.",
       heroImageAlt: "Surveying in the field",
       sliderImageAlt: "Image",
       heroBadge: "Since 1970 · David, Chiriquí · Panama",
@@ -477,6 +543,14 @@ export const ui = {
       servicesKicker: "/ Services",
       servicesHeading: 'End-to-end <span class="text-gradient">surveying solutions</span>',
       servicesViewAll: "View all →",
+      print: {
+        kicker: "/ Plan copying and printing",
+        heading: 'Plan copies, scanning and <span class="text-primary">printing</span>',
+        lead: "Request plan copies, scanning or printing. Tell us what you need and the quantity; we will prepare a quote based on the service and quantity.",
+        items: ["Plan copies", "Plan scanning", "Plan printing"],
+        cta: "Request a quote",
+        whatsapp: "Ask us on WhatsApp",
+      },
       services: [
         {
           title: "Civil Works Surveying",
@@ -616,11 +690,65 @@ export const ui = {
     services: {
       title: "Land Surveying Services in David & Chiriquí, Panama",
       description:
-        "Boundary surveys, cadastral maps, RTK GNSS geodesy, drone mapping, GIS and expert survey reports in Chiriquí and across Panama.",
+        "Surveying, RTK GNSS, drone mapping and expert reports in Chiriquí. We also offer plan copies, scanning and printing, equipment calibration and rental.",
       heroImageAlt: "Surveying Services",
       badge: "Our Services",
       heading: 'Comprehensive <span class="text-primary">Surveying</span> Solutions',
       lead: "More than 55 years of experience back every topographic survey we perform.",
+      print: {
+        kicker: "Plan copying and printing",
+        heading: "Plan copies, scanning and printing",
+        description:
+          "Plan copies, scanning and printing in Chiriquí. Request a quote based on the service and quantity.",
+        serviceType: "Plan copies, plan scanning and plan printing",
+        lead:
+          "Request plan copies, scanning or printing. Tell us what you need and the quantity; the quote depends on the service and quantity, so we do not publish fixed prices.",
+        items: ["Plan copies", "Plan scanning", "Plan printing"],
+        otherHeading: "Other services",
+        otherItems: [
+          "Property titling, lot subdivisions, leveling, lot and structure staking, and area measurement",
+          "Photogrammetry, orthophotos, terrain models and multispectral flights",
+          "Surveying equipment calibration, sales and rentals (Leica, Topcon, Geomax and Trimble)",
+          "3D printing, laser engraving and cutting, and banners",
+        ],
+        cta: "Quote copies and plans",
+        whatsapp: "Ask us on WhatsApp",
+        quoteHeading: "Request a quote for plan services",
+        quoteLead:
+          "Choose one or more services and enter the quantities. This is a quote request only; it does not calculate a price or create a purchase.",
+        itemsHeading: "Requested services",
+        serviceLabel: "Service",
+        serviceOptions: [
+          { value: "copias", label: "Plan copies" },
+          { value: "escaneo", label: "Plan scanning" },
+          { value: "impresion", label: "Plan printing" },
+        ],
+        formatLabel: "Size or format (optional)",
+        formatPlaceholder: "Enter the format if you know it",
+        quantityLabel: "Quantity",
+        addItem: "Add another service",
+        removeItem: "Remove",
+        nameLabel: "Name *",
+        contactHeading: "Contact details",
+        namePlaceholder: "Your name",
+        emailLabel: "Email (optional)",
+        emailPlaceholder: "name@example.com",
+        phoneLabel: "Phone or WhatsApp (optional)",
+        phonePlaceholder: "+507 6000-0000",
+        contactHint: "Leave an email or phone/WhatsApp number so we can reply.",
+        notesLabel: "Additional details (optional)",
+        notesPlaceholder: "Share any details that may help us prepare your quote.",
+        privacyNotice:
+          "We will use your name, email or phone, and service/quantity details to reply. The request is stored so we can handle it; the system attempts to notify asistente@ricardosanjur.com. Your IP address and browser are also recorded. This is a quote request, not an order or a confirmed price.",
+        submit: "Send request",
+        success: "Request received. We will contact you with a quote.",
+        error: "Could not send your request. Please try again or call +507 6671-4646.",
+        connectionError: "Connection error. Please try again later.",
+        contactRequired: "Leave an email or phone number so we can reply.",
+        itemsRequired: "Add at least one service.",
+        quantityError: "Quantity must be a whole number between 1 and 1,000,000.",
+        maxItems: "You can add up to 10 services per request.",
+      },
       items: [
         {
           id: "obras-civiles",
@@ -644,7 +772,7 @@ export const ui = {
           image: "/images/Home3-2.jpg",
           description:
             "Preparation of maps with contour lines, control points and planimetric and altimetric details with certified precision.",
-          features: ["Contour lines every 1m, 2m or 5m", "Elevation points", "Planimetric details", "UTM coordinates"],
+          features: ["Contour lines and control points", "Planimetric details and UTM coordinates", "Titling and subdivisions", "Area and boundary measurement"],
           price: "From $250",
         },
         {
@@ -678,7 +806,7 @@ export const ui = {
             "High-resolution orthophotography",
             "Digital Terrain Models (DTM)",
             "Digital Surface Models (DSM)",
-            "3D point clouds",
+            "3D point clouds and multispectral flights",
           ],
           price: "From $800",
         },
@@ -740,6 +868,8 @@ export const ui = {
       labelMessage: "Additional Message",
       placeholderMessage: "Additional details about your project...",
       submit: "Send request",
+      quotePrivacyNotice:
+        "We will use your details and documents to review the project and prepare a quote. The request is stored so we can handle it; the system attempts to notify asistente@ricardosanjur.com. Your IP address and browser are also recorded.",
       alertContact: "We will contact you within a maximum of 24 business hours.",
       alertUrgent: "For urgent inquiries, call us at",
       msgSent: "Request sent successfully! We will contact you soon.",
@@ -761,6 +891,8 @@ export const ui = {
       phoneHeading: "Phone",
       hours: "Monday to Friday: 8:00 AM - 5:00 PM",
       emailHeading: "Email Address",
+      privacyNotice:
+        "We will use your name, contact details and message to reply. The submission is stored so we can handle it; the system attempts to notify asistente@ricardosanjur.com. Your IP address and browser are also recorded.",
       locationHeading: "Location",
       viewMaps: "View on Google Maps",
       formHeading: "Send Us a Message",

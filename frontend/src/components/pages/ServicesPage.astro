@@ -2,6 +2,7 @@
 import MainLayout from "../../layouts/MainLayout.astro";
 import { ui, type Lang } from "../../i18n/ui";
 import { routeHref } from "../../i18n/utils";
+import PrintQuoteForm from "../PrintQuoteForm.astro";
 
 interface Props { lang: Lang; }
 const { lang } = Astro.props;
@@ -9,15 +10,27 @@ const t = ui[lang];
 const s = t.services;
 
 const origin = (Astro.site ? new URL("/", Astro.site).href : "https://www.ricardosanjur.com/").replace(/\/$/, "");
-const servicesLd = s.items.map((item) => ({
-  "@type": "Service",
-  "@id": `${origin}/services/#${item.id}`,
-  name: item.title,
-  description: item.description,
-  serviceType: item.title,
-  areaServed: { "@type": "Country", name: "Panamá" },
-  provider: { "@id": `${origin}/#organization` },
-}));
+const servicesLd = [
+  ...s.items.map((item) => ({
+    "@type": "Service",
+    "@id": `${origin}/services/#${item.id}`,
+    name: item.title,
+    description: item.description,
+    serviceType: item.title,
+    areaServed: { "@type": "Country", name: "Panamá" },
+    provider: { "@id": `${origin}/#organization` },
+  })),
+  {
+    "@type": "Service",
+    "@id": `${origin}/services/#copias-planos`,
+    name: s.print.heading,
+    description: s.print.description,
+    serviceType: s.print.serviceType,
+    areaServed: { "@type": "Country", name: "Panamá" },
+    provider: { "@id": `${origin}/#organization` },
+  },
+];
+const printWhatsAppUrl = `https://wa.me/50766714646?text=${encodeURIComponent("Hola, quiero cotizar copias, escaneo o impresión de planos.")}`;
 ---
 
 <MainLayout
@@ -41,6 +54,48 @@ const servicesLd = s.items.map((item) => ({
         <p class="text-lg text-white/80 max-w-2xl mx-auto">
           {s.lead}
         </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Copias, escaneo e impresión: servicio destacado y mini-cotización -->
+  <section id="copias-planos" class="border-b border-black/5 bg-base-200/50 py-14 sm:py-20">
+    <div class="container mx-auto grid max-w-7xl grid-cols-1 items-start gap-8 px-4 sm:px-6 lg:grid-cols-[minmax(0,.85fr)_minmax(0,1.15fr)] lg:gap-12">
+      <div class="pt-2">
+        <p class="font-mono text-xs uppercase tracking-[0.25em] text-primary">{s.print.kicker}</p>
+        <h2 class="mt-3 font-display text-3xl font-bold leading-tight sm:text-4xl">{s.print.heading}</h2>
+        <p class="mt-4 max-w-xl leading-relaxed text-base-content/70">{s.print.lead}</p>
+
+        <ul class="mt-6 grid gap-3">
+          {s.print.items.map((item) => (
+            <li class="flex items-start gap-3 rounded-xl border border-base-300 bg-base-100 px-4 py-3 text-sm font-medium">
+              <span class="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary" aria-hidden="true">✓</span>
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+
+        <div class="mt-6 rounded-2xl border border-primary/15 bg-base-100 p-4">
+          <h3 class="font-semibold">{s.print.otherHeading}</h3>
+          <ul class="mt-2 grid gap-2">
+            {s.print.otherItems.map((item) => (
+              <li class="flex items-start gap-2 text-sm leading-relaxed text-base-content/70">
+                <span class="mt-0.5 text-primary" aria-hidden="true">✓</span><span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div class="mt-6 flex flex-col gap-3 sm:flex-row">
+          <a href="#mini-cotizacion" class="btn btn-primary min-h-12 w-full rounded-full sm:w-auto">{s.print.cta}</a>
+          <a href={printWhatsAppUrl} target="_blank" rel="noopener noreferrer" class="btn min-h-12 w-full rounded-full border border-[#25D366]/40 bg-[#25D366]/10 text-[#116b37] hover:bg-[#25D366]/15 sm:w-auto">
+            {s.print.whatsapp}
+          </a>
+        </div>
+
+      </div>
+      <div class="min-w-0">
+        <PrintQuoteForm lang={lang} />
       </div>
     </div>
   </section>
@@ -99,7 +154,7 @@ const servicesLd = s.items.map((item) => ({
       </div>
 
       <div class="max-w-4xl mx-auto">
-        <form class="card bg-base-100 shadow-xl" id="quoteForm" data-msg-sent={s.msgSent} data-msg-error={s.msgError} data-msg-conn={s.msgConnError}>
+        <form class="card bg-base-100 shadow-xl" id="quoteForm" method="post" action="/api/contact" data-msg-sent={s.msgSent} data-msg-error={s.msgError} data-msg-conn={s.msgConnError}>
           <div class="card-body space-y-6">
 
             <!-- Datos Personales -->
@@ -246,6 +301,7 @@ const servicesLd = s.items.map((item) => ({
                 {s.submit}
               </button>
             </div>
+            <p class="text-xs leading-relaxed text-base-content/60">{s.quotePrivacyNotice}</p>
 
             <!-- Info adicional -->
             <div class="alert">

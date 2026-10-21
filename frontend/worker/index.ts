@@ -436,6 +436,7 @@ function jsonResponse(obj: unknown, status: number): Response {
 
 // A donde llegan los mensajes del sitio: el correo que la pagina ya publica.
 const DESTINO_CONTACTO = 'asistente@ricardosanjur.com';
+const LIMITES_CONTACTO = { nombre: 120, email: 254, telefono: 32, tema: 120, mensaje: 10_000 } as const;
 
 function escCorreo(v: unknown): string {
   return String(v == null ? '' : v)
@@ -446,6 +447,7 @@ function escCorreo(v: unknown): string {
 // Aviso por correo. BEST-EFFORT: si falla, el mensaje YA quedo en la base.
 async function avisarContacto(env: Env, d: { nombre: string; email: string; telefono: string; tema: string; mensaje: string; id: string; ahora: string; archivos?: { id: string; nombre: string; tamano: number }[] }) {
   if (!env.EMAIL) return { enviado: false, error: 'sin_binding_email' };
+  const nombreAsunto = String(d.nombre || '').replace(/[\r\n\u0000-\u001f\u007f]+/g, ' ').trim().slice(0, 80);
   const filas = [
     ['Nombre', d.nombre],
     ['Correo', d.email || '-'],
@@ -453,6 +455,16 @@ async function avisarContacto(env: Env, d: { nombre: string; email: string; tele
     ['Tema', d.tema || '-'],
     ['Recibido', d.ahora],
   ].map(([k, v]) => '<tr><td style="padding:6px 14px 6px 0;color:#777;vertical-align:top">' + escCorreo(k) + '</td><td style="padding:6px 0;font-weight:600">' + escCorreo(v) + '</td></tr>').join('');
+  const respuestaHtml = d.email
+    ? '<p style="margin-top:18px;color:#777;font-size:13px">Para responder, escribile a <a href="mailto:' + escCorreo(d.email) + '">' + escCorreo(d.email) + '</a>.</p>'
+    : d.telefono
+      ? '<p style="margin-top:18px;color:#777;font-size:13px">Para responder por teléfono o WhatsApp, contacta al ' + escCorreo(d.telefono) + '.</p>'
+      : '';
+  const respuestaTexto = d.email
+    ? '\n\n---\nResponde por correo a ' + d.email + '.'
+    : d.telefono
+      ? '\n\n---\nResponde por teléfono o WhatsApp al ' + d.telefono + '.'
+      : '';
   const html =
     '<div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;color:#111827">' +
       '<h2 style="margin:0 0 4px">Nuevo mensaje del sitio</h2>' +
@@ -466,11 +478,11 @@ async function avisarContacto(env: Env, d: { nombre: string; email: string; tele
             : escCorreo(a.nombre)) + ' <span style="color:#777">(' + Math.round((a.tamano || 0) / 1024) + ' KB)</span></li>').join('') +
           '</ul><p style="color:#777;font-size:13px;margin:6px 0 0">Los enlaces vencen en 30 dias.</p></div>'
         : '') +
-      '<p style="margin-top:18px;color:#777;font-size:13px">Para responder, escribile a <a href="mailto:' + escCorreo(d.email) + '">' + escCorreo(d.email) + '</a>.</p>' +
+      respuestaHtml +
     '</div>';
   const text = 'Nuevo mensaje del sitio\n\nNombre: ' + d.nombre + '\nCorreo: ' + (d.email || '-') +
     '\nTelefono: ' + (d.telefono || '-') + '\nTema: ' + (d.tema || '-') + '\n\n' + d.mensaje +
-    '\n\n---\nRespondele a ' + (d.email || '-') + '.' +
+    respuestaTexto +
     ((d.archivos && d.archivos.length)
       ? '\n\nArchivos adjuntos (' + d.archivos.length + '):\n' + d.archivos.map((a) => '- ' + a.nombre + ' (' + Math.round((a.tamano || 0) / 1024) + ' KB)' + (a.link ? '\n  ' + a.link : '')).join('\n')
       : '');
@@ -478,7 +490,7 @@ async function avisarContacto(env: Env, d: { nombre: string; email: string; tele
     const res = await env.EMAIL.send({
       to: DESTINO_CONTACTO,
       from: 'Topografia Ricardosanjur <no-reply@ricardosanjur.com>',
-      subject: 'Nuevo mensaje del sitio: ' + String(d.nombre || '').slice(0, 80),
+      subject: 'Nuevo mensaje del sitio: ' + nombreAsunto,
       html: html,
       text: text,
     });
@@ -734,13 +746,21 @@ async function handleContact(request: Request, env: Env, ctx: Ctx): Promise<Resp
   }
   if (!data || typeof data !== 'object') return jsonResponse({ ok: false, error: 'json' }, 400);
 
-  const nombre = str(data.nombre);
-  const email = str(data.email);
-  const telefono = str(data.telefono);
-  const tema = str(data.tema);
-  const mensaje = str(data.mensaje);
+  const nombre = str(data.nombre) || '';
+  const email = str(data.email) || '';
+  const telefono = str(data.telefono) || '';
+  const tema = str(data.tema) || '';
+  const mensaje = str(data.mensaje) || '';
   if (!nombre || !mensaje) return jsonResponse({ ok: false, error: 'campos' }, 400);
+  if (
+    nombre.length > LIMITES_CONTACTO.nombre || email.length > LIMITES_CONTACTO.email ||
+    telefono.length > LIMITES_CONTACTO.telefono || tema.length > LIMITES_CONTACTO.tema ||
+    mensaje.length > LIMITES_CONTACTO.mensaje
+  ) return jsonResponse({ ok: false, error: 'limites' }, 413);
   if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return jsonResponse({ ok: false, error: 'email' }, 400);
+  if (tema === 'cotizacion_copias_planos' && !email && !telefono) {
+    return jsonResponse({ ok: false, error: 'contacto' }, 400);
+  }
 
   const id = crypto.randomUUID();
   const ahora = new Date().toISOString();
