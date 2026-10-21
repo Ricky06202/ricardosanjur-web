@@ -25,7 +25,7 @@ export const ui = {
       madeByCta: "¿Quieres una página así? Escríbeme",
     },
     home: {
-      title: "Topografía Especializada en Chiriquí y Panamá | Agrimensura, GNSS y Drones",
+      title: "Topografía en Chiriquí | GNSS y drones · Topografía Especializada",
       description:
         "Más de 50 años en topografía, planos, geodesia GNSS, fotogrametría con drones, peritajes y copias, escaneo e impresión de planos en Chiriquí y todo Panamá.",
       heroImageAlt: "Topografía en campo",
@@ -509,7 +509,7 @@ export const ui = {
       madeByCta: "Want a site like this? Write to me",
     },
     home: {
-      title: "Land Surveying & GIS Services in Chiriquí, Panama | Topografía Especializada",
+      title: "Surveying in Chiriquí | GNSS & drones · Topografía Especializada",
       description:
         "Topografía Especializada S.A. — More than 55 years in surveying, geodesy, drone mapping, plan copies, scanning and printing in Chiriquí, Panama.",
       heroImageAlt: "Surveying in the field",
