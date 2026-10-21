@@ -210,7 +210,7 @@ export const ui = {
       ctaContact: "Contáctenos",
     },
     services: {
-      title: "Servicios de Topografía en David y Chiriquí",
+      title: "Servicios topográficos en Chiriquí | Topografía Especializada",
       description:
         "Topografía, geodesia GNSS, drones y peritajes en Chiriquí. También ofrecemos copias, escaneo e impresión de planos, además de calibración y equipos.",
       heroImageAlt: "Servicios de Topografía",
@@ -509,7 +509,7 @@ export const ui = {
       madeByCta: "Want a site like this? Write to me",
     },
     home: {
-      title: "Surveying in Chiriquí | GNSS & drones · Topografía Especializada",
+      title: "Surveying in Chiriquí | GNSS + drones · Topografía Especializada",
       description:
         "Topografía Especializada S.A. — More than 55 years in surveying, geodesy, drone mapping, plan copies, scanning and printing in Chiriquí, Panama.",
       heroImageAlt: "Surveying in the field",
@@ -688,7 +688,7 @@ export const ui = {
       ctaContact: "Contact Us",
     },
     services: {
-      title: "Land Surveying Services in David & Chiriquí, Panama",
+      title: "Surveying services in Chiriquí | Topografía Especializada",
       description:
         "Surveying, RTK GNSS, drone mapping and expert reports in Chiriquí. We also offer plan copies, scanning and printing, equipment calibration and rental.",
       heroImageAlt: "Surveying Services",
