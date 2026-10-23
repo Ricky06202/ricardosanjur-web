@@ -406,6 +406,20 @@ function fileNameFromKey(key: unknown): string {
   return base.replace(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}-/, '') || base;
 }
 
+function mimeDeArchivo(file: any): string {
+  const ext = extDe(file && file.name);
+  const mimePorExtension: Record<string, string> = {
+    pdf: 'application/pdf',
+    dwg: 'image/vnd.dwg',
+    dxf: 'image/vnd.dxf',
+    zip: 'application/zip',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+  };
+  return mimePorExtension[ext] || String(file && file.type || '').trim() || 'application/octet-stream';
+}
+
 /* ====================== contactos (/api/contact) ====================== */
 
 let contactosListo = false;
@@ -864,7 +878,7 @@ const CSS = [
   '.btn:disabled{opacity:.65;cursor:progress}',
   'input,select,textarea{width:100%;padding:12px 13px;border-radius:12px;border:1px solid #D0D5DD;background:#fff;color:var(--ink);font:inherit;font-size:16px}',
   'input:focus,select:focus,textarea:focus{outline:3px solid rgba(37,99,235,.18);border-color:var(--brand)}',
-  'input[type=file]{padding:11px;font-size:.92rem;color:var(--mut)}',
+  'input[type=file]{padding:11px;font-size:16px;color:var(--mut)}',
   'input[type=file]::file-selector-button{background:var(--soft);color:#1D4ED8;border:1px solid #D6E4FD;border-radius:10px;padding:9px 13px;margin-right:11px;font:inherit;font-weight:700;cursor:pointer}',
   'label{display:block;font-size:.86rem;font-weight:600;margin:16px 0 6px;color:#344054}',
   'label .muted{font-weight:400}',
@@ -880,6 +894,19 @@ const CSS = [
   '.plan-accion{flex:0 0 auto}',
   '.accion-zip{display:flex;gap:14px;flex-wrap:wrap;align-items:center;justify-content:space-between}',
   '.accion-zip .btn{flex:0 0 auto}',
+  '.file-meta{margin-top:12px;padding:14px;border:1px solid var(--line);border-radius:14px;background:#FCFDFF}',
+  '.file-meta-head{display:flex;align-items:center;gap:10px;min-width:0}',
+  '.file-meta-name{font-weight:600;min-width:0;overflow-wrap:anywhere}',
+  '.admin-file{border:1px solid var(--line);border-radius:16px;padding:16px;background:#FCFDFF;margin-top:12px}',
+  '.admin-file:first-child{margin-top:0}',
+  '.admin-file-top{display:flex;align-items:center;gap:12px;min-width:0}',
+  '.admin-file-top .plan-icono{width:42px;height:42px}',
+  '.admin-file-fields{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}',
+  '.admin-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}',
+  '.admin-actions form{margin:0;flex:1 1 120px}',
+  '.admin-actions>.btn,.admin-actions form .btn{width:100%;white-space:normal}',
+  '.status-archived{color:var(--warn);font-size:.82rem;font-weight:600}',
+  '.notice{border:1px solid #B7E4CF;background:#EFFAF4;color:#14532D;border-radius:14px;padding:12px 14px;margin-top:16px}',
   /* datos */
   '.code{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,monospace;font-size:.8rem;background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:8px 10px;display:inline-block;max-width:100%;min-width:0;overflow-wrap:anywhere;word-break:break-word;color:#1D4ED8}',
   'a.code:hover{text-decoration:none;border-color:#BFD3FD;background:#EAF1FE}',
@@ -936,9 +963,10 @@ const CSS = [
   '.only-desktop{display:none!important}',
   '.only-mobile{display:block}',
   '}',
-  '@media(max-width:640px){.grid2{grid-template-columns:1fr}.stats-row{grid-template-columns:1fr 1fr;gap:12px 10px}',
+  '@media(max-width:640px){.grid2,.admin-file-fields{grid-template-columns:1fr}.stats-row{grid-template-columns:1fr 1fr;gap:12px 10px}',
   '.acc>summary .t small{display:none}',
   '.acc>summary .t{font-size:.98rem}',
+  '.admin-actions form{flex:1 1 100%}.admin-file{padding:14px}.file-meta{padding:13px}',
   'main{padding:20px 14px 72px}.card{padding:18px 16px;border-radius:18px}.acc>summary{padding:16px 16px}.acc>div{padding:16px}h1{font-size:25px}}',
 ].join('\n');
 
@@ -954,6 +982,8 @@ export function page(title: string, body: string, status: number, cssExtra?: str
     '<header class="top"><div class="in">' + adminBarra() + '</div></header>' +
     '<main>' + body + '</main>\n' +
     '<script>(function(){var bs=document.querySelectorAll("[data-copy]");for(var i=0;i<bs.length;i++){(function(b){b.addEventListener("click",function(){var t=b.getAttribute("data-copy")||"";if(!(navigator.clipboard&&navigator.clipboard.writeText)){window.prompt("Copie el enlace",t);return;}navigator.clipboard.writeText(t).then(function(){var o=b.textContent;b.textContent="Copiado";b.classList.add("ok");setTimeout(function(){b.textContent=o;},1600);});});})(bs[i]);}})();' +
+    '(function(){var input=document.getElementById("p-arch"),host=document.getElementById("p-archivos-detalle");if(!input||!host)return;function add(c,txt,el){var l=document.createElement("label");l.htmlFor=el.id;l.textContent=txt;c.appendChild(l);c.appendChild(el);}input.addEventListener("change",function(){while(host.firstChild)host.removeChild(host.firstChild);var files=input.files||[];if(!files.length){var empty=document.createElement("p");empty.className="hint";empty.textContent="Seleccione uno o varios archivos. Cada uno puede llevar su propia descripcion.";host.appendChild(empty);return;}for(var i=0;i<files.length;i++){var f=files[i],box=document.createElement("div");box.className="file-meta";var head=document.createElement("div");head.className="file-meta-head";var icon=document.createElement("div");icon.className="plan-icono";var dot=f.name.lastIndexOf(".");icon.textContent=dot>-1?f.name.slice(dot+1).toUpperCase():"DOC";var info=document.createElement("div");info.className="file-meta-name";var name=document.createElement("div");name.textContent=f.name;var meta=document.createElement("div");meta.className="muted small";meta.textContent=f.size?Math.max(1,Math.round(f.size/1024))+" KB":"";info.appendChild(name);info.appendChild(meta);head.appendChild(icon);head.appendChild(info);box.appendChild(head);var grid=document.createElement("div");grid.className="admin-file-fields";var title=document.createElement("input");title.type="text";title.id="p-titulo-"+i;title.name="titulo_"+i;title.value=f.name;title.autocomplete="off";add(grid,"Nombre visible (opcional)",title);var desc=document.createElement("textarea");desc.id="p-desc-"+i;desc.name="descripcion_"+i;desc.rows=2;desc.placeholder="Descripcion de este archivo";add(grid,"Descripcion (opcional)",desc);box.appendChild(grid);host.appendChild(box);}});})();' +
+    '(function(){var fs=document.querySelectorAll("form[data-confirm]");for(var i=0;i<fs.length;i++){(function(f){f.addEventListener("submit",function(e){if(!window.confirm(f.getAttribute("data-confirm")||"¿Continuar?")){e.preventDefault();e.stopImmediatePropagation();}});})(fs[i]);}})();' +
     '(function(){var fs=document.querySelectorAll("form[data-busy]");for(var i=0;i<fs.length;i++){fs[i].addEventListener("submit",function(){var b=this.querySelector("button[type=submit]");if(b){b.disabled=true;b.textContent=this.getAttribute("data-busy")||"Guardando...";}});}})();</script>' +
     '</body></html>';
   return new Response(html, {
@@ -962,8 +992,8 @@ export function page(title: string, body: string, status: number, cssExtra?: str
   });
 }
 
-/* Desglose de tipos de archivo, ej. "3 (2 PDF, 1 DWG)".
- * Se cuenta por la extension del titulo; si no tiene, cuenta como PDF. */
+/* Desglose de tipos de archivo, ej. "3 (2 PDF, 1 DWG)". Se prioriza el nombre
+ * original guardado en R2: el nombre visible puede ser personalizado y no llevar extension. */
 function extDeMime(mime: string): string {
   const m = mime.toLowerCase();
   if (!m) return '';
@@ -972,28 +1002,56 @@ function extDeMime(mime: string): string {
   if (m.indexOf('jpeg') > -1) return 'jpg';
   if (m.indexOf('png') > -1) return 'png';
   if (m.indexOf('dwg') > -1) return 'dwg';
+  if (m.indexOf('dxf') > -1) return 'dxf';
   const t = m.split('/')[1] || '';
   return /^[a-z0-9]{1,5}$/.test(t) ? t : '';
 }
 
-function tiposDeLista(titulos: unknown[]): string {
+function extensionDePlan(plan: any): string {
+  return extDe(fileNameFromKey(plan && plan.r2_key)) ||
+    extDe(plan && plan.titulo) ||
+    extDeMime(String(plan && plan.mime || '')) ||
+    'doc';
+}
+
+function tiposDeLista(archivos: unknown[]): string {
   const cuenta: Record<string, number> = {};
-  for (let i = 0; i < titulos.length; i++) {
-    const tipo = (extDe(titulos[i]) || 'pdf').toUpperCase();
+  for (let i = 0; i < archivos.length; i++) {
+    const archivo: any = archivos[i];
+    const tipo = (archivo && typeof archivo === 'object'
+      ? extensionDePlan(archivo)
+      : (extDe(archivo) || 'doc')).toUpperCase();
     cuenta[tipo] = (cuenta[tipo] || 0) + 1;
   }
   const tipos = Object.keys(cuenta).sort(function (a, b) { return cuenta[b] - cuenta[a] || a.localeCompare(b); });
   return tipos.map(function (t) { return cuenta[t] + ' ' + t; }).join(', ');
 }
 
-function desgloseTipos(titulos: unknown[]): string {
-  const det = tiposDeLista(titulos);
-  return det ? titulos.length + ' <span class="tipo-det">(' + det + ')</span>' : '0';
+function desgloseTipos(archivos: unknown[]): string {
+  const det = tiposDeLista(archivos);
+  return det ? archivos.length + ' <span class="tipo-det">(' + det + ')</span>' : '0';
 }
 
 // Barra superior del panel: marca + navegacion (visible siempre).
 function adminBarra(): string {
   return '<a class="logo" href="/admin"><span class="mark">TE</span>Topografia Especializada <small>S.A.</small></a>';
+}
+
+function avisoAdmin(code: unknown): string {
+  const mensajes: Record<string, string> = {
+    'cliente-actualizado': 'Datos del cliente guardados.',
+    'cliente-archivado': 'Cliente archivado: su enlace dejó de funcionar. Sus archivos e historial se conservaron.',
+    'cliente-reactivado': 'Cliente reactivado; su enlace vuelve a funcionar.',
+    'cliente-no-encontrado': 'No se encontró el cliente que quería actualizar.',
+    'archivo-actualizado': 'Datos del archivo guardados.',
+    'archivo-nombre-vacio': 'Escriba un nombre visible para el archivo.',
+    'archivo-no-encontrado': 'No se encontró el archivo que quería actualizar.',
+    'archivo-archivado': 'Archivo archivado: el cliente ya no lo ve. El archivo se conservó y se puede restaurar.',
+    'archivo-restaurado': 'Archivo restaurado y visible de nuevo para el cliente.',
+    'nombre-vacio': 'Escriba un nombre antes de guardar.',
+  };
+  const mensaje = mensajes[String(code || '')];
+  return mensaje ? '<div class="notice" role="status">' + esc(mensaje) + '</div>' : '';
 }
 
 function notFoundPage(message: string): Response {
@@ -1015,7 +1073,7 @@ async function handleClient(token: string, env: Env): Promise<Response> {
   }
 
   const res = await env.DB
-    .prepare('SELECT id, titulo, descripcion, tamano, mime, creado_en, descargas FROM plans WHERE client_id = ? AND activo = 1 ORDER BY creado_en DESC')
+    .prepare('SELECT id, titulo, descripcion, r2_key, tamano, mime, creado_en, descargas FROM plans WHERE client_id = ? AND activo = 1 ORDER BY creado_en DESC')
     .bind(client.id)
     .all();
   const plans = (res && res.results) || [];
@@ -1024,7 +1082,7 @@ async function handleClient(token: string, env: Env): Promise<Response> {
   if (plans.length === 0) {
     listHtml = '<div class="card"><div class="empty">Todavia no tiene planos disponibles. Si esperaba alguno, escriba al ingeniero Sanjur.</div></div>';
   } else {
-    const tipos = tiposDeLista(plans.map(function (p: any) { return p.titulo; }));
+    const tipos = tiposDeLista(plans);
     listHtml = '<div class="card"><div class="sec"><div class="h"><h2>Sus planos</h2>' +
       '<span class="pill">' + plans.length + (plans.length === 1 ? ' archivo' : ' archivos') + '</span>' +
       (tipos ? '<span class="pill tipos">' + tipos + '</span>' : '') + '</div></div>' +
@@ -1035,7 +1093,7 @@ async function handleClient(token: string, env: Env): Promise<Response> {
       const size = p.tamano ? formatBytes(Number(p.tamano)) : '';
       const when = dateFmt(p.creado_en);
       const meta = [when, size].filter(Boolean).join(' &middot; ');
-      const ext = (extDe(p.titulo) || extDeMime(String(p.mime || '')) || 'PDF').toUpperCase();
+      const ext = extensionDePlan(p).toUpperCase();
       listHtml += '<div class="plan">' +
         '<div class="plan-icono">' + esc(ext) + '</div>' +
         '<div class="plan-cuerpo">' +
@@ -1052,7 +1110,7 @@ async function handleClient(token: string, env: Env): Promise<Response> {
   const body = '<h1>Hola, <span>' + esc(client.nombre || 'cliente') + '</span></h1>' +
     '<p class="lead">Estos son los planos que el ingeniero preparo para usted. Cada archivo se descarga directo a su telefono o computadora.</p>' +
     (plans.length > 1 ? '<div class="card accion-zip"><div><div class="stat"><b>' + plans.length + '</b><span>Archivos disponibles</span></div>' +
-      '<p class="hint" style="margin-top:4px">' + desgloseTipos(plans.map(function (p: any) { return p.titulo; })) +
+      '<p class="hint" style="margin-top:4px">' + desgloseTipos(plans) +
       (plans.length > 1 ? ' &middot; bajelos todos juntos en un solo ZIP.' : '') + '</p></div>' +
       '<a class="btn" href="/mis-planos/' + encodeURIComponent(token) + '/zip">Descargar todo (ZIP)</a></div>' : '') +
     listHtml;
@@ -1062,7 +1120,7 @@ async function handleClient(token: string, env: Env): Promise<Response> {
 // GET /mis-planos/:token/plano/:id -> descarga desde R2 + log en downloads.
 async function handleDownload(token: string, id: string, env: Env): Promise<Response> {
   const plan = await env.DB
-    .prepare('SELECT p.id, p.client_id, p.r2_key, p.titulo, p.mime FROM plans p JOIN clients c ON c.id = p.client_id WHERE p.id = ? AND c.token = ? AND c.activo = 1')
+    .prepare('SELECT p.id, p.client_id, p.r2_key, p.titulo, p.mime FROM plans p JOIN clients c ON c.id = p.client_id WHERE p.id = ? AND p.activo = 1 AND c.token = ? AND c.activo = 1')
     .bind(id, token)
     .first();
   if (!plan) return notFoundPage('El plano no existe o no pertenece a este enlace.');
@@ -1313,61 +1371,73 @@ async function handleInicio(request: Request, env: Env, tok: string, opts?: { sa
   const url = new URL(request.url);
   const cRes = await env.DB
     .prepare('SELECT c.id, c.nombre, c.correo, c.telefono, c.token, c.activo, c.creado_en, ' +
-      '(SELECT COUNT(*) FROM plans p WHERE p.client_id = c.id) AS planos, ' +
+      '(SELECT COUNT(*) FROM plans p WHERE p.client_id = c.id AND p.activo = 1) AS planos, ' +
       '(SELECT COUNT(*) FROM downloads d WHERE d.client_id = c.id) AS descargas ' +
       'FROM clients c ORDER BY c.creado_en DESC')
     .all();
   const clients = (cRes && cRes.results) || [];
+  const activeClients = clients.filter((c: any) => Number(c.activo) === 1);
+  const inactiveClients = clients.filter((c: any) => Number(c.activo) !== 1);
 
   /* Desglose de archivos por cliente: cuantos PDF, cuantos DWG, etc.
    * La mama pidio ver "2 (1 PDF, 1 DWG)" en vez de solo el numero. */
-  const titulosPorCliente: Record<string, unknown[]> = {};
+  const planesPorCliente: Record<string, unknown[]> = {};
   try {
     const listaRes = await env.DB
-      .prepare('SELECT client_id, titulo FROM plans WHERE activo = 1')
+      .prepare('SELECT p.client_id, p.titulo, p.mime, p.r2_key FROM plans p JOIN clients c ON c.id = p.client_id WHERE p.activo = 1 AND c.activo = 1')
       .all();
     const lista = (listaRes && listaRes.results) || [];
     for (let i = 0; i < lista.length; i++) {
       const fila: any = lista[i];
       const cid = String(fila.client_id || '');
-      (titulosPorCliente[cid] || (titulosPorCliente[cid] = [])).push(fila.titulo);
+      (planesPorCliente[cid] || (planesPorCliente[cid] = [])).push(fila);
     }
   } catch (e) { /* si falla, se cae al numero simple */ }
 
   function desgloseDe(id: string, total: unknown): string {
-    const titulos = titulosPorCliente[String(id)];
-    if (!titulos || !titulos.length) return esc(total == null ? 0 : total);
-    return desgloseTipos(titulos);
+    const archivos = planesPorCliente[String(id)];
+    if (!archivos || !archivos.length) return esc(total == null ? 0 : total);
+    return desgloseTipos(archivos);
   }
 
-  let rows = '';
-  if (clients.length === 0) {
-    rows = '<tr><td colspan="6"><div class="empty">Todavia no hay clientes. Cree el primero abajo.</div></td></tr>';
-  } else {
-    for (let i = 0; i < clients.length; i++) {
-      const c = clients[i];
-      const link = SITE_ORIGIN + '/mis-planos/' + c.token;
+  function filasClientes(listaClientes: any[]): string {
+    if (listaClientes.length === 0) {
+      return '<tr><td colspan="6"><div class="empty">No hay clientes activos. Cree uno abajo o restaure uno archivado.</div></td></tr>';
+    }
+    let html = '';
+    for (let i = 0; i < listaClientes.length; i++) {
+      const c = listaClientes[i];
       const active = Number(c.activo) === 1;
-      rows += '<tr><td data-l="Cliente"><strong>' + esc(c.nombre || '') + '</strong>' +
+      const link = SITE_ORIGIN + '/mis-planos/' + c.token;
+      const manage = '/admin/' + encodeURIComponent(tok) + '/cliente/' + encodeURIComponent(String(c.id));
+      html += '<tr><td data-l="Cliente"><strong>' + esc(c.nombre || '') + '</strong>' +
         (c.correo ? '<div class="muted small">' + esc(c.correo) + '</div>' : '') +
         (c.telefono ? '<div class="muted small">' + esc(c.telefono) + '</div>' : '') +
-        '<div class="only-desktop" style="margin-top:4px">' + (active ? '<span class="ok small">activo</span>' : '<span class="err small">revocado</span>') + '</div>' +
+        '<div class="only-desktop" style="margin-top:4px">' + (active ? '<span class="ok small">activo</span>' : '<span class="status-archived small">archivado</span>') + '</div>' +
         '</td>' +
         '<td class="only-mobile noet"><div class="stats-inline"><div data-l="Planos">' + desgloseDe(String(c.id), c.planos) + '</div>' +
         '<div data-l="Descargas">' + esc(c.descargas) + '</div></div></td>' +
         '<td class="only-desktop">' + desgloseDe(String(c.id), c.planos) + '</td>' +
         '<td class="only-desktop">' + esc(c.descargas) + '</td>' +
-        '<td class="link" data-l="Link del cliente"><a class="code" href="' + esc(link) + '">' + esc(link) + '</a></td>' +
-        '<td><form method="POST" action="/admin/' + tok + '/revocar">' +
+        '<td class="link" data-l="Link del cliente">' + (active
+          ? '<a class="code" href="' + esc(link) + '">' + esc(link) + '</a>'
+          : '<span class="muted small">Enlace desactivado</span>') + '</td>' +
+        '<td><div class="admin-actions"><a class="btn ghost sm" href="' + esc(manage) + '">Gestionar</a>' +
+        '<form method="POST" action="/admin/' + esc(tok) + '/revocar" data-busy="Actualizando..."' +
+        (active ? ' data-confirm="¿Archivar este cliente? El enlace dejará de funcionar, pero podrá restaurarlo después."' : '') + '>' +
+        '<input type="hidden" name="activo" value="' + (active ? '0' : '1') + '">' +
         '<input type="hidden" name="client_id" value="' + esc(c.id) + '">' +
-        '<button class="btn ghost sm ' + (active ? 'danger' : '') + '" type="submit">' + (active ? 'Revocar' : 'Reactivar') + '</button>' +
-        '</form></td></tr>';
+        '<button class="btn ghost sm ' + (active ? 'danger' : '') + '" type="submit">' + (active ? 'Archivar' : 'Reactivar') + '</button>' +
+        '</form></div></td></tr>';
     }
+    return html;
   }
 
+  const rows = filasClientes(activeClients);
+  const archivedRows = filasClientes(inactiveClients);
   let options = '';
-  for (let i = 0; i < clients.length; i++) {
-    const c = clients[i];
+  for (let i = 0; i < activeClients.length; i++) {
+    const c = activeClients[i];
     options += '<option value="' + esc(c.id) + '">' + esc(c.nombre || c.id) + '</option>';
   }
 
@@ -1476,32 +1546,39 @@ async function handleInicio(request: Request, env: Env, tok: string, opts?: { sa
       ((opts && opts.blog) ? '<a class="btn ghost sm" href="/admin/' + esc(tok) + '/blog">Blog</a>' : '')
     : '';
 
-  const totalPlanos = clients.reduce(function (a: any, c: any) { return a + Number(c.planos || 0); }, 0);
+  const totalPlanos = activeClients.reduce(function (a: any, c: any) { return a + Number(c.planos || 0); }, 0);
   const totalDescargas = clients.reduce(function (a: any, c: any) { return a + Number(c.descargas || 0); }, 0);
 
   function desgloseResumen(): string {
-    const titulos: unknown[] = [];
-    const claves = Object.keys(titulosPorCliente);
+    const archivos: unknown[] = [];
+    const claves = Object.keys(planesPorCliente);
     for (let i = 0; i < claves.length; i++) {
-      const arr = titulosPorCliente[claves[i]];
-      for (let j = 0; j < arr.length; j++) titulos.push(arr[j]);
+      const arr = planesPorCliente[claves[i]];
+      for (let j = 0; j < arr.length; j++) archivos.push(arr[j]);
     }
-    if (!titulos.length) return '';
-    const d = tiposDeLista(titulos);
+    if (!archivos.length) return '';
+    const d = tiposDeLista(archivos);
     return d ? ' <span class="tipo-det">(' + d + ')</span>' : '';
   }
 
   const resumen = '<div class="card"><div class="stats-row">' +
-    '<div class="stat"><b>' + clients.length + '</b><span>Clientes</span></div>' +
-    '<div class="stat"><b>' + totalPlanos + '</b><span>Planos' + desgloseResumen() + '</span></div>' +
+    '<div class="stat"><b>' + activeClients.length + '</b><span>' + (activeClients.length === 1 ? 'Cliente activo' : 'Clientes activos') + '</span></div>' +
+    '<div class="stat"><b>' + totalPlanos + '</b><span>' + (totalPlanos === 1 ? 'Plano' : 'Planos') + desgloseResumen() + '</span></div>' +
     '<div class="stat"><b>' + totalDescargas + '</b><span>Descargas</span></div>' +
     '<div class="stat"><b>' + certs.length + '</b><span>Certificados</span></div>' +
     '</div></div>';
 
   const tablaClientes = '<div class="card"><div class="sec"><div class="h"><h2>Clientes</h2>' +
-    '<span class="pill">' + clients.length + ' registrados</span></div></div>' +
+    '<span class="pill">' + activeClients.length + (activeClients.length === 1 ? ' activo' : ' activos') + '</span></div></div>' +
+    '<p class="hint" style="margin:0">Abra “Gestionar” para corregir los datos y los archivos de cada cliente.</p>' +
     '<div style="overflow-x:auto;margin-top:6px"><table class="tabla-clientes"><thead><tr><th>Cliente</th><th class="only-mobile">Planos y descargas</th><th class="only-desktop">Planos</th><th class="only-desktop">Descargas</th><th>Link del cliente</th><th></th></tr></thead>' +
     '<tbody>' + rows + '</tbody></table></div></div>';
+
+  const tablaArchivados = inactiveClients.length
+    ? '<details class="acc"><summary><span class="t">Clientes archivados<small>Sus enlaces están desactivados; puede restaurarlos cuando quiera.</small></span><span class="pill">' + inactiveClients.length + '</span></summary>' +
+      '<div><div style="overflow-x:auto"><table class="tabla-clientes"><thead><tr><th>Cliente</th><th class="only-mobile">Planos y descargas</th><th class="only-desktop">Planos</th><th class="only-desktop">Descargas</th><th>Link del cliente</th><th></th></tr></thead>' +
+      '<tbody>' + archivedRows + '</tbody></table></div></div></details>'
+    : '';
 
   const tablaCerts = '<div class="card"><div class="sec"><div class="h"><h2>Certificados emitidos</h2>' +
     '<span class="pill">' + certs.length + ' total</span></div>' +
@@ -1510,7 +1587,7 @@ async function handleInicio(request: Request, env: Env, tok: string, opts?: { sa
     '<th class="only-desktop">Huella</th><th class="only-desktop">Emitido</th><th class="only-desktop">Link publico</th></tr></thead><tbody>' +
     certRows + '</tbody></table></div></div>';
 
-  const formCliente = '<details class="acc"' + (clients.length === 0 ? ' open' : '') + '><summary>' +
+  const formCliente = '<details class="acc"' + (activeClients.length === 0 ? ' open' : '') + '><summary>' +
     '<span class="t">Nuevo cliente<small>Nombre obligatorio; correo y telefono son opcionales.</small></span><span class="chev">&#9662;</span></summary>' +
     '<div><form method="POST" action="/admin/' + tok + '/cliente" data-busy="Creando...">' +
     '<label for="n-nombre">Nombre</label><input id="n-nombre" name="nombre" required autocomplete="off" placeholder="Ej. Felix Abadia">' +
@@ -1521,11 +1598,10 @@ async function handleInicio(request: Request, env: Env, tok: string, opts?: { sa
   const formPlano = '<details class="acc" open><summary>' +
     '<span class="t">Subir plano<small>Al subir se emite el certificado automaticamente (huella SHA-256 en la misma accion).</small></span><span class="chev">&#9662;</span></summary>' +
     '<div><form method="POST" action="/admin/' + tok + '/plano" enctype="multipart/form-data" data-busy="Subiendo y certificando...">' +
-    '<label for="p-cliente">Cliente</label><select id="p-cliente" name="client_id" required>' + (options || '<option value="">Crea un cliente primero</option>') + '</select>' +
-    '<label for="p-titulo">Titulo <span class="muted">(opcional)</span></label><input id="p-titulo" name="titulo" placeholder="Si lo dejas vacio se usa el nombre del archivo">' +
-    '<label for="p-desc">Descripcion <span class="muted">(opcional)</span></label><textarea id="p-desc" name="descripcion" rows="2"></textarea>' +
+    '<label for="p-cliente">Cliente</label><select id="p-cliente" name="client_id" required' + (activeClients.length ? '' : ' disabled') + '>' + (options || '<option value="">Cree o reactive un cliente primero</option>') + '</select>' +
     '<label for="p-arch">Archivos</label><input id="p-arch" type="file" name="archivos" multiple required accept=".pdf,.dwg,.dxf,.zip,.jpg,.jpeg,.png">' +
-    '<p class="hint">PDF, DWG, DXF, ZIP o imagenes. Puedes elegir varios a la vez.</p>' +
+    '<p class="hint">PDF, DWG, DXF, ZIP o imágenes. Puede elegir varios y poner un nombre y una descripción a cada uno.</p>' +
+    '<div id="p-archivos-detalle" aria-live="polite"><p class="hint">Seleccione los archivos para ver sus campos individuales.</p></div>' +
     '<p style="margin-top:16px"><button class="btn" type="submit">Subir y emitir certificado</button></p></form></div></details>';
 
   const formCert = '<details class="acc"><summary>' +
@@ -1536,10 +1612,86 @@ async function handleInicio(request: Request, env: Env, tok: string, opts?: { sa
     '<div><label for="c-desc">Cliente o descripcion <span class="muted">(opcional)</span></label><input id="c-desc" name="descripcion"></div></div>' +
     '<p style="margin-top:16px"><button class="btn ghost" type="submit">Emitir certificado</button></p></form></div></details>';
 
+  const aviso = avisoAdmin(url.searchParams.get('aviso'));
   const body = '<div class="sec"><h1><span>Admin de planos</span></h1><div class="row" style="gap:8px">' + acciones + '</div></div>' +
     '<p class="lead">Clientes, planos y certificados de Topografia Especializada.</p>' +
-    certBanner + resumen + tablaClientes + formCliente + formPlano + formCert + tablaCerts;
+    aviso + certBanner + resumen + tablaClientes + tablaArchivados + formCliente + formPlano + formCert + tablaCerts;
   return page('Admin', body, 200);
+}
+
+async function handleAdminCliente(request: Request, env: Env, tok: string, clientId: string): Promise<Response> {
+  const client = await env.DB
+    .prepare('SELECT id, nombre, correo, telefono, token, activo FROM clients WHERE id = ?')
+    .bind(clientId)
+    .first();
+  if (!client) return notFoundPage('Este cliente ya no existe.');
+
+  const res = await env.DB
+    .prepare('SELECT id, titulo, descripcion, r2_key, mime, tamano, descargas, creado_en, activo FROM plans WHERE client_id = ? ORDER BY creado_en DESC')
+    .bind(clientId)
+    .all();
+  const plans = (res && res.results) || [];
+  const activePlanCount = plans.filter((p: any) => Number(p.activo) === 1).length;
+  const active = Number(client.activo) === 1;
+  const publicLink = SITE_ORIGIN + '/mis-planos/' + String(client.token || '');
+  const clientStatus = active
+    ? '<span class="ok small">Enlace activo</span>'
+    : '<span class="status-archived">Cliente archivado; el enlace está desactivado.</span>';
+
+  let filesHtml = '';
+  if (!plans.length) {
+    filesHtml = '<div class="empty">Este cliente todavía no tiene archivos. Cuando suba uno, podrá corregirlo o archivarlo aquí.</div>';
+  } else {
+    for (let i = 0; i < plans.length; i++) {
+      const plan: any = plans[i];
+      const planActive = Number(plan.activo) === 1;
+      const originalName = fileNameFromKey(plan.r2_key);
+      const visible = planActive && active;
+      const meta = [dateFmt(plan.creado_en), plan.tamano ? formatBytes(Number(plan.tamano)) : '',
+        (Number(plan.descargas) || 0) + ' descargas'].filter(Boolean).join(' · ');
+      filesHtml += '<div class="admin-file"><div class="admin-file-top"><div class="plan-icono">' + esc(extensionDePlan(plan).toUpperCase()) + '</div>' +
+        '<div style="min-width:0"><strong style="overflow-wrap:anywhere">' + esc(plan.titulo || originalName || 'Archivo') + '</strong>' +
+        '<div class="muted small">' + esc(originalName) + (meta ? ' · ' + esc(meta) : '') + '</div>' +
+        '<div class="' + (visible ? 'ok small' : 'status-archived') + '">' +
+        (visible ? 'Visible para el cliente' : (planActive ? 'El cliente está archivado' : 'Archivo archivado')) + '</div></div></div>' +
+        '<form method="POST" action="/admin/' + esc(tok) + '/plano/actualizar" data-busy="Guardando cambios...">' +
+        '<input type="hidden" name="plan_id" value="' + esc(plan.id) + '">' +
+        '<div class="admin-file-fields"><div><label for="plan-titulo-' + esc(plan.id) + '">Nombre visible</label>' +
+        '<input id="plan-titulo-' + esc(plan.id) + '" name="titulo" value="' + esc(plan.titulo || originalName || '') + '" required></div>' +
+        '<div><label for="plan-desc-' + esc(plan.id) + '">Descripción para el cliente</label>' +
+        '<textarea id="plan-desc-' + esc(plan.id) + '" name="descripcion" rows="2">' + esc(plan.descripcion || '') + '</textarea></div></div>' +
+        '<button class="btn sm" type="submit">Guardar cambios</button></form>' +
+        '<form method="POST" action="/admin/' + esc(tok) + '/plano/archivar" data-busy="Actualizando..."' +
+        (planActive ? ' data-confirm="¿Archivar este archivo? El cliente dejará de verlo, pero podrá restaurarlo después."' : '') + '>' +
+        '<input type="hidden" name="activo" value="' + (planActive ? '0' : '1') + '">' +
+        '<input type="hidden" name="plan_id" value="' + esc(plan.id) + '">' +
+        '<button class="btn ghost sm ' + (planActive ? 'danger' : '') + '" type="submit">' +
+        (planActive ? 'Archivar archivo' : 'Restaurar archivo') + '</button></form></div>';
+    }
+  }
+
+  const aviso = avisoAdmin(new URL(request.url).searchParams.get('aviso'));
+  const body = '<div class="sec"><div><h1><span>Gestionar cliente</span></h1><p class="lead">Edite sus datos y mantenga sus archivos en orden.</p></div>' +
+    '<a class="btn ghost sm" href="/admin/' + esc(tok) + '">Volver al panel</a></div>' + aviso +
+    '<div class="card"><div class="sec"><div><h2>' + esc(client.nombre || 'Cliente') + '</h2><p class="hint">' + clientStatus + '</p></div>' +
+    (active ? '<a class="code" href="' + esc(publicLink) + '">Ver página del cliente</a>' : '') + '</div>' +
+    '<form method="POST" action="/admin/' + esc(tok) + '/cliente/actualizar" data-busy="Guardando...">' +
+    '<input type="hidden" name="client_id" value="' + esc(client.id) + '">' +
+    '<label for="edit-nombre">Nombre</label><input id="edit-nombre" name="nombre" value="' + esc(client.nombre || '') + '" required autocomplete="off">' +
+    '<div class="grid2"><div><label for="edit-correo">Correo</label><input id="edit-correo" name="correo" type="email" value="' + esc(client.correo || '') + '"></div>' +
+    '<div><label for="edit-telefono">Teléfono</label><input id="edit-telefono" name="telefono" type="tel" value="' + esc(client.telefono || '') + '"></div></div>' +
+    '<button class="btn" type="submit">Guardar datos del cliente</button></form>' +
+    '<form method="POST" action="/admin/' + esc(tok) + '/revocar" data-busy="Actualizando..."' +
+    (active ? ' data-confirm="¿Archivar este cliente? Su enlace dejará de funcionar, pero sus archivos se conservarán y podrá restaurarlo."' : '') + '>' +
+    '<input type="hidden" name="activo" value="' + (active ? '0' : '1') + '">' +
+    '<input type="hidden" name="client_id" value="' + esc(client.id) + '">' +
+    '<button class="btn ghost sm ' + (active ? 'danger' : '') + '" type="submit" style="margin-top:12px">' +
+    (active ? 'Archivar cliente' : 'Reactivar cliente') + '</button></form>' +
+    '<p class="hint">Archivar desactiva el enlace, no elimina el cliente, sus planos ni el historial de descargas.</p></div>' +
+    '<div class="card"><div class="sec"><div><h2>Archivos del cliente</h2><p class="hint">Edite nombre y descripción o archive un archivo para que deje de aparecer en su página.</p></div>' +
+    '<span class="pill">' + activePlanCount + (activePlanCount === 1 ? ' archivo activo' : ' archivos activos') + ' · ' + plans.length + ' total</span></div>' +
+    '<div class="admin-files">' + filesHtml + '</div></div>';
+  return page('Gestionar cliente', body, 200);
 }
 
 async function handleCreateClient(request: Request, env: Env, tok: string): Promise<Response> {
@@ -1559,12 +1711,28 @@ async function handleCreateClient(request: Request, env: Env, tok: string): Prom
   return redirect('/admin/' + tok, 303);
 }
 
+async function handleUpdateClient(request: Request, env: Env, tok: string): Promise<Response> {
+  const form = await request.formData();
+  const clientId = str(form.get('client_id'));
+  const nombre = str(form.get('nombre'));
+  if (!clientId) return redirect('/admin/' + tok, 303);
+  const volver = '/admin/' + tok + '/cliente/' + encodeURIComponent(clientId);
+  if (!nombre) return redirect(volver + '?aviso=nombre-vacio', 303);
+  const exists = await env.DB.prepare('SELECT id FROM clients WHERE id = ?').bind(clientId).first();
+  if (!exists) return redirect('/admin/' + tok + '?aviso=cliente-no-encontrado', 303);
+  await env.DB
+    .prepare('UPDATE clients SET nombre = ?, correo = ?, telefono = ? WHERE id = ?')
+    .bind(nombre, str(form.get('correo')), str(form.get('telefono')), clientId)
+    .run();
+  return redirect(volver + '?aviso=cliente-actualizado', 303);
+}
+
 async function handleUpload(request: Request, env: Env, ctx: Ctx, tok: string): Promise<Response> {
   const form = await request.formData();
   const back = '/admin/' + tok;
   const clientId = str(form.get('client_id'));
   const tituloBase = str(form.get('titulo'));
-  const descripcion = str(form.get('descripcion'));
+  const descripcionBase = str(form.get('descripcion'));
   const files = (form.getAll('archivos') as any[]).concat(form.getAll('archivo') as any[])
     .filter((f) => f && typeof f !== 'string' && typeof f.arrayBuffer === 'function');
   if (!clientId || files.length === 0) {
@@ -1572,10 +1740,10 @@ async function handleUpload(request: Request, env: Env, ctx: Ctx, tok: string): 
       '<p class="hint">Elige un cliente y al menos un archivo.</p>' +
       '<p style="margin-top:14px"><a class="btn ghost" href="' + back + '">Volver</a></p></div>', 400);
   }
-  const client = await env.DB.prepare('SELECT id, nombre FROM clients WHERE id = ?').bind(clientId).first();
-  if (!client) {
+  const client = await env.DB.prepare('SELECT id, nombre, activo FROM clients WHERE id = ?').bind(clientId).first();
+  if (!client || Number(client.activo) !== 1) {
     return page('Admin', '<div class="card errline"><h1><span>Cliente no encontrado</span></h1>' +
-      '<p class="hint">Ese cliente ya no existe. Vuelve a elegir uno en la lista.</p>' +
+      '<p class="hint">Ese cliente no existe o está archivado. Vuelva a elegir un cliente activo.</p>' +
       '<p style="margin-top:14px"><a class="btn ghost" href="' + back + '">Volver</a></p></div>', 400);
   }
   const ahora = new Date().toISOString();
@@ -1589,13 +1757,16 @@ async function handleUpload(request: Request, env: Env, ctx: Ctx, tok: string): 
     const file = files[i];
     const safeName = sanitizeFileName(file.name);
     const key = 'planos/' + clientId + '/' + crypto.randomUUID() + '-' + safeName;
-    const mime = file.type || 'application/octet-stream';
+    const mime = mimeDeArchivo(file);
     const size = Number(file.size) || 0;
     const bytes = await file.arrayBuffer();
     const huella = await sha256BytesHex(bytes);
-    const titulo = files.length === 1
+    const tituloIndividual = str(form.get('titulo_' + i));
+    const titulo = tituloIndividual || (files.length === 1
       ? (tituloBase || safeName)
-      : (tituloBase ? tituloBase + ' - ' + safeName : safeName);
+      : (tituloBase ? tituloBase + ' - ' + safeName : safeName));
+    const descripcionIndividual = form.get('descripcion_' + i);
+    const descripcion = descripcionIndividual === null ? descripcionBase : str(descripcionIndividual);
     try {
       await env.PLANOS.put(key, bytes, { httpMetadata: { contentType: mime } });
       await env.DB
@@ -1627,14 +1798,56 @@ async function handleUpload(request: Request, env: Env, ctx: Ctx, tok: string): 
   return redirect(back + '?subidos=' + subidos + '&cert=' + nuevos.join(',') + '&dup=' + existentes.join(','), 303);
 }
 
+async function handleUpdatePlan(request: Request, env: Env, tok: string): Promise<Response> {
+  const form = await request.formData();
+  const planId = str(form.get('plan_id'));
+  if (!planId) return redirect('/admin/' + tok, 303);
+  const plan = await env.DB.prepare('SELECT client_id FROM plans WHERE id = ?').bind(planId).first();
+  if (!plan) return redirect('/admin/' + tok + '?aviso=archivo-no-encontrado', 303);
+  const volver = '/admin/' + tok + '/cliente/' + encodeURIComponent(String(plan.client_id));
+  const titulo = str(form.get('titulo'));
+  if (!titulo) return redirect(volver + '?aviso=archivo-nombre-vacio', 303);
+  await env.DB
+    .prepare('UPDATE plans SET titulo = ?, descripcion = ? WHERE id = ?')
+    .bind(titulo, str(form.get('descripcion')), planId)
+    .run();
+  return redirect(volver + '?aviso=archivo-actualizado', 303);
+}
+
+async function handleTogglePlan(request: Request, env: Env, tok: string): Promise<Response> {
+  const form = await request.formData();
+  const planId = str(form.get('plan_id'));
+  const activo = str(form.get('activo'));
+  if (!planId) return redirect('/admin/' + tok, 303);
+  if (activo !== '0' && activo !== '1') return redirect('/admin/' + tok, 303);
+  const plan = await env.DB
+    .prepare('SELECT client_id FROM plans WHERE id = ?')
+    .bind(planId)
+    .first();
+  if (!plan) return redirect('/admin/' + tok + '?aviso=archivo-no-encontrado', 303);
+  await env.DB
+    .prepare('UPDATE plans SET activo = ? WHERE id = ?')
+    .bind(Number(activo), planId)
+    .run();
+  const aviso = activo === '0' ? 'archivo-archivado' : 'archivo-restaurado';
+  return redirect('/admin/' + tok + '/cliente/' + encodeURIComponent(String(plan.client_id)) + '?aviso=' + aviso, 303);
+}
+
 async function handleRevoke(request: Request, env: Env, tok: string): Promise<Response> {
   const form = await request.formData();
   const clientId = str(form.get('client_id'));
+  const activo = str(form.get('activo'));
+  if (activo !== '0' && activo !== '1') return redirect('/admin/' + tok, 303);
   if (clientId) {
-    await env.DB
-      .prepare('UPDATE clients SET activo = CASE WHEN activo = 1 THEN 0 ELSE 1 END WHERE id = ?')
-      .bind(clientId)
-      .run();
+    const client = await env.DB.prepare('SELECT id FROM clients WHERE id = ?').bind(clientId).first();
+    if (client) {
+      await env.DB
+        .prepare('UPDATE clients SET activo = ? WHERE id = ?')
+        .bind(Number(activo), clientId)
+        .run();
+      const aviso = activo === '0' ? 'cliente-archivado' : 'cliente-reactivado';
+      return redirect('/admin/' + tok + '?aviso=' + aviso, 303);
+    }
   }
   return redirect('/admin/' + tok, 303);
 }
@@ -1908,7 +2121,12 @@ export default {
       const sub = mAdmin[2];
       if (!sub && method === 'GET') return handleInicio(request, env, mAdmin[1]);
       if (sub === '/cliente' && method === 'POST') return handleCreateClient(request, env, mAdmin[1]);
+      if (sub === '/cliente/actualizar' && method === 'POST') return handleUpdateClient(request, env, mAdmin[1]);
+      const mCliente = sub && sub.match(/^\/cliente\/([A-Za-z0-9_-]{3,})$/);
+      if (mCliente && method === 'GET') return handleAdminCliente(request, env, mAdmin[1], mCliente[1]);
       if (sub === '/plano' && method === 'POST') return handleUpload(request, env, ctx, mAdmin[1]);
+      if (sub === '/plano/actualizar' && method === 'POST') return handleUpdatePlan(request, env, mAdmin[1]);
+      if (sub === '/plano/archivar' && method === 'POST') return handleTogglePlan(request, env, mAdmin[1]);
       // Blog: el papa escribe y publica desde el mismo panel (sin tocar codigo).
       const mBlog = path.match(/^\/admin\/([A-Za-z0-9_-]{16,})\/blog(?:\/(nuevo|[A-Za-z0-9_-]{3,}))?$/);
       if (mBlog) {
