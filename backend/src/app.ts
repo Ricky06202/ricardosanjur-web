@@ -85,6 +85,9 @@ function withConfigLock<T>(operation: () => Promise<T>): Promise<T> {
 
 async function addToTileConfig(id: string): Promise<void> {
   await withConfigLock(async () => {
+    // Recheck under the same lock as permanent deletion so a concurrent activation cannot register a removed file.
+    const file = await stat(join(DATA_DIR, `${id}.mbtiles`));
+    if (!file.isFile()) throw new Error('El archivo del mapa no es válido.');
     const config = await readConfig();
     config.data![id] = { ...(config.data![id] || {}), mbtiles: join(DATA_DIR, `${id}.mbtiles`) };
     await writeConfig(config);
@@ -259,6 +262,34 @@ app.delete('/internal/maps/:id', async (c) => {
   } catch (error) {
     console.error('[ortomosaicos-api] deactivate failed:', error instanceof Error ? error.message : 'unknown');
     return errorResponse('TILESERVER_NOT_READY', 'No se pudo confirmar el retiro del mapa. Intente otra vez.', 503);
+  }
+});
+
+app.delete('/internal/maps/:id/file', async (c) => {
+  const id = c.req.param('id');
+  if (!isUuid(id)) return errorResponse('INVALID_ID', 'Identificador de mapa no válido.', 400);
+
+  try {
+    return await withConfigLock(async () => {
+      const config = await readConfig();
+      if (Object.prototype.hasOwnProperty.call(config.data, id)) {
+        return errorResponse('MAP_ACTIVE', 'Archive el mapa y espere a que se retire del servidor antes de eliminarlo.', 409);
+      }
+
+      const path = join(DATA_DIR, `${id}.mbtiles`);
+      try {
+        await rm(path);
+        return c.json({ ok: true, id, file_deleted: true }, 200, { 'cache-control': 'no-store' });
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+          return c.json({ ok: true, id, file_deleted: false }, 200, { 'cache-control': 'no-store' });
+        }
+        throw error;
+      }
+    });
+  } catch (error) {
+    console.error('[ortomosaicos-api] file delete failed:', error instanceof Error ? error.message : 'unknown');
+    return errorResponse('FILE_DELETE_FAILED', 'No se pudo eliminar el archivo del mapa. Intente otra vez.', 500);
   }
 });
 

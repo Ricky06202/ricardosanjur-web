@@ -29,6 +29,13 @@ function avisoUrl(message: string, id?: string): string {
   return `/admin/mapas${id ? `/${encodeURIComponent(id)}` : ''}?aviso=${encodeURIComponent(message)}`;
 }
 
+function formularioEliminarMapa(id: string, className = ''): string {
+  const classAttr = className ? ' class="' + esc(className) + '"' : '';
+  return '<form' + classAttr + ' method="POST" action="/admin/mapas/' + esc(id) + '/eliminar" data-busy="Eliminando..." ' +
+    'onsubmit="return confirm(\'Se eliminarán permanentemente la ficha y el archivo MBTiles del servidor. Esta acción no se puede deshacer.\')">' +
+    '<button class="btn ghost sm danger" type="submit">Eliminar definitivamente</button></form>';
+}
+
 function formatBytes(value: unknown): string {
   let bytes = Number(value);
   if (!Number.isFinite(bytes) || bytes <= 0) return '—';
@@ -79,6 +86,7 @@ export async function handleAdminMapaLista(env: AdminEnv, aviso = ''): Promise<R
       const fileLine = mapa.archivo_nombre
         ? '<p class="mapa-meta">MBTiles · ' + esc(formatBytes(mapa.archivo_tamano)) + ' · ' + esc(String(mapa.formato || '').toUpperCase()) + '</p>'
         : '<p class="mapa-meta">Todavía falta subir el archivo MBTiles.</p>';
+      const deleteForm = mapa.estado === 'archivado' ? formularioEliminarMapa(mapa.id) : '';
       return '<article class="card mapa-admin-card">' +
         '<div class="mapa-admin-top"><span class="' + estadoClase(mapa.estado) + '">' + esc(estadoLabel(mapa.estado)) + '</span>' +
         '<span class="mapa-meta">' + esc(prettyDate(mapa.fecha_captura)) + '</span></div>' +
@@ -86,7 +94,7 @@ export async function handleAdminMapaLista(env: AdminEnv, aviso = ''): Promise<R
         (mapa.descripcion ? '<p class="mapa-admin-desc">' + esc(mapa.descripcion) + '</p>' : '') + fileLine +
         '<div class="row mapa-admin-actions" style="gap:8px"><a class="btn sm" href="/admin/mapas/' + esc(mapa.id) + '">Administrar</a>' +
         (mapa.estado === 'publicado' ? '<a class="btn ghost sm" href="/mapas/' + esc(mapa.slug) + '/" target="_blank" rel="noopener">Ver en el sitio</a>' : '') +
-        '</div></article>';
+        deleteForm + '</div></article>';
     }).join('');
 
     const body = '<div class="sec"><h1><span>Ortomosaicos</span></h1><a class="btn sm" href="/admin/mapas/nuevo">Nuevo mapa</a></div>' +
@@ -153,7 +161,7 @@ export async function handleAdminMapaForm(env: AdminEnv, id: string, aviso = '')
       (mapa.estado !== 'archivado'
         ? '<form class="mapa-archive" method="POST" action="' + base + '/' + esc(mapa.id) + '/estado" data-busy="Archivando..." onsubmit="return confirm(\'¿Ocultar y archivar este mapa? El archivo se conserva.\')">' +
           '<input type="hidden" name="estado" value="archivado"><button class="btn ghost" type="submit">Archivar mapa</button></form>'
-        : '<p class="hint">Archivado: no aparece en público y el archivo se conserva en el VPS.</p>') +
+        : '<p class="hint">Archivado: no aparece en público; el MBTiles se conserva hasta que lo elimine permanentemente.</p>' + formularioEliminarMapa(mapa.id, 'mapa-archive')) +
       '</section>';
   }
 
@@ -268,6 +276,42 @@ export async function handleAdminMapaEstado(request: Request, env: AdminEnv, id:
       ? 'La conexión con el servidor de mapas todavía no está configurada.'
       : 'No se pudo cambiar la visibilidad del mapa. Vuelva a intentarlo.';
     return redirect(back + '?aviso=' + encodeURIComponent(message));
+  }
+}
+
+export async function handleAdminMapaEliminar(_request: Request, env: AdminEnv, id: string): Promise<Response> {
+  if (!UUID_RE.test(id)) return redirect(avisoUrl('El identificador del mapa no es válido.'));
+
+  let backendDeleted = false;
+  try {
+    await ensureMapasTable(env.DB);
+    const mapa = await env.DB.prepare('SELECT estado FROM ortomosaicos WHERE id = ?').bind(id).first<{ estado: string }>();
+    if (!mapa) return redirect(avisoUrl('Ese mapa ya no está disponible.'));
+    if (mapa.estado !== 'archivado') {
+      return redirect(avisoUrl('Solo se pueden eliminar mapas archivados.'));
+    }
+
+    const response = await backendRequest(env, `/maps/${encodeURIComponent(id)}/file`, { method: 'DELETE' });
+    if (!response.ok) {
+      const data = await response.json().catch(() => null) as any;
+      const message = String(data?.error?.message || 'No se pudo eliminar el MBTiles del servidor.');
+      return redirect(avisoUrl(message));
+    }
+    backendDeleted = true;
+
+    const result = await env.DB.prepare("DELETE FROM ortomosaicos WHERE id = ? AND estado = 'archivado'").bind(id).run();
+    const changes = Number(result?.meta?.changes ?? result?.changes ?? 0);
+    if (changes < 1) {
+      return redirect(avisoUrl('El MBTiles se eliminó, pero la ficha cambió. Actualice la lista y revise el mapa.'));
+    }
+    return redirect(avisoUrl('El mapa y su archivo MBTiles se eliminaron permanentemente.'));
+  } catch (error) {
+    const message = error instanceof Error && error.message === 'backend_not_configured'
+      ? 'La conexión con el servidor de mapas todavía no está configurada.'
+      : backendDeleted
+        ? 'El MBTiles se eliminó, pero no se pudo borrar la ficha. Vuelva a intentarlo.'
+        : 'No se pudo eliminar el mapa. Vuelva a intentarlo.';
+    return redirect(avisoUrl(message));
   }
 }
 

@@ -44,4 +44,6 @@ systemctl status ricardosanjur-mapas-reload.path
 ```
 
 El tamaño máximo de subida actual es 90 000 000 bytes (90 MB) por archivo. No hay límite de cantidad en la galería;
-archivar un mapa lo oculta y lo descarga de la configuración activa, pero conserva el archivo original.
+archivar un mapa lo oculta y lo descarga de la configuración activa, pero conserva el archivo original. El panel
+permite eliminar permanentemente solo mapas archivados: borra la ficha de D1 y el MBTiles del VPS; el API rechaza
+el borrado si el mapa todavía figura activo en TileServer.

@@ -17,11 +17,6 @@ const errorId = featured ? "mapas-destacados-error" : "mapas-error";
 const moreId = featured ? undefined : "mapas-mas";
 const limit = featured ? 3 : 24;
 
-const featuredEmptyTitle = en ? "No public orthomosaics yet" : "Aún no hay ortomosaicos publicados";
-const featuredEmptyDescription = en
-  ? "Published drone surveys will appear here. Need a map for your project? We can coordinate the field survey."
-  : "Aquí aparecerán los levantamientos con dron que publiquemos. ¿Necesitas un mapa para tu proyecto? Coordinamos el trabajo en campo.";
-const featuredEmptyCta = en ? "Request a drone survey" : "Solicitar levantamiento con dron";
 ---
 
 <section
@@ -58,23 +53,7 @@ const featuredEmptyCta = en ? "Request a drone survey" : "Solicitar levantamient
     class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
     aria-live="polite"
     aria-busy="true"
-  >
-    {featured ? (
-      <article class="col-span-full relative grid gap-6 overflow-hidden rounded-[1.75rem] border border-base-300 bg-base-100 p-7 text-base-content shadow-sm sm:grid-cols-[1fr_auto] sm:items-center sm:p-10">
-        <div class="grid-bg pointer-events-none absolute inset-0 opacity-25"></div>
-        <div class="relative max-w-2xl">
-          <p class="font-mono text-[10px] uppercase tracking-[.2em] text-primary">{en ? "Public map collection" : "Colección pública"}</p>
-          <h3 class="mt-3 font-display text-xl font-semibold text-base-content sm:text-2xl">{featuredEmptyTitle}</h3>
-          <p class="mt-2 max-w-xl text-sm leading-6 text-base-content/70">{featuredEmptyDescription}</p>
-        </div>
-        <a href={quoteHref} class="btn btn-primary relative min-h-12 rounded-full px-6">{featuredEmptyCta}</a>
-      </article>
-    ) : (
-      <div class="col-span-full rounded-2xl border border-base-300 bg-base-100 p-6 text-sm text-base-content/70">
-        {en ? "Loading orthomosaics…" : "Cargando ortomosaicos…"}
-      </div>
-    )}
-  </div>
+  ></div>
 
   <p id={errorId} data-map-error class="mt-5 hidden rounded-2xl border border-error/30 bg-error/5 p-4 text-sm text-error" role="alert"></p>
   {!featured && (
@@ -150,42 +129,48 @@ const featuredEmptyCta = en ? "Request a drone survey" : "Solicitar levantamient
     }
 
     function loadPreview(item: any, visual: HTMLElement, image: HTMLImageElement) {
-      const load = async () => {
+      const load = () => {
         try {
           const tileJsonUrl = new URL(String(item.tilejson_url || ""));
-          if (tileJsonUrl.protocol !== "https:" || tileJsonUrl.hostname !== "tiles.ricardosanjur.com") {
+          const id = String(item.id || "");
+          if (
+            tileJsonUrl.protocol !== "https:" ||
+            tileJsonUrl.hostname !== "tiles.ricardosanjur.com" ||
+            !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id) ||
+            tileJsonUrl.pathname !== `/data/${id}.json`
+          ) {
             throw new Error("preview_url");
           }
-          const response = await fetch(tileJsonUrl, { headers: { accept: "application/json" } });
-          if (!response.ok) throw new Error("preview_metadata");
-          const tileJson = await response.json();
-          const template = Array.isArray(tileJson.tiles) ? String(tileJson.tiles[0] || "") : "";
-          if (!template.includes("{z}") || !template.includes("{x}") || !template.includes("{y}")) {
-            throw new Error("preview_template");
-          }
+          const format = String(item.format || "").toLowerCase();
+          const extension = format === "jpeg" ? "jpg" : format;
+          if (!(["jpg", "png", "webp"] as string[]).includes(extension)) throw new Error("preview_format");
 
-          const center = Array.isArray(tileJson.center) ? tileJson.center : [];
-          const bounds = Array.isArray(tileJson.bounds) ? tileJson.bounds.map(Number) : [];
-          const fallbackLng = Number(item.center?.lng ?? (bounds.length === 4 ? (bounds[0] + bounds[2]) / 2 : NaN));
-          const fallbackLat = Number(item.center?.lat ?? (bounds.length === 4 ? (bounds[1] + bounds[3]) / 2 : NaN));
-          const lng = Number(center[0] ?? fallbackLng);
-          const lat = Number(center[1] ?? fallbackLat);
+          const rawCenter = item.center && typeof item.center === "object" ? item.center : {};
+          const center = Array.isArray(rawCenter)
+            ? { lng: rawCenter[0], lat: rawCenter[1] }
+            : rawCenter;
+          const bounds = Array.isArray(item.bounds) ? item.bounds.map(Number) : [];
+          const fallbackLng = bounds.length === 4 ? (bounds[0] + bounds[2]) / 2 : NaN;
+          const fallbackLat = bounds.length === 4 ? (bounds[1] + bounds[3]) / 2 : NaN;
+          const lng = Number(center.lng ?? fallbackLng);
+          const lat = Number(center.lat ?? fallbackLat);
           if (!Number.isFinite(lng) || !Number.isFinite(lat)) throw new Error("preview_center");
 
-          const rawMinZoom = Number(tileJson.minzoom ?? item.min_zoom ?? 0);
-          const rawMaxZoom = Number(tileJson.maxzoom ?? item.max_zoom ?? rawMinZoom);
+          const rawMinZoom = Number(item.min_zoom ?? center.zoom ?? 0);
+          const rawMaxZoom = Number(item.max_zoom ?? rawMinZoom);
           if (!Number.isFinite(rawMinZoom) || !Number.isFinite(rawMaxZoom)) throw new Error("preview_zoom");
           const minZoom = Math.max(0, Math.ceil(rawMinZoom));
           const maxZoom = Math.floor(rawMaxZoom);
           if (maxZoom < minZoom) throw new Error("preview_zoom");
           const zoom = Math.min(maxZoom, minZoom + 1);
           const coordinates = tileForCoordinate(lng, lat, zoom);
-          const y = tileJson.scheme === "tms" ? 2 ** zoom - 1 - coordinates.y : coordinates.y;
-          const tileUrl = template
-            .replaceAll("{z}", String(zoom))
-            .replaceAll("{x}", String(coordinates.x))
-            .replaceAll("{y}", String(y));
-          const resolvedTileUrl = new URL(tileUrl);
+          const y = String(item.scheme || "").toLowerCase() === "tms"
+            ? 2 ** zoom - 1 - coordinates.y
+            : coordinates.y;
+          const resolvedTileUrl = new URL(
+            `/data/${encodeURIComponent(id)}/${zoom}/${coordinates.x}/${y}.${extension}`,
+            tileJsonUrl.origin,
+          );
           if (resolvedTileUrl.protocol !== "https:" || resolvedTileUrl.origin !== tileJsonUrl.origin) {
             throw new Error("preview_origin");
           }
@@ -225,7 +210,8 @@ const featuredEmptyCta = en ? "Request a drone survey" : "Solicitar levantamient
       preview.className = "pointer-events-none absolute inset-0 z-[1] h-full w-full object-cover opacity-0 transition-opacity duration-300";
       preview.alt = "";
       preview.decoding = "async";
-      preview.loading = "lazy";
+      preview.loading = "eager";
+      preview.fetchPriority = "high";
       preview.setAttribute("aria-hidden", "true");
       preview.addEventListener("load", () => {
         preview.classList.remove("opacity-0");

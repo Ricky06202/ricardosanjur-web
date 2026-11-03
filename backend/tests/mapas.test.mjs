@@ -86,6 +86,65 @@ test('valida, guarda, activa y archiva un MBTiles sin borrar el archivo', async 
   assert.equal(archived.status, 200);
   assert.equal(JSON.parse(readFileSync(configPath, 'utf8')).data[id], undefined);
   assert.equal(statSync(join(mapsDir, `${id}.mbtiles`)).isFile(), true, 'archivar conserva el archivo');
+
+  const deleted = await app.request(`/internal/maps/${id}/file`, {
+    method: 'DELETE',
+    headers: { authorization: `Bearer ${secret}` },
+  });
+  assert.equal(deleted.status, 200);
+  assert.deepEqual(await deleted.json(), { ok: true, id, file_deleted: true });
+  assert.equal(existsSync(join(mapsDir, `${id}.mbtiles`)), false, 'el borrado permanente libera el archivo');
+
+  const reactivated = await app.request(`/internal/maps/${id}/activate`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${secret}` },
+  });
+  assert.equal(reactivated.status, 404);
+  assert.equal(JSON.parse(readFileSync(configPath, 'utf8')).data[id], undefined, 'no registra un archivo eliminado');
+});
+
+test('no permite borrar un MBTiles que sigue registrado en TileServer', async () => {
+  const id = 'be3d7a2d-f98a-4c57-93d7-ec2c4b3f9882';
+  const path = join(mapsDir, `${id}.mbtiles`);
+  makeMbtiles(path);
+  const config = JSON.parse(readFileSync(configPath, 'utf8'));
+  config.data[id] = { mbtiles: path };
+  writeFileSync(configPath, JSON.stringify(config));
+
+  const response = await app.request(`/internal/maps/${id}/file`, {
+    method: 'DELETE',
+    headers: { authorization: `Bearer ${secret}` },
+  });
+  assert.equal(response.status, 409);
+  assert.equal((await response.json()).error.code, 'MAP_ACTIVE');
+  assert.equal(existsSync(path), true, 'un mapa activo conserva el archivo');
+
+  delete config.data[id];
+  writeFileSync(configPath, JSON.stringify(config));
+});
+
+test('el borrado de MBTiles requiere el secreto interno', async () => {
+  const response = await app.request('/internal/maps/ae3d7a2d-f98a-4c57-93d7-ec2c4b3f9882/file', {
+    method: 'DELETE',
+  });
+  assert.equal(response.status, 401);
+});
+
+test('valida el identificador y permite reintentar si el MBTiles ya no existe', async () => {
+  const invalid = await app.request('/internal/maps/no-es-uuid/file', {
+    method: 'DELETE',
+    headers: { authorization: `Bearer ${secret}` },
+  });
+  assert.equal(invalid.status, 400);
+  assert.equal((await invalid.json()).error.code, 'INVALID_ID');
+
+  const id = 'ce3d7a2d-f98a-4c57-93d7-ec2c4b3f9882';
+  const missing = await app.request(`/internal/maps/${id}/file`, {
+    method: 'DELETE',
+    headers: { authorization: `Bearer ${secret}` },
+  });
+  assert.equal(missing.status, 200);
+  assert.deepEqual(await missing.json(), { ok: true, id, file_deleted: false });
 });
 
 test('rechaza un archivo que no es MBTiles y no conserva el temporal', async () => {

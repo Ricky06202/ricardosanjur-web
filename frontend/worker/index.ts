@@ -6,7 +6,7 @@
 
 import RSQR from './qr.js';
 import { handleBlogLista, handleBlogForm, handleBlogGuardar, handleBlogBorrar } from './admin-blog';
-import { handleAdminMapaCrear, handleAdminMapaEstado, handleAdminMapaForm, handleAdminMapaGuardar, handleAdminMapaLista } from './admin-mapas';
+import { handleAdminMapaCrear, handleAdminMapaEliminar, handleAdminMapaEstado, handleAdminMapaForm, handleAdminMapaGuardar, handleAdminMapaLista } from './admin-mapas';
 import { handleBlogIndex, handleBlogPost, BLOG_SCHEMA, handleBlogArchivo, handleBlogTarjeta, handleBlogPostHtml, NUBE_CSS } from './blog';
 import { ARCHIVOS_BLOG } from './blog-archivos';
 import { FICHAS } from '../src/content/blog-fichas';
@@ -2313,7 +2313,7 @@ export default {
     if (method === 'GET' && path === '/api/sesion/yo') return handleAdminSesionYo(request, env);
 
     // Panel de ortomosaicos: ruta limpia, protegida por la sesión autorizada de RS ID.
-    const mAdminMapas = path.match(/^\/admin\/mapas(?:\/(nuevo|crear|[0-9a-fA-F-]{36})(?:\/(guardar|estado))?)?$/);
+    const mAdminMapas = path.match(/^\/admin\/mapas(?:\/(nuevo|crear|[0-9a-fA-F-]{36})(?:\/(guardar|estado|eliminar))?)?$/);
     if (mAdminMapas) {
       if (!adminEmails(env).length) return adminLoginPage('sin_lista', 200);
       const email = await adminAutorizado(request, env);
@@ -2334,6 +2334,7 @@ export default {
         if (item === 'crear' && !accion) return handleAdminMapaCrear(request, env as any, email);
         if (/^[0-9a-fA-F-]{36}$/.test(item) && accion === 'guardar') return handleAdminMapaGuardar(request, env as any, item);
         if (/^[0-9a-fA-F-]{36}$/.test(item) && accion === 'estado') return handleAdminMapaEstado(request, env as any, item);
+        if (/^[0-9a-fA-F-]{36}$/.test(item) && accion === 'eliminar') return handleAdminMapaEliminar(request, env as any, item);
       }
       return new Response('Método o ruta no permitidos', {
         status: method === 'GET' || method === 'POST' ? 404 : 405,
