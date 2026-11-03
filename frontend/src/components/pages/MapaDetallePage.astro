@@ -77,10 +77,13 @@ const galleryPath = es ? "/mapas/" : "/en/mapas/";
         const orthoPane = map.createPane("ortomosaico-overlay");
         orthoPane.style.zIndex = "350";
         orthoPane.style.pointerEvents = "none";
+        // Keep the overlay visible below its lowest stored zoom; Leaflet scales its native tiles down.
+        const minNativeZoom = Number(tileJson.minzoom ?? mapa.min_zoom ?? 0);
         const maxZoom = Number(tileJson.maxzoom ?? mapa.max_zoom ?? 22);
         const ortho = L.tileLayer(template, {
           pane: "ortomosaico-overlay",
-          minZoom: Number(tileJson.minzoom ?? mapa.min_zoom ?? 0),
+          minZoom: 0,
+          minNativeZoom,
           maxZoom,
           maxNativeZoom: maxZoom,
           attribution: "Ortomosaico · Topografía Especializada",
@@ -99,7 +102,7 @@ const galleryPath = es ? "/mapas/" : "/en/mapas/";
           updateWhenIdle: true,
           keepBuffer: 2,
         });
-        streets.addTo(map);
+        satellite.addTo(map);
         ortho.addTo(map);
         const baseLayers = en
           ? { "Street map": streets, "Satellite": satellite }
