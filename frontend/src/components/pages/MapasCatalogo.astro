@@ -138,6 +138,78 @@ const featuredEmptyCta = en ? "Request a drone survey" : "Solicitar levantamient
       });
     }
 
+    function tileForCoordinate(lng: number, lat: number, zoom: number) {
+      const n = 2 ** zoom;
+      const safeLng = Math.max(-180, Math.min(180, lng));
+      const safeLat = Math.max(-85.05112878, Math.min(85.05112878, lat));
+      const radians = safeLat * Math.PI / 180;
+      return {
+        x: Math.max(0, Math.min(n - 1, Math.floor((safeLng + 180) / 360 * n))),
+        y: Math.max(0, Math.min(n - 1, Math.floor((1 - Math.asinh(Math.tan(radians)) / Math.PI) / 2 * n))),
+      };
+    }
+
+    function loadPreview(item: any, visual: HTMLElement, image: HTMLImageElement) {
+      const load = async () => {
+        try {
+          const tileJsonUrl = new URL(String(item.tilejson_url || ""));
+          if (tileJsonUrl.protocol !== "https:" || tileJsonUrl.hostname !== "tiles.ricardosanjur.com") {
+            throw new Error("preview_url");
+          }
+          const response = await fetch(tileJsonUrl, { headers: { accept: "application/json" } });
+          if (!response.ok) throw new Error("preview_metadata");
+          const tileJson = await response.json();
+          const template = Array.isArray(tileJson.tiles) ? String(tileJson.tiles[0] || "") : "";
+          if (!template.includes("{z}") || !template.includes("{x}") || !template.includes("{y}")) {
+            throw new Error("preview_template");
+          }
+
+          const center = Array.isArray(tileJson.center) ? tileJson.center : [];
+          const bounds = Array.isArray(tileJson.bounds) ? tileJson.bounds.map(Number) : [];
+          const fallbackLng = Number(item.center?.lng ?? (bounds.length === 4 ? (bounds[0] + bounds[2]) / 2 : NaN));
+          const fallbackLat = Number(item.center?.lat ?? (bounds.length === 4 ? (bounds[1] + bounds[3]) / 2 : NaN));
+          const lng = Number(center[0] ?? fallbackLng);
+          const lat = Number(center[1] ?? fallbackLat);
+          if (!Number.isFinite(lng) || !Number.isFinite(lat)) throw new Error("preview_center");
+
+          const rawMinZoom = Number(tileJson.minzoom ?? item.min_zoom ?? 0);
+          const rawMaxZoom = Number(tileJson.maxzoom ?? item.max_zoom ?? rawMinZoom);
+          if (!Number.isFinite(rawMinZoom) || !Number.isFinite(rawMaxZoom)) throw new Error("preview_zoom");
+          const minZoom = Math.max(0, Math.ceil(rawMinZoom));
+          const maxZoom = Math.floor(rawMaxZoom);
+          if (maxZoom < minZoom) throw new Error("preview_zoom");
+          const zoom = Math.min(maxZoom, minZoom + 1);
+          const coordinates = tileForCoordinate(lng, lat, zoom);
+          const y = tileJson.scheme === "tms" ? 2 ** zoom - 1 - coordinates.y : coordinates.y;
+          const tileUrl = template
+            .replaceAll("{z}", String(zoom))
+            .replaceAll("{x}", String(coordinates.x))
+            .replaceAll("{y}", String(y));
+          const resolvedTileUrl = new URL(tileUrl);
+          if (resolvedTileUrl.protocol !== "https:" || resolvedTileUrl.origin !== tileJsonUrl.origin) {
+            throw new Error("preview_origin");
+          }
+
+          visual.dataset.previewState = "loading";
+          image.src = resolvedTileUrl.href;
+        } catch {
+          visual.dataset.previewState = "fallback";
+        }
+      };
+
+      if ("IntersectionObserver" in window) {
+        const observer = new IntersectionObserver((entries) => {
+          if (entries.some((entry) => entry.isIntersecting)) {
+            observer.disconnect();
+            void load();
+          }
+        }, { rootMargin: "240px 0px" });
+        observer.observe(visual);
+      } else {
+        void load();
+      }
+    }
+
     function card(item: any): HTMLElement {
       const article = document.createElement("article");
       article.className = "group flex min-h-full flex-col overflow-hidden rounded-2xl border border-base-300 bg-base-100 transition duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 motion-reduce:transform-none motion-reduce:transition-none";
@@ -145,8 +217,32 @@ const featuredEmptyCta = en ? "Request a drone survey" : "Solicitar levantamient
       const visual = document.createElement("div");
       visual.className = "relative flex h-40 items-end overflow-hidden bg-[#edf2ff] p-5 text-base-content sm:h-48";
       visual.setAttribute("aria-hidden", "true");
-      visual.innerHTML = '<div class="pointer-events-none absolute inset-0 opacity-80" style="background-image:radial-gradient(ellipse at 50% 120%,rgba(43,92,255,.18),transparent 55%),linear-gradient(135deg,transparent 48%,rgba(43,92,255,.12) 49%,transparent 50%),linear-gradient(45deg,transparent 48%,rgba(43,92,255,.08) 49%,transparent 50%);background-size:auto,44px 44px,54px 54px"></div>' +
-        '<span class="relative rounded-full border border-primary/20 bg-white/85 px-3 py-1 font-mono text-[10px] uppercase tracking-[.16em] text-primary shadow-sm backdrop-blur">' + (lang === "en" ? "Drone survey" : "Levantamiento con dron") + "</span>";
+      const pattern = document.createElement("div");
+      pattern.className = "pointer-events-none absolute inset-0 opacity-80";
+      pattern.style.backgroundImage = "radial-gradient(ellipse at 50% 120%,rgba(43,92,255,.18),transparent 55%),linear-gradient(135deg,transparent 48%,rgba(43,92,255,.12) 49%,transparent 50%),linear-gradient(45deg,transparent 48%,rgba(43,92,255,.08) 49%,transparent 50%)";
+      pattern.style.backgroundSize = "auto,44px 44px,54px 54px";
+      const preview = document.createElement("img");
+      preview.className = "pointer-events-none absolute inset-0 z-[1] h-full w-full object-cover opacity-0 transition-opacity duration-300";
+      preview.alt = "";
+      preview.decoding = "async";
+      preview.loading = "lazy";
+      preview.setAttribute("aria-hidden", "true");
+      preview.addEventListener("load", () => {
+        preview.classList.remove("opacity-0");
+        preview.classList.add("opacity-100");
+        visual.dataset.previewState = "ready";
+      }, { once: true });
+      preview.addEventListener("error", () => {
+        preview.remove();
+        visual.dataset.previewState = "fallback";
+      }, { once: true });
+      const badge = document.createElement("span");
+      badge.className = "relative z-10 rounded-full border border-primary/20 bg-white/90 px-3 py-1 font-mono text-[10px] uppercase tracking-[.16em] text-primary shadow-sm backdrop-blur";
+      badge.textContent = lang === "en" ? "Drone survey" : "Levantamiento con dron";
+      const credit = document.createElement("span");
+      credit.className = "absolute right-3 top-3 z-10 rounded bg-base-100/90 px-2 py-1 font-mono text-[9px] uppercase tracking-wide text-base-content/70 shadow-sm";
+      credit.textContent = lang === "en" ? "Survey imagery" : "Imagen del levantamiento";
+      visual.append(pattern, preview, badge, credit);
 
       const body = document.createElement("div");
       body.className = "flex flex-1 flex-col p-5 sm:p-6";
@@ -178,6 +274,7 @@ const featuredEmptyCta = en ? "Request a drone survey" : "Solicitar levantamient
       link.textContent = copy.open;
       body.append(title, description, meta, link);
       article.append(visual, body);
+      loadPreview(item, visual, preview);
       return article;
     }
 
