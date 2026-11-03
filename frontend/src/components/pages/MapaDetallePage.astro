@@ -41,7 +41,7 @@ const galleryPath = es ? "/mapas/" : "/en/mapas/";
       {es ? "Cargando el visor…" : "Loading the map viewer…"}
     </p>
     <p class="mt-2 text-xs leading-5 text-base-content/50">
-      {es ? "Arrastre para explorar. Use los controles + y − para acercar o alejar." : "Drag to explore. Use the + and − controls to zoom."}
+      {es ? "Arrastre para explorar y use + o − para acercar. Elija calles o satélite como base; el ortomosaico se muestra encima." : "Drag to explore and use + or − to zoom. Choose streets or satellite as the base; the orthomosaic stays on top."}
     </p>
   </section>
 
@@ -74,20 +74,41 @@ const galleryPath = es ? "/mapas/" : "/en/mapas/";
         }
 
         const map = L.map(container, { scrollWheelZoom: false, zoomControl: true, preferCanvas: true });
+        const orthoPane = map.createPane("ortomosaico-overlay");
+        orthoPane.style.zIndex = "350";
+        orthoPane.style.pointerEvents = "none";
+        const maxZoom = Number(tileJson.maxzoom ?? mapa.max_zoom ?? 22);
         const ortho = L.tileLayer(template, {
+          pane: "ortomosaico-overlay",
           minZoom: Number(tileJson.minzoom ?? mapa.min_zoom ?? 0),
-          maxZoom: Number(tileJson.maxzoom ?? mapa.max_zoom ?? 22),
-          maxNativeZoom: Number(tileJson.maxzoom ?? mapa.max_zoom ?? 22),
+          maxZoom,
+          maxNativeZoom: maxZoom,
           attribution: "Ortomosaico · Topografía Especializada",
           updateWhenIdle: true,
           keepBuffer: 2,
         });
         const streets = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          maxZoom: 19,
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>',
+          maxZoom,
+          maxNativeZoom: 19,
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>',
         });
+        const satellite = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+          maxZoom,
+          maxNativeZoom: 23,
+          attribution: 'Source: <a href="https://www.esri.com/" target="_blank" rel="noopener">Esri</a>, Vantor, Earthstar Geographics, and the GIS User Community',
+          updateWhenIdle: true,
+          keepBuffer: 2,
+        });
+        streets.addTo(map);
         ortho.addTo(map);
-        L.control.layers(en ? { "Orthomosaic": ortho, "Street map": streets } : { "Ortomosaico": ortho, "Mapa de calles": streets }).addTo(map);
+        const baseLayers = en
+          ? { "Street map": streets, "Satellite": satellite }
+          : { "Mapa de calles": streets, "Satélite": satellite };
+        const overlays = en ? { "Orthomosaic": ortho } : { "Ortomosaico": ortho };
+        const layersControl = L.control.layers(baseLayers, overlays, { collapsed: true }).addTo(map);
+        const layersButton = layersControl.getContainer()?.querySelector(".leaflet-control-layers-toggle");
+        layersButton?.setAttribute("aria-label", en ? "Choose map layers" : "Elegir capas del mapa");
+        layersButton?.setAttribute("title", en ? "Choose map layers" : "Elegir capas del mapa");
         const bounds = Array.isArray(tileJson.bounds) ? tileJson.bounds.map(Number) : [];
         if (bounds.length === 4 && bounds.every(Number.isFinite) && bounds[0] < bounds[2] && bounds[1] < bounds[3]) {
           map.fitBounds([[bounds[1], bounds[0]], [bounds[3], bounds[2]]], { padding: [18, 18], maxZoom: Number(tileJson.maxzoom ?? mapa.max_zoom ?? 22) });
@@ -100,7 +121,9 @@ const galleryPath = es ? "/mapas/" : "/en/mapas/";
           map.setView([lat, lng], zoom);
         }
         window.setTimeout(() => map.invalidateSize(), 150);
-        setStatus(en ? "Orthomosaic ready. Use the layer selector to switch to the street map." : "Ortomosaico listo. Use el selector de capas para cambiar al mapa de calles.");
+        setStatus(en
+          ? "Orthomosaic ready. Switch between the street and satellite base maps; the orthomosaic stays on top."
+          : "Ortomosaico listo. Cambie entre calles y satélite; el ortomosaico se mantiene encima.");
       } catch (error) {
         const code = error instanceof Error ? error.message : "";
         const messages: Record<string, { es: string; en: string }> = {
@@ -119,3 +142,35 @@ const galleryPath = es ? "/mapas/" : "/en/mapas/";
     iniciar();
   </script>
 </MainLayout>
+
+<style>
+  :global(.leaflet-control-layers-toggle) {
+    width: 44px;
+    height: 44px;
+    background-size: 24px 24px;
+  }
+
+  :global(.leaflet-control-layers-expanded) {
+    padding: 8px 10px;
+  }
+
+  :global(.leaflet-control-layers-expanded label) {
+    display: flex;
+    min-height: 44px;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+  }
+
+  :global(.leaflet-control-layers-selector) {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+  }
+
+  :global(.leaflet-control-attribution) {
+    max-width: min(82vw, 420px);
+    white-space: normal;
+    line-height: 1.35;
+  }
+</style>
