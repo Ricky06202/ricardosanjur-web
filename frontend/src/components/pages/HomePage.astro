@@ -1,5 +1,6 @@
 ---
 import MainLayout from "../../layouts/MainLayout.astro";
+import MapasCatalogo from "./MapasCatalogo.astro";
 import { ui, type Lang } from "../../i18n/ui";
 import { routeHref } from "../../i18n/utils";
 
@@ -7,63 +8,63 @@ interface Props { lang: Lang; }
 const { lang } = Astro.props;
 const t = ui[lang];
 const h = t.home;
-
-const heroImages = [
-  "/images/20240821_163941.jpg",
-  "/images/20250130_121614.jpg",
-  "/images/20240824_125553-1.jpg",
-];
+const mapsHref = routeHref("maps", lang);
+const quoteHref = `${routeHref("services", lang)}#cotizacion`;
 ---
 
 <MainLayout title={h.title} description={h.description} lang={lang}>
-  <!-- ================= HERO ================= -->
-  <section class="relative flex min-h-[92vh] items-center overflow-hidden">
-    <div id="hero-slider" class="absolute inset-0">
-      {heroImages.map((img, i) => (
-        <div class="absolute inset-0 transition-opacity duration-[1400ms] ease-in-out" style={`opacity: ${i === 0 ? 1 : 0}`} data-slide={i}>
-          <img src={img} alt={h.heroImageAlt} class="h-full w-full object-cover" loading={i === 0 ? "eager" : "lazy"} />
-        </div>
-      ))}
-    </div>
-    <div class="absolute inset-0 bg-gradient-to-b from-black/85 via-black/35 to-black/85"></div>
-    <div class="pointer-events-none absolute -top-24 right-[-10%] h-[520px] w-[520px] rounded-full bg-primary/12 blur-[130px]"></div>
-    <div class="pointer-events-none absolute bottom-[-20%] left-[-10%] h-[420px] w-[420px] rounded-full bg-secondary/15 blur-[120px]"></div>
-
-    <div class="relative mx-auto w-full max-w-7xl px-4 py-24 sm:px-6">
+  <!-- ================= MAPAS DE DRONES ================= -->
+  <section class="relative isolate overflow-hidden bg-[#05070f] text-white">
+    <div class="grid-bg pointer-events-none absolute inset-0 opacity-35"></div>
+    <div class="pointer-events-none absolute -right-32 -top-32 h-[34rem] w-[34rem] rounded-full bg-[#2b5cff]/18 blur-3xl"></div>
+    <div class="relative mx-auto grid w-full max-w-7xl items-center gap-10 px-4 py-14 sm:px-6 sm:py-18 lg:min-h-[calc(100svh-5rem)] lg:grid-cols-[1fr_.82fr] lg:gap-16 lg:py-16">
       <div class="max-w-3xl">
-        <div class="animate-fade-up inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 backdrop-blur">
-          <span class="relative flex h-2 w-2"><span class="absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span><span class="relative inline-flex h-2 w-2 rounded-full bg-primary"></span></span>
-          <span class="hero-text font-mono text-[11px] uppercase tracking-[0.22em] text-white/90">{h.heroBadge}</span>
-        </div>
-
-        <h1 class="hero-text animate-fade-up mt-6 font-display text-4xl font-bold leading-[1.05] text-white sm:text-6xl lg:text-7xl" style="animation-delay:.08s" set:html={h.heroTitle} />
-
-        <p class="hero-text animate-fade-up mt-6 max-w-xl text-lg text-white/90" style="animation-delay:.16s">
-          {h.heroLead}
+        <p class="inline-flex min-h-10 items-center gap-3 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 font-mono text-[10px] uppercase tracking-[.2em] text-[#d5deff] sm:text-xs">
+          <span class="h-2 w-2 rounded-full bg-primary"></span>{h.heroBadge}
         </p>
 
-        <div class="animate-fade-up mt-9 flex flex-col gap-3 sm:flex-row" style="animation-delay:.24s">
-          <a href={routeHref("services", lang) + "#cotizacion"} class="btn btn-primary btn-lg rounded-full px-8">{h.ctaPrimary}</a>
-          <a href={routeHref("services", lang)} class="btn btn-lg rounded-full border border-white/25 bg-black/25 px-8 text-white backdrop-blur hover:border-primary/60 hover:bg-black/40">{h.ctaSecondary}</a>
+        <h1 class="mt-6 max-w-3xl font-display text-4xl font-bold leading-[1.03] tracking-tight sm:text-6xl lg:text-7xl" set:html={h.heroTitle} />
+        <p class="mt-6 max-w-xl text-base leading-7 text-white/75 sm:text-lg sm:leading-8">{h.heroLead}</p>
+
+        <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+          <a href={mapsHref} class="btn btn-primary min-h-12 rounded-full px-7">{h.ctaPrimary}</a>
+          <a href={quoteHref} class="btn min-h-12 rounded-full border border-white/25 bg-white/[0.04] px-7 text-white hover:border-primary/60 hover:bg-white/[0.08]">{h.ctaSecondary}</a>
         </div>
+
+        <ul class="mt-8 flex flex-wrap gap-2" aria-label={h.deliverablesLabel}>
+          {h.deliverables.map((item) => (
+            <li class="rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-white/70 sm:text-[11px]">{item}</li>
+          ))}
+        </ul>
       </div>
 
-      <!-- HUD card -->
-      <div class="glass animate-float absolute bottom-18 right-6 hidden max-w-[230px] rounded-2xl p-5 md:block">
-        <p class="font-mono text-[10px] uppercase tracking-[0.2em] text-primary">{h.hudActive}</p>
-        <p class="mt-2 font-display text-3xl font-bold">±8 mm</p>
-        <p class="text-xs text-base-content/70">{h.hudPrecision}</p>
-        <div class="mt-3 h-px w-full bg-white/10"></div>
-        <p class="mt-3 font-mono text-[10px] uppercase tracking-widest text-base-content/50">WGS‑84 · UTM 17N</p>
-      </div>
-    </div>
-
-    <div class="absolute bottom-8 left-1/2 z-20 flex -translate-x-1/2 gap-2">
-      {heroImages.map((_, i) => (
-        <button class="h-1.5 rounded-full bg-white/30 transition-all duration-300 slider-dot data-[active=true]:w-8 data-[active=true]:bg-primary" style="width:1.5rem" data-slide={i} aria-label={`${h.sliderImageAlt} ${i + 1}`} />
-      ))}
+      <figure class="relative mx-auto w-full max-w-[28rem] lg:max-w-none">
+        <div class="relative aspect-[4/5] overflow-hidden rounded-[2rem] border border-white/10 bg-[#081328] shadow-2xl shadow-blue-950/40">
+          <img
+            src="/images/176070209_204156991250335_7340951298165577398_n.jpg"
+            alt={h.droneImageAlt}
+            width="1080"
+            height="1350"
+            loading="eager"
+            fetchpriority="high"
+            decoding="async"
+            class="h-full w-full object-cover object-center"
+          />
+          <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#05070f]/90 via-[#05070f]/10 to-[#05070f]/15"></div>
+          <div class="absolute left-4 right-4 top-4 flex items-center justify-between gap-3 sm:left-5 sm:right-5 sm:top-5">
+            <span class="rounded-full border border-white/20 bg-[#05070f]/65 px-3 py-2 font-mono text-[10px] uppercase tracking-[.15em] text-white backdrop-blur">{h.dronePhotoLabel}</span>
+            <span class="rounded-full border border-white/20 bg-[#05070f]/65 px-3 py-2 font-mono text-[10px] uppercase tracking-[.15em] text-white/80 backdrop-blur">{h.locationLabel}</span>
+          </div>
+          <figcaption class="absolute inset-x-5 bottom-5 sm:inset-x-7 sm:bottom-7">
+            <p class="font-mono text-[10px] uppercase tracking-[.2em] text-[#b7c6ff]">{h.dronePhotoKicker}</p>
+            <p class="mt-2 font-display text-2xl font-semibold leading-tight text-white sm:text-3xl">{h.dronePhotoCaption}</p>
+          </figcaption>
+        </div>
+      </figure>
     </div>
   </section>
+
+  <MapasCatalogo lang={lang} featured />
 
   <!-- ================= MARQUEE de capacidades ================= -->
   <section class="hud-line relative overflow-hidden border-y border-black/5 bg-base-200/40 py-4">
@@ -189,25 +190,6 @@ const heroImages = [
 </MainLayout>
 
 <script>
-  // Slider de fondo
-  const slides = Array.from(document.querySelectorAll<HTMLElement>("[data-slide]")).filter((el) => el.tagName !== "BUTTON");
-  const dots = Array.from(document.querySelectorAll<HTMLButtonElement>(".slider-dot"));
-  let idx = 0;
-  function go(n: number) {
-    idx = (n + slides.length) % slides.length;
-    slides.forEach((s, i) => (s.style.opacity = i === idx ? "1" : "0"));
-    dots.forEach((d, i) => d.dataset.active = String(i === idx));
-  }
-  dots.forEach((d, i) => d.addEventListener("click", () => go(i)));
-  if (slides.length > 1) {
-    let t = setInterval(() => go(idx + 1), 6000);
-    document.addEventListener("visibilitychange", () => {
-      clearInterval(t);
-      if (!document.hidden) t = setInterval(() => go(idx + 1), 6000);
-    });
-    go(0);
-  }
-
   // Contadores
   const counters = document.querySelectorAll<HTMLElement>(".counter");
   const cio = new IntersectionObserver((entries) => {

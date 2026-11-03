@@ -1,0 +1,261 @@
+---
+import type { Lang } from "../../i18n/ui";
+import { routeHref } from "../../i18n/utils";
+
+interface Props {
+  lang: Lang;
+  featured?: boolean;
+}
+
+const { lang, featured = false } = Astro.props;
+const en = lang === "en";
+const mapsHref = routeHref("maps", lang);
+const quoteHref = `${routeHref("services", lang)}#cotizacion`;
+const listId = featured ? "mapas-destacados-lista" : "mapas-lista";
+const totalId = featured ? "mapas-destacados-total" : "mapas-total";
+const errorId = featured ? "mapas-destacados-error" : "mapas-error";
+const moreId = featured ? undefined : "mapas-mas";
+const limit = featured ? 3 : 24;
+
+const featuredEmptyTitle = en ? "No public orthomosaics yet" : "Aún no hay ortomosaicos publicados";
+const featuredEmptyDescription = en
+  ? "Published drone surveys will appear here. Need a map for your project? We can coordinate the field survey."
+  : "Aquí aparecerán los levantamientos con dron que publiquemos. ¿Necesitas un mapa para tu proyecto? Coordinamos el trabajo en campo.";
+const featuredEmptyCta = en ? "Request a drone survey" : "Solicitar levantamiento con dron";
+---
+
+<section
+  id={featured ? "mapas-destacados" : "galeria"}
+  data-mapas-catalogo
+  data-limit={limit}
+  data-featured={featured ? "true" : "false"}
+  data-maps-href={mapsHref}
+  data-quote-href={quoteHref}
+  class="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20"
+>
+  <div class="mb-8 flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <p class="font-mono text-[11px] uppercase tracking-[.2em] text-primary">
+        {featured ? (en ? "/ Drone photogrammetry" : "/ Fotogrametría con drones") : (en ? "/ Public collection" : "/ Colección pública")}
+      </p>
+      <h2 class="mt-2 font-display text-3xl font-bold sm:text-4xl">
+        {featured ? (en ? "Recent orthomosaics" : "Ortomosaicos recientes") : (en ? "Orthomosaics" : "Ortomosaicos")}
+      </h2>
+    </div>
+    <div class="flex flex-wrap items-center gap-4">
+      <p id={totalId} data-map-total class="text-sm text-base-content/60" aria-live="polite"></p>
+      {featured && (
+        <a href={mapsHref} class="min-h-10 inline-flex items-center font-mono text-xs uppercase tracking-widest text-base-content/70 transition-colors hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary">
+          {en ? "View full gallery →" : "Ver galería completa →"}
+        </a>
+      )}
+    </div>
+  </div>
+
+  <div
+    id={listId}
+    data-map-list
+    class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
+    aria-live="polite"
+    aria-busy="true"
+  >
+    {featured ? (
+      <article class="col-span-full relative grid gap-6 overflow-hidden rounded-[1.75rem] border border-[#243151] bg-[#071021] p-7 text-white sm:grid-cols-[1fr_auto] sm:items-center sm:p-10">
+        <div class="grid-bg pointer-events-none absolute inset-0 opacity-40"></div>
+        <div class="relative max-w-2xl">
+          <p class="font-mono text-[10px] uppercase tracking-[.2em] text-[#9db4ff]">{en ? "Public map collection" : "Colección pública"}</p>
+          <h3 class="mt-3 font-display text-xl font-semibold sm:text-2xl">{featuredEmptyTitle}</h3>
+          <p class="mt-2 max-w-xl text-sm leading-6 text-white/70">{featuredEmptyDescription}</p>
+        </div>
+        <a href={quoteHref} class="btn btn-primary relative min-h-12 rounded-full px-6">{featuredEmptyCta}</a>
+      </article>
+    ) : (
+      <div class="col-span-full rounded-2xl border border-base-300 bg-base-100 p-6 text-sm text-base-content/70">
+        {en ? "Loading orthomosaics…" : "Cargando ortomosaicos…"}
+      </div>
+    )}
+  </div>
+
+  <p id={errorId} data-map-error class="mt-5 hidden rounded-2xl border border-error/30 bg-error/5 p-4 text-sm text-error" role="alert"></p>
+  {!featured && (
+    <button id={moreId} data-map-more type="button" class="btn btn-outline mx-auto mt-8 hidden min-h-12 rounded-full px-6">
+      {en ? "Load more maps" : "Cargar más mapas"}
+    </button>
+  )}
+</section>
+
+<script>
+  const catalog = document.querySelector<HTMLElement>("[data-mapas-catalogo]");
+
+  if (catalog) {
+    const root = catalog.querySelector<HTMLElement>("[data-map-list]");
+    const total = catalog.querySelector<HTMLElement>("[data-map-total]");
+    const error = catalog.querySelector<HTMLElement>("[data-map-error]");
+    const more = catalog.querySelector<HTMLButtonElement>("[data-map-more]");
+    const featured = catalog.dataset.featured === "true";
+    const limit = Math.max(1, Math.min(24, Number(catalog.dataset.limit) || 24));
+    const mapsHref = catalog.dataset.mapsHref || "/mapas/";
+    const quoteHref = catalog.dataset.quoteHref || "/services/#cotizacion";
+    const lang = document.documentElement.lang === "en" ? "en" : "es";
+    const copy = lang === "en"
+      ? {
+          empty: "There are no public orthomosaics yet.",
+          emptyTitle: "No public orthomosaics yet",
+          emptyDescription: "Published drone surveys will appear here. Need a map for your project? We can coordinate the field survey.",
+          emptyCta: "Request a drone survey",
+          failed: "The gallery could not be loaded. Please try again.",
+          place: "Location",
+          date: "Survey date",
+          open: "Open map",
+          totalSingular: "map published",
+          totalPlural: "maps published",
+          retry: "Try again",
+        }
+      : {
+          empty: "Todavía no hay ortomosaicos publicados.",
+          emptyTitle: "Aún no hay ortomosaicos publicados",
+          emptyDescription: "Aquí aparecerán los levantamientos con dron que publiquemos. ¿Necesitas un mapa para tu proyecto? Coordinamos el trabajo en campo.",
+          emptyCta: "Solicitar levantamiento con dron",
+          failed: "No se pudo cargar la galería. Intente otra vez.",
+          place: "Lugar",
+          date: "Fecha del levantamiento",
+          open: "Abrir mapa",
+          totalSingular: "mapa publicado",
+          totalPlural: "mapas publicados",
+          retry: "Intentar de nuevo",
+        };
+    let offset = 0;
+    let busy = false;
+
+    function fecha(value: string): string {
+      const parsed = new Date(`${value}T00:00:00Z`);
+      if (Number.isNaN(parsed.getTime())) return value;
+      return parsed.toLocaleDateString(lang === "en" ? "en-US" : "es-PA", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        timeZone: "UTC",
+      });
+    }
+
+    function card(item: any): HTMLElement {
+      const article = document.createElement("article");
+      article.className = "group flex min-h-full flex-col overflow-hidden rounded-2xl border border-base-300 bg-base-100 transition duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 motion-reduce:transform-none motion-reduce:transition-none";
+
+      const visual = document.createElement("div");
+      visual.className = "relative flex h-40 items-end overflow-hidden bg-[#081328] p-5 text-white sm:h-48";
+      visual.setAttribute("aria-hidden", "true");
+      visual.innerHTML = '<div class="pointer-events-none absolute inset-0 opacity-80" style="background-image:radial-gradient(ellipse at 50% 120%,rgba(43,92,255,.65),transparent 55%),linear-gradient(135deg,transparent 48%,rgba(145,170,255,.2) 49%,transparent 50%),linear-gradient(45deg,transparent 48%,rgba(145,170,255,.15) 49%,transparent 50%);background-size:auto,44px 44px,54px 54px"></div>' +
+        '<span class="relative rounded-full border border-white/20 bg-black/25 px-3 py-1 font-mono text-[10px] uppercase tracking-[.16em] backdrop-blur">' + (lang === "en" ? "Drone survey" : "Levantamiento con dron") + "</span>";
+
+      const body = document.createElement("div");
+      body.className = "flex flex-1 flex-col p-5 sm:p-6";
+      const title = document.createElement("h3");
+      title.className = "font-display text-xl font-bold leading-snug";
+      title.textContent = String(item.title || (lang === "en" ? "Orthomosaic" : "Ortomosaico"));
+      const description = document.createElement("p");
+      description.className = "mt-2 line-clamp-3 text-base leading-6 text-base-content/70";
+      description.textContent = String(item.description || "");
+      const meta = document.createElement("dl");
+      meta.className = "mt-5 grid gap-3 border-t border-base-300 pt-4 text-sm";
+
+      for (const [label, value] of [[copy.place, item.place], [copy.date, fecha(String(item.capture_date || ""))]]) {
+        const row = document.createElement("div");
+        row.className = "flex min-w-0 items-start justify-between gap-3";
+        const dt = document.createElement("dt");
+        dt.className = "shrink-0 text-xs font-semibold uppercase tracking-wide text-base-content/50";
+        dt.textContent = label;
+        const dd = document.createElement("dd");
+        dd.className = "min-w-0 text-right font-medium text-base-content/80";
+        dd.textContent = String(value || "—");
+        row.append(dt, dd);
+        meta.append(row);
+      }
+
+      const link = document.createElement("a");
+      link.className = "btn btn-primary mt-5 min-h-11 w-full cursor-pointer rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary motion-reduce:transition-none";
+      link.href = `${mapsHref}${encodeURIComponent(String(item.slug || ""))}/`;
+      link.textContent = copy.open;
+      body.append(title, description, meta, link);
+      article.append(visual, body);
+      return article;
+    }
+
+    function emptyState(): HTMLElement {
+      const empty = document.createElement("div");
+      if (!featured) {
+        empty.className = "col-span-full rounded-2xl border border-dashed border-base-300 bg-base-100 p-8 text-center text-base-content/65";
+        empty.textContent = copy.empty;
+        return empty;
+      }
+
+      empty.className = "col-span-full relative grid gap-6 overflow-hidden rounded-[1.75rem] border border-[#243151] bg-[#071021] p-7 text-white sm:grid-cols-[1fr_auto] sm:items-center sm:p-10";
+      const pattern = document.createElement("div");
+      pattern.className = "grid-bg pointer-events-none absolute inset-0 opacity-40";
+      const content = document.createElement("div");
+      content.className = "relative max-w-2xl";
+      const badge = document.createElement("p");
+      badge.className = "font-mono text-[10px] uppercase tracking-[.2em] text-[#9db4ff]";
+      badge.textContent = lang === "en" ? "Public map collection" : "Colección pública";
+      const heading = document.createElement("h3");
+      heading.className = "mt-3 font-display text-xl font-semibold sm:text-2xl";
+      heading.textContent = copy.emptyTitle;
+      const description = document.createElement("p");
+      description.className = "mt-2 max-w-xl text-sm leading-6 text-white/70";
+      description.textContent = copy.emptyDescription;
+      content.append(badge, heading, description);
+      const cta = document.createElement("a");
+      cta.className = "btn btn-primary relative min-h-12 rounded-full px-6";
+      cta.href = quoteHref;
+      cta.textContent = copy.emptyCta;
+      empty.append(pattern, content, cta);
+      return empty;
+    }
+
+    async function load(reset = false) {
+      if (!root || busy) return;
+      busy = true;
+      if (reset) {
+        offset = 0;
+        root.replaceChildren();
+      }
+      root.setAttribute("aria-busy", "true");
+      if (error) {
+        error.classList.add("hidden");
+        error.textContent = "";
+      }
+      if (more) more.disabled = true;
+
+      try {
+        const response = await fetch(`/api/mapas?limit=${limit}&offset=${offset}`, { headers: { accept: "application/json" } });
+        if (!response.ok) throw new Error("gallery");
+        const payload = await response.json();
+        const items = Array.isArray(payload.data) ? payload.data : [];
+        const pageTotal = Number(payload.meta?.total || 0);
+        if (total) total.textContent = `${pageTotal} ${pageTotal === 1 ? copy.totalSingular : copy.totalPlural}`;
+        if (items.length === 0 && offset === 0) root.append(emptyState());
+        else root.append(...items.map(card));
+        offset += items.length;
+        if (more) more.classList.toggle("hidden", !payload.meta?.has_more);
+      } catch {
+        if (error) {
+          error.textContent = copy.failed;
+          error.classList.remove("hidden");
+          const retry = document.createElement("button");
+          retry.type = "button";
+          retry.className = "ml-2 min-h-10 underline underline-offset-2";
+          retry.textContent = copy.retry;
+          retry.addEventListener("click", () => load(true));
+          error.append(retry);
+        }
+      } finally {
+        root.setAttribute("aria-busy", "false");
+        if (more) more.disabled = false;
+        busy = false;
+      }
+    }
+
+    more?.addEventListener("click", () => load());
+    load(true);
+  }
+</script>

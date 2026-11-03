@@ -25,19 +25,22 @@ export const ui = {
       madeByCta: "¿Quieres una página así? Escríbeme",
     },
     home: {
-      title: "Topografía Especializada en Chiriquí y Panamá | Agrimensura, GNSS y Drones",
+      title: "Ortomosaicos con drones en Chiriquí",
       description:
-        "Más de 50 años realizando levantamientos topográficos, planos catastrales, fotogrametría con drones y peritajes en David, Boquete y todo Panamá.",
-      heroImageAlt: "Topografía en campo",
-      sliderImageAlt: "Imagen",
-      heroBadge: "Desde 1970 · David, Chiriquí · Panamá",
-      heroTitle: '<span class="text-gradient">Precisión</span> que<br />construye el territorio.',
+        "Explore ortomosaicos y modelos digitales del terreno con drones en Chiriquí y Panamá. Fotogrametría para medir, planificar y dar seguimiento a proyectos.",
+      heroBadge: "Fotogrametría con drones · Chiriquí, Panamá",
+      heroTitle: '<span class="text-gradient">Ortomosaicos de dron</span> para ver el territorio.',
       heroLead:
-        "Topografía, geodesia y geomática de alta precisión. Más de cinco décadas midiendo Panamá con la tecnología más avanzada: GNSS RTK, estación total y drones.",
-      ctaPrimary: "Solicitar cotización",
-      ctaSecondary: "Ver servicios",
-      hudActive: "Sistema activo",
-      hudPrecision: "Precisión horizontal GNSS RTK",
+        "Imágenes aéreas georreferenciadas y modelos del terreno para medir, planificar y dar seguimiento a proyectos en Chiriquí y Panamá.",
+      ctaPrimary: "Explorar ortomosaicos",
+      ctaSecondary: "Solicitar levantamiento",
+      deliverablesLabel: "Productos de fotogrametría",
+      deliverables: ["Ortomosaicos", "Modelos de terreno", "Curvas de nivel"],
+      droneImageAlt: "Operador preparando un dron para un levantamiento fotogramétrico en campo.",
+      dronePhotoLabel: "Trabajo de campo",
+      locationLabel: "Chiriquí · Panamá",
+      dronePhotoKicker: "Fotogrametría aérea",
+      dronePhotoCaption: "Del vuelo al mapa.",
       metrics: [
         { value: 55, suffix: "+", label: "Años de experiencia" },
         { value: 2500, suffix: "+", label: "Proyectos entregados" },
@@ -61,6 +64,14 @@ export const ui = {
       servicesViewAll: "Ver todos →",
       services: [
         {
+          title: "Vuelo con Drones",
+          description:
+            "Levantamiento aéreo para modelos digitales de terreno, ortofotos y cálculo de volúmenes.",
+          image: "/images/176070209_204156991250335_7340951298165577398_n.jpg",
+          tag: "Dron",
+          pos: "top",
+        },
+        {
           title: "Topografía de Obras Civiles",
           description:
             "Levantamientos y replanteo para carreteras, puentes, edificaciones e infraestructura vial.",
@@ -73,14 +84,6 @@ export const ui = {
             "Mediciones geodésicas de alta precisión con tecnología GPS/GNSS RTK de última generación.",
           image: "/images/20240821_163941.jpg",
           tag: "GNSS",
-        },
-        {
-          title: "Vuelo con Drones",
-          description:
-            "Levantamiento aéreo para modelos digitales de terreno, ortofotos y cálculo de volúmenes.",
-          image: "/images/176070209_204156991250335_7340951298165577398_n.jpg",
-          tag: "Dron",
-          pos: "top",
         },
         {
           title: "Planos Topográficos",
@@ -443,19 +446,22 @@ export const ui = {
       madeByCta: "Want a site like this? Write to me",
     },
     home: {
-      title: "Land Surveying & GIS Services in Chiriquí, Panama | Topografía Especializada",
+      title: "Drone orthomosaics in Chiriquí",
       description:
-        "Topografía Especializada S.A. — More than 55 years of experience in surveying, geodesy, GNSS and geomatics in David, Chiriquí and all of Panama.",
-      heroImageAlt: "Surveying in the field",
-      sliderImageAlt: "Image",
-      heroBadge: "Since 1970 · David, Chiriquí · Panama",
-      heroTitle: '<span class="text-gradient">Precision</span> that<br />builds the territory.',
+        "Explore drone orthomosaics and digital terrain models from Chiriquí, Panama. Photogrammetry for measuring, planning and tracking projects.",
+      heroBadge: "Drone photogrammetry · Chiriquí, Panama",
+      heroTitle: '<span class="text-gradient">Drone orthomosaics</span> for a clearer view of the land.',
       heroLead:
-        "High-precision surveying, geodesy and geomatics. More than five decades measuring Panama with the most advanced technology: GNSS RTK, total station and drones.",
-      ctaPrimary: "Request a quote",
-      ctaSecondary: "View services",
-      hudActive: "System active",
-      hudPrecision: "GNSS RTK horizontal precision",
+        "Georeferenced aerial imagery and terrain models to measure, plan and track projects across Chiriquí and Panama.",
+      ctaPrimary: "Explore orthomosaics",
+      ctaSecondary: "Request a drone survey",
+      deliverablesLabel: "Photogrammetry deliverables",
+      deliverables: ["Orthomosaics", "Terrain models", "Contour lines"],
+      droneImageAlt: "Surveyor preparing a drone for an aerial mapping survey in the field.",
+      dronePhotoLabel: "Field work",
+      locationLabel: "Chiriquí · Panama",
+      dronePhotoKicker: "Aerial photogrammetry",
+      dronePhotoCaption: "From flight to map.",
       metrics: [
         { value: 55, suffix: "+", label: "Years of experience" },
         { value: 2500, suffix: "+", label: "Projects delivered" },
@@ -479,6 +485,13 @@ export const ui = {
       servicesViewAll: "View all →",
       services: [
         {
+          title: "Drone Surveying",
+          description: "Aerial surveying for digital terrain models, orthophotos and volume calculation.",
+          image: "/images/176070209_204156991250335_7340951298165577398_n.jpg",
+          tag: "Drone",
+          pos: "top",
+        },
+        {
           title: "Civil Works Surveying",
           description: "Surveys and staking out for roads, bridges, buildings and road infrastructure.",
           image: "/images/20250130_121614.jpg",
@@ -489,13 +502,6 @@ export const ui = {
           description: "High-precision geodetic measurements using state-of-the-art GPS/GNSS RTK technology.",
           image: "/images/20240821_163941.jpg",
           tag: "GNSS",
-        },
-        {
-          title: "Drone Surveying",
-          description: "Aerial surveying for digital terrain models, orthophotos and volume calculation.",
-          image: "/images/176070209_204156991250335_7340951298165577398_n.jpg",
-          tag: "Drone",
-          pos: "top",
         },
         {
           title: "Topographic Maps",
