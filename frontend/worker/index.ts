@@ -384,11 +384,11 @@ async function adminAutorizado(request: Request, env: Env): Promise<string | nul
   return lista.indexOf(norm) > -1 ? norm : null;
 }
 
-async function perfilRsidParaWidget(env: Env, email: string): Promise<{ perfil?: { nombre?: string; apellido?: string } }> {
+async function perfilRsidParaWidget(env: Env, email: string): Promise<{ perfil?: { nombre?: string; apellido?: string }; foto?: string }> {
   // El secreto de módulo se envía solo al host fijo oficial de RS ID, nunca a
   // una URL que pueda cambiar por una variable mal configurada.
   const base = new URL(RS_ID_CANJE_URL_DEFAULT);
-  const resultado: { perfil?: { nombre?: string; apellido?: string } } = {};
+  const resultado: { perfil?: { nombre?: string; apellido?: string }; foto?: string } = {};
   const secreto = String(env.RS_ID_CANJE_SECRET || '');
   if (secreto) {
     try {
@@ -419,6 +419,28 @@ async function perfilRsidParaWidget(env: Env, email: string): Promise<{ perfil?:
             resultado.perfil = {};
             if (nombre) resultado.perfil.nombre = nombre;
             if (apellido) resultado.perfil.apellido = apellido;
+          }
+        }
+        const valorFoto = typeof data?.foto === 'string' ? data.foto.trim() : '';
+        if (valorFoto && valorFoto.length <= 2048) {
+          try {
+            const foto = new URL(valorFoto, base.origin);
+            const parametros = Array.from(foto.searchParams.keys());
+            const version = foto.searchParams.get('v') || '';
+            const firma = foto.searchParams.get('s') || '';
+            const rutaFirmada = /^\/id\/foto\/[A-Za-z0-9_-]{6,80}$/.test(foto.pathname) &&
+              parametros.length === 2 && parametros.filter((x) => x === 'v').length === 1 &&
+              parametros.filter((x) => x === 's').length === 1 &&
+              /^[1-9][0-9]*$/.test(version) && Number.isSafeInteger(Number(version)) &&
+              /^[a-f0-9]{24}$/.test(firma);
+            if (foto.protocol === 'https:' && foto.origin === base.origin && rutaFirmada &&
+                !foto.username && !foto.password) {
+              resultado.foto = foto.toString();
+            } else {
+              console.warn('[admin-profile] RS ID returned a URL outside its signed photo route');
+            }
+          } catch {
+            console.warn('[admin-profile] RS ID returned an invalid photo URL');
           }
         }
       } else {
