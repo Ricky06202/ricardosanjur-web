@@ -14,32 +14,32 @@ const quoteHref = `${routeHref("services", lang)}#cotizacion`;
 
 <MainLayout title={h.title} description={h.description} lang={lang}>
   <!-- ================= MAPAS DE DRONES ================= -->
-  <section class="relative isolate overflow-hidden bg-[#05070f] text-white">
+  <section class="relative isolate overflow-hidden bg-base-100 text-base-content">
     <div class="grid-bg pointer-events-none absolute inset-0 opacity-35"></div>
-    <div class="pointer-events-none absolute -right-32 -top-32 h-[34rem] w-[34rem] rounded-full bg-[#2b5cff]/18 blur-3xl"></div>
+    <div class="pointer-events-none absolute -right-32 -top-32 h-[34rem] w-[34rem] rounded-full bg-primary/10 blur-3xl"></div>
     <div class="relative mx-auto grid w-full max-w-7xl items-center gap-10 px-4 py-14 sm:px-6 sm:py-18 lg:min-h-[calc(100svh-5rem)] lg:grid-cols-[1fr_.82fr] lg:gap-16 lg:py-16">
       <div class="max-w-3xl">
-        <p class="inline-flex min-h-10 items-center gap-3 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 font-mono text-[10px] uppercase tracking-[.2em] text-[#d5deff] sm:text-xs">
+        <p class="inline-flex min-h-10 items-center gap-3 rounded-full border border-base-300 bg-white/85 px-4 py-2 font-mono text-[10px] uppercase tracking-[.2em] text-base-content/75 sm:text-xs">
           <span class="h-2 w-2 rounded-full bg-primary"></span>{h.heroBadge}
         </p>
 
-        <h1 class="mt-6 max-w-3xl font-display text-4xl font-bold leading-[1.03] tracking-tight sm:text-6xl lg:text-7xl" set:html={h.heroTitle} />
-        <p class="mt-6 max-w-xl text-base leading-7 text-white/75 sm:text-lg sm:leading-8">{h.heroLead}</p>
+        <h1 class="mt-6 max-w-3xl font-display text-4xl font-bold leading-[1.03] tracking-tight text-base-content sm:text-6xl lg:text-7xl" set:html={h.heroTitle} />
+        <p class="mt-6 max-w-xl text-base leading-7 text-base-content/70 sm:text-lg sm:leading-8">{h.heroLead}</p>
 
         <div class="mt-8 flex flex-col gap-3 sm:flex-row">
           <a href={mapsHref} class="btn btn-primary min-h-12 rounded-full px-7">{h.ctaPrimary}</a>
-          <a href={quoteHref} class="btn min-h-12 rounded-full border border-white/25 bg-white/[0.04] px-7 text-white hover:border-primary/60 hover:bg-white/[0.08]">{h.ctaSecondary}</a>
+          <a href={quoteHref} class="btn min-h-12 rounded-full border border-base-300 bg-white px-7 text-base-content hover:border-primary/50 hover:bg-base-200">{h.ctaSecondary}</a>
         </div>
 
         <ul class="mt-8 flex flex-wrap gap-2" aria-label={h.deliverablesLabel}>
           {h.deliverables.map((item) => (
-            <li class="rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-white/70 sm:text-[11px]">{item}</li>
+            <li class="rounded-full border border-base-300 bg-white/80 px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-base-content/70 sm:text-[11px]">{item}</li>
           ))}
         </ul>
       </div>
 
       <figure class="relative mx-auto w-full max-w-[28rem] lg:max-w-none">
-        <div class="relative aspect-[4/5] overflow-hidden rounded-[2rem] border border-white/10 bg-[#081328] shadow-2xl shadow-blue-950/40">
+        <div class="relative aspect-[4/5] overflow-hidden rounded-[2rem] border border-base-300 bg-base-200 shadow-xl shadow-blue-900/10">
           <img
             src="/images/176070209_204156991250335_7340951298165577398_n.jpg"
             alt={h.droneImageAlt}
@@ -50,16 +50,15 @@ const quoteHref = `${routeHref("services", lang)}#cotizacion`;
             decoding="async"
             class="h-full w-full object-cover object-center"
           />
-          <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#05070f]/90 via-[#05070f]/10 to-[#05070f]/15"></div>
           <div class="absolute left-4 right-4 top-4 flex items-center justify-between gap-3 sm:left-5 sm:right-5 sm:top-5">
-            <span class="rounded-full border border-white/20 bg-[#05070f]/65 px-3 py-2 font-mono text-[10px] uppercase tracking-[.15em] text-white backdrop-blur">{h.dronePhotoLabel}</span>
-            <span class="rounded-full border border-white/20 bg-[#05070f]/65 px-3 py-2 font-mono text-[10px] uppercase tracking-[.15em] text-white/80 backdrop-blur">{h.locationLabel}</span>
+            <span class="rounded-full border border-white/80 bg-white/90 px-3 py-2 font-mono text-[10px] uppercase tracking-[.15em] text-base-content shadow-sm backdrop-blur">{h.dronePhotoLabel}</span>
+            <span class="rounded-full border border-white/80 bg-white/90 px-3 py-2 font-mono text-[10px] uppercase tracking-[.15em] text-base-content/75 shadow-sm backdrop-blur">{h.locationLabel}</span>
           </div>
-          <figcaption class="absolute inset-x-5 bottom-5 sm:inset-x-7 sm:bottom-7">
-            <p class="font-mono text-[10px] uppercase tracking-[.2em] text-[#b7c6ff]">{h.dronePhotoKicker}</p>
-            <p class="mt-2 font-display text-2xl font-semibold leading-tight text-white sm:text-3xl">{h.dronePhotoCaption}</p>
-          </figcaption>
         </div>
+        <figcaption class="mt-4 px-2">
+          <p class="font-mono text-[10px] uppercase tracking-[.2em] text-primary">{h.dronePhotoKicker}</p>
+          <p class="mt-1 font-display text-xl font-semibold leading-tight text-base-content sm:text-2xl">{h.dronePhotoCaption}</p>
+        </figcaption>
       </figure>
     </div>
   </section>

@@ -19,15 +19,15 @@ const indexPath = es ? "/mapas/" : "/en/mapas/";
   lang={lang}
   breadcrumbs={[{ name: es ? "Mapas" : "Maps", path: indexPath }]}
 >
-  <section class="relative overflow-hidden bg-[#05070f] text-white">
-    <div class="grid-bg pointer-events-none absolute inset-0 opacity-50"></div>
-    <div class="pointer-events-none absolute -right-32 -top-40 h-[30rem] w-[30rem] rounded-full bg-[#2b5cff]/20 blur-3xl"></div>
+  <section class="relative overflow-hidden bg-base-100 text-base-content">
+    <div class="grid-bg pointer-events-none absolute inset-0 opacity-30"></div>
+    <div class="pointer-events-none absolute -right-32 -top-40 h-[30rem] w-[30rem] rounded-full bg-primary/10 blur-3xl"></div>
     <div class="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28">
-      <p class="font-mono text-xs uppercase tracking-[.22em] text-[#9db4ff]">{es ? "Fotogrametría · David, Chiriquí" : "Photogrammetry · David, Chiriquí"}</p>
+      <p class="font-mono text-xs uppercase tracking-[.22em] text-primary">{es ? "Fotogrametría · David, Chiriquí" : "Photogrammetry · David, Chiriquí"}</p>
       <h1 class="mt-5 max-w-4xl font-display text-4xl font-bold leading-[1.04] tracking-tight sm:text-6xl lg:text-7xl">
-        {es ? <>Territorio visto <span class="text-[#91aaff]">con precisión.</span></> : <>The land, seen <span class="text-[#91aaff]">in detail.</span></>}
+        {es ? <>Territorio visto <span class="text-primary">con precisión.</span></> : <>The land, seen <span class="text-primary">in detail.</span></>}
       </h1>
-      <p class="mt-6 max-w-2xl text-base leading-7 text-white/70 sm:text-lg">
+      <p class="mt-6 max-w-2xl text-base leading-7 text-base-content/70 sm:text-lg">
         {es
           ? "Ortomosaicos creados a partir de levantamientos con drones y procesamiento geoespacial. Abra cada proyecto y explore la imagen en su ubicación real."
           : "Orthomosaics produced from drone surveys and geospatial processing. Open a project and explore its imagery at the real location."}

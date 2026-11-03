@@ -60,12 +60,12 @@ const featuredEmptyCta = en ? "Request a drone survey" : "Solicitar levantamient
     aria-busy="true"
   >
     {featured ? (
-      <article class="col-span-full relative grid gap-6 overflow-hidden rounded-[1.75rem] border border-[#243151] bg-[#071021] p-7 text-white sm:grid-cols-[1fr_auto] sm:items-center sm:p-10">
-        <div class="grid-bg pointer-events-none absolute inset-0 opacity-40"></div>
+      <article class="col-span-full relative grid gap-6 overflow-hidden rounded-[1.75rem] border border-base-300 bg-base-100 p-7 text-base-content shadow-sm sm:grid-cols-[1fr_auto] sm:items-center sm:p-10">
+        <div class="grid-bg pointer-events-none absolute inset-0 opacity-25"></div>
         <div class="relative max-w-2xl">
-          <p class="font-mono text-[10px] uppercase tracking-[.2em] text-[#9db4ff]">{en ? "Public map collection" : "Colección pública"}</p>
-          <h3 class="mt-3 font-display text-xl font-semibold sm:text-2xl">{featuredEmptyTitle}</h3>
-          <p class="mt-2 max-w-xl text-sm leading-6 text-white/70">{featuredEmptyDescription}</p>
+          <p class="font-mono text-[10px] uppercase tracking-[.2em] text-primary">{en ? "Public map collection" : "Colección pública"}</p>
+          <h3 class="mt-3 font-display text-xl font-semibold text-base-content sm:text-2xl">{featuredEmptyTitle}</h3>
+          <p class="mt-2 max-w-xl text-sm leading-6 text-base-content/70">{featuredEmptyDescription}</p>
         </div>
         <a href={quoteHref} class="btn btn-primary relative min-h-12 rounded-full px-6">{featuredEmptyCta}</a>
       </article>
@@ -143,10 +143,10 @@ const featuredEmptyCta = en ? "Request a drone survey" : "Solicitar levantamient
       article.className = "group flex min-h-full flex-col overflow-hidden rounded-2xl border border-base-300 bg-base-100 transition duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 motion-reduce:transform-none motion-reduce:transition-none";
 
       const visual = document.createElement("div");
-      visual.className = "relative flex h-40 items-end overflow-hidden bg-[#081328] p-5 text-white sm:h-48";
+      visual.className = "relative flex h-40 items-end overflow-hidden bg-[#edf2ff] p-5 text-base-content sm:h-48";
       visual.setAttribute("aria-hidden", "true");
-      visual.innerHTML = '<div class="pointer-events-none absolute inset-0 opacity-80" style="background-image:radial-gradient(ellipse at 50% 120%,rgba(43,92,255,.65),transparent 55%),linear-gradient(135deg,transparent 48%,rgba(145,170,255,.2) 49%,transparent 50%),linear-gradient(45deg,transparent 48%,rgba(145,170,255,.15) 49%,transparent 50%);background-size:auto,44px 44px,54px 54px"></div>' +
-        '<span class="relative rounded-full border border-white/20 bg-black/25 px-3 py-1 font-mono text-[10px] uppercase tracking-[.16em] backdrop-blur">' + (lang === "en" ? "Drone survey" : "Levantamiento con dron") + "</span>";
+      visual.innerHTML = '<div class="pointer-events-none absolute inset-0 opacity-80" style="background-image:radial-gradient(ellipse at 50% 120%,rgba(43,92,255,.18),transparent 55%),linear-gradient(135deg,transparent 48%,rgba(43,92,255,.12) 49%,transparent 50%),linear-gradient(45deg,transparent 48%,rgba(43,92,255,.08) 49%,transparent 50%);background-size:auto,44px 44px,54px 54px"></div>' +
+        '<span class="relative rounded-full border border-primary/20 bg-white/85 px-3 py-1 font-mono text-[10px] uppercase tracking-[.16em] text-primary shadow-sm backdrop-blur">' + (lang === "en" ? "Drone survey" : "Levantamiento con dron") + "</span>";
 
       const body = document.createElement("div");
       body.className = "flex flex-1 flex-col p-5 sm:p-6";
@@ -189,19 +189,19 @@ const featuredEmptyCta = en ? "Request a drone survey" : "Solicitar levantamient
         return empty;
       }
 
-      empty.className = "col-span-full relative grid gap-6 overflow-hidden rounded-[1.75rem] border border-[#243151] bg-[#071021] p-7 text-white sm:grid-cols-[1fr_auto] sm:items-center sm:p-10";
+      empty.className = "col-span-full relative grid gap-6 overflow-hidden rounded-[1.75rem] border border-base-300 bg-base-100 p-7 text-base-content shadow-sm sm:grid-cols-[1fr_auto] sm:items-center sm:p-10";
       const pattern = document.createElement("div");
-      pattern.className = "grid-bg pointer-events-none absolute inset-0 opacity-40";
+      pattern.className = "grid-bg pointer-events-none absolute inset-0 opacity-25";
       const content = document.createElement("div");
       content.className = "relative max-w-2xl";
       const badge = document.createElement("p");
-      badge.className = "font-mono text-[10px] uppercase tracking-[.2em] text-[#9db4ff]";
+      badge.className = "font-mono text-[10px] uppercase tracking-[.2em] text-primary";
       badge.textContent = lang === "en" ? "Public map collection" : "Colección pública";
       const heading = document.createElement("h3");
-      heading.className = "mt-3 font-display text-xl font-semibold sm:text-2xl";
+      heading.className = "mt-3 font-display text-xl font-semibold text-base-content sm:text-2xl";
       heading.textContent = copy.emptyTitle;
       const description = document.createElement("p");
-      description.className = "mt-2 max-w-xl text-sm leading-6 text-white/70";
+      description.className = "mt-2 max-w-xl text-sm leading-6 text-base-content/70";
       description.textContent = copy.emptyDescription;
       content.append(badge, heading, description);
       const cta = document.createElement("a");

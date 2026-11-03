@@ -29,7 +29,7 @@ export const ui = {
       description:
         "Explore ortomosaicos y modelos digitales del terreno con drones en Chiriquí y Panamá. Fotogrametría para medir, planificar y dar seguimiento a proyectos.",
       heroBadge: "Fotogrametría con drones · Chiriquí, Panamá",
-      heroTitle: '<span class="text-gradient">Ortomosaicos de dron</span> para ver el territorio.',
+      heroTitle: '<span class="text-primary">Ortomosaicos de dron</span> para ver el territorio.',
       heroLead:
         "Imágenes aéreas georreferenciadas y modelos del terreno para medir, planificar y dar seguimiento a proyectos en Chiriquí y Panamá.",
       ctaPrimary: "Explorar ortomosaicos",
@@ -462,7 +462,7 @@ export const ui = {
       description:
         "Explore drone orthomosaics and digital terrain models from Chiriquí, Panama. Photogrammetry for measuring, planning and tracking projects.",
       heroBadge: "Drone photogrammetry · Chiriquí, Panama",
-      heroTitle: '<span class="text-gradient">Drone orthomosaics</span> for a clearer view of the land.',
+      heroTitle: '<span class="text-primary">Drone orthomosaics</span> for a clearer view of the land.',
       heroLead:
         "Georeferenced aerial imagery and terrain models to measure, plan and track projects across Chiriquí and Panama.",
       ctaPrimary: "Explore orthomosaics",
