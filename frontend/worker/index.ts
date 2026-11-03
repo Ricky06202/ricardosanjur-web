@@ -1266,7 +1266,9 @@ export function page(title: string, body: string, status: number, cssExtra?: str
     '<main' + (isAdmin ? ' class="admin-main"' : '') + '>' + body + '</main>' + (navigation ? navigation.mobile : '') + '\n' + rsidMenu +
     '<script>' + (isAdmin ? ADMIN_UX_SCRIPT : '') +
     '(function(){var bs=document.querySelectorAll("[data-copy]");for(var i=0;i<bs.length;i++){(function(b){b.addEventListener("click",function(){var t=b.getAttribute("data-copy")||"";if(!(navigator.clipboard&&navigator.clipboard.writeText)){window.prompt("Copie el enlace",t);return;}navigator.clipboard.writeText(t).then(function(){var o=b.textContent;b.textContent="Copiado";b.classList.add("ok");setTimeout(function(){b.textContent=o;},1600);});});})(bs[i]);}})();' +
-    '(function(){var fs=document.querySelectorAll("form[data-busy]");for(var i=0;i<fs.length;i++){fs[i].addEventListener("submit",function(event){if(event.defaultPrevented)return;var b=this.querySelector("button[type=submit]");if(b){b.disabled=true;b.textContent=this.getAttribute("data-busy")||"Guardando...";}});}})();</script>' +
+    '(function(){var fs=document.querySelectorAll("form[data-busy]");for(var i=0;i<fs.length;i++){fs[i].addEventListener("submit",function(event){' +
+    (isAdmin ? 'if(event.defaultPrevented)return;' : '') +
+    'var b=this.querySelector("button[type=submit]");if(b){b.disabled=true;b.textContent=this.getAttribute("data-busy")||"Guardando...";}});}})();</script>' +
     '</body></html>';
   return new Response(html, {
     status: status || 200,
