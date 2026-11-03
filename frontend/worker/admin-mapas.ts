@@ -11,7 +11,7 @@ import {
   type MapasEnv,
 } from './mapas';
 
-type AdminEnv = MapasEnv & { ADMIN_EMAILS?: string };
+type AdminEnv = MapasEnv & { ADMIN_EMAILS?: string; ADMIN_TOKEN?: string };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -64,14 +64,6 @@ function maxUploadBytes(env: AdminEnv): number {
   return Number.isSafeInteger(configured) && configured > 0 ? configured : MAX_MAPA_BYTES;
 }
 
-function nav(current: string): string {
-  return '<div class="row mapas-nav" style="gap:8px">' +
-    '<a class="btn ghost sm" href="/admin">Panel de planos</a>' +
-    '<a class="btn ghost sm" href="/admin/mapas">Mapas</a>' +
-    (current === 'list' ? '<a class="btn sm" href="/admin/mapas/nuevo">Nuevo mapa</a>' : '') +
-    '<a class="btn ghost sm" href="/admin/salir">Cerrar sesión</a></div>';
-}
-
 function cardError(message: string): string {
   return '<div class="card errline"><p class="err small" style="margin:0;font-weight:600">' + esc(message) + '</p></div>';
 }
@@ -97,7 +89,7 @@ export async function handleAdminMapaLista(env: AdminEnv, aviso = ''): Promise<R
         '</div></article>';
     }).join('');
 
-    const body = '<div class="sec"><h1><span>Ortomosaicos</span></h1>' + nav('list') + '</div>' +
+    const body = '<div class="sec"><h1><span>Ortomosaicos</span></h1><a class="btn sm" href="/admin/mapas/nuevo">Nuevo mapa</a></div>' +
       '<p class="lead">Suba los MBTiles aquí. Los borradores no son públicos; archivar los oculta sin borrar el archivo del VPS.</p>' +
       (aviso ? '<div class="card okline"><p class="ok" style="margin:0">' + esc(aviso) + '</p></div>' : '') +
       '<div class="mapa-admin-resumen"><div><strong>' + rows.length + '</strong><span>mapas registrados</span></div>' +
@@ -107,9 +99,9 @@ export async function handleAdminMapaLista(env: AdminEnv, aviso = ''): Promise<R
         '<div class="card empty"><h2>La biblioteca está vacía</h2><p>Agregue el primer ortomosaico para que aparezca aquí y pueda publicarlo.</p>' +
         '<p style="margin-top:14px"><a class="btn" href="/admin/mapas/nuevo">Agregar mapa</a></p></div>');
 
-    return page('Administrar ortomosaicos', body, 200, CSS_PANEL + MAPAS_ADMIN_CSS);
+    return page('Administrar ortomosaicos', body, 200, CSS_PANEL + MAPAS_ADMIN_CSS, { token: env.ADMIN_TOKEN, section: 'mapas' });
   } catch {
-    return page('Administrar ortomosaicos', cardError('No se pudo cargar la biblioteca de mapas.'), 500, CSS_PANEL + MAPAS_ADMIN_CSS);
+    return page('Administrar ortomosaicos', cardError('No se pudo cargar la biblioteca de mapas.'), 500, CSS_PANEL + MAPAS_ADMIN_CSS, { token: env.ADMIN_TOKEN, section: 'mapas' });
   }
 }
 
@@ -118,7 +110,7 @@ export async function handleAdminMapaForm(env: AdminEnv, id: string, aviso = '')
   const maxBytes = maxUploadBytes(env);
   let mapa: MapaRow | null = null;
   if (!esNuevo) {
-    if (!UUID_RE.test(id)) return page('Mapa no encontrado', cardError('El enlace del mapa no es válido.'), 404, CSS_PANEL + MAPAS_ADMIN_CSS);
+    if (!UUID_RE.test(id)) return page('Mapa no encontrado', cardError('El enlace del mapa no es válido.'), 404, CSS_PANEL + MAPAS_ADMIN_CSS, { token: env.ADMIN_TOKEN, section: 'mapas' });
     try {
       await ensureMapasTable(env.DB);
       mapa = await env.DB.prepare(
@@ -127,7 +119,7 @@ export async function handleAdminMapaForm(env: AdminEnv, id: string, aviso = '')
     } catch {
       mapa = null;
     }
-    if (!mapa) return page('Mapa no encontrado', cardError('Ese mapa no existe o ya no está disponible.'), 404, CSS_PANEL + MAPAS_ADMIN_CSS);
+    if (!mapa) return page('Mapa no encontrado', cardError('Ese mapa no existe o ya no está disponible.'), 404, CSS_PANEL + MAPAS_ADMIN_CSS, { token: env.ADMIN_TOKEN, section: 'mapas' });
   }
 
   const base = '/admin/mapas';
@@ -165,7 +157,7 @@ export async function handleAdminMapaForm(env: AdminEnv, id: string, aviso = '')
       '</section>';
   }
 
-  const body = '<div class="sec"><h1><span>' + (esNuevo ? 'Agregar ortomosaico' : 'Administrar mapa') + '</span></h1>' + nav('form') + '</div>' +
+  const body = '<div class="sec"><h1><span>' + (esNuevo ? 'Agregar ortomosaico' : 'Administrar mapa') + '</span></h1><a class="btn ghost sm" href="/admin/mapas">Volver a mapas</a></div>' +
     (aviso ? '<div class="card okline"><p class="ok" style="margin:0">' + esc(aviso) + '</p></div>' : '') +
     '<p class="lead">Complete los datos del levantamiento. El archivo solo se hace público cuando usted lo publica.</p>' +
     '<form class="card" method="POST" action="' + (esNuevo ? base + '/crear' : base + '/' + esc(mapa!.id) + '/guardar') + '" data-busy="Guardando...">' +
@@ -178,7 +170,7 @@ export async function handleAdminMapaForm(env: AdminEnv, id: string, aviso = '')
     (mapa ? '<p class="hint">Enlace: <span class="code">/mapas/' + esc(mapa.slug) + '/</span></p>' : '') +
     (mapa && !mapa.archivo_nombre ? uploadScript(mapa.id, maxBytes) : '');
 
-  return page(esNuevo ? 'Agregar ortomosaico' : 'Administrar mapa', body, 200, CSS_PANEL + MAPAS_ADMIN_CSS);
+  return page(esNuevo ? 'Agregar ortomosaico' : 'Administrar mapa', body, 200, CSS_PANEL + MAPAS_ADMIN_CSS, { token: env.ADMIN_TOKEN, section: 'mapas' });
 }
 
 export async function handleAdminMapaCrear(request: Request, env: AdminEnv, email: string): Promise<Response> {

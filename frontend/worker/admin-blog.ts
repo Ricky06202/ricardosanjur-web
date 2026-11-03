@@ -86,7 +86,7 @@ export async function handleBlogLista(env: Env, tok: string, aviso: string): Pro
   try {
     await asegurarTabla(env.DB);
   } catch (e) {
-    return page('Blog', '<div class="card errline"><p class="err" style="margin:0">No se pudo preparar la tabla del blog: ' + esc(String((e as any) && (e as any).message || e)) + '</p></div>', 500, CSS_PANEL);
+    return page('Blog', '<div class="card errline"><p class="err" style="margin:0">No se pudo preparar la tabla del blog: ' + esc(String((e as any) && (e as any).message || e)) + '</p></div>', 500, CSS_PANEL, { token: tok, section: 'blog' });
   }
   let filas: Fila[] = [];
   try {
@@ -132,7 +132,7 @@ export async function handleBlogLista(env: Env, tok: string, aviso: string): Pro
     '<div style="overflow-x:auto;margin-top:6px"><table class="tabla-articulos"><thead><tr><th>Titulo</th><th>Estado</th><th>Actualizado</th><th></th></tr></thead>' +
     '<tbody>' + lista + '</tbody></table></div></div>';
 
-  return page('Blog', body, 200, CSS_PANEL);
+  return page('Blog', body, 200, CSS_PANEL, { token: tok, section: 'blog' });
 }
 
 /** GET /admin/<token>/blog/nuevo  o  /admin/<token>/blog/<id> */
@@ -259,7 +259,7 @@ export async function handleBlogForm(env: Env, tok: string, id: string, aviso: s
     "if(t){var tm=null;t.addEventListener('input',function(){clearTimeout(tm);tm=setTimeout(previa,250);});previa();}" +
     "</script>";
 
-  return page(esNuevo ? "Nuevo articulo" : "Editar articulo", body, 200, CSS_PANEL);
+  return page(esNuevo ? "Nuevo articulo" : "Editar articulo", body, 200, CSS_PANEL, { token: tok, section: 'blog' });
 }
 
 /* ================== archivos del artículo ==================

@@ -1030,19 +1030,243 @@ const CSS = [
   'main{padding:20px 14px 72px}.card{padding:18px 16px;border-radius:18px}.acc>summary{padding:16px 16px}.acc>div{padding:16px}h1{font-size:25px}}',
 ].join('\n');
 
-export function page(title: string, body: string, status: number, cssExtra?: string): Response {
+export type AdminPageOptions = {
+  token?: string;
+  section: 'panel' | 'mapas' | 'blog';
+  navigation?: boolean;
+  profile?: boolean;
+};
+
+type AdminNavItem = {
+  section: AdminPageOptions['section'];
+  href: string;
+  label: string;
+  icon: string;
+};
+
+const ADMIN_NAV_ICONS: Record<AdminPageOptions['section'], string> = {
+  panel: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></svg>',
+  mapas: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3.5 6.5 5.5-2 6 2 5.5-2v13l-5.5 2-6-2-5.5 2z"/><path d="M9 4.5v13M15 6.5v13"/></svg>',
+  blog: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>',
+};
+
+const ADMIN_UX_CSS = [
+  '.admin-shell .top .in{max-width:1180px;gap:12px;min-height:68px}',
+  '.admin-brand{display:flex;align-items:center;gap:11px;min-width:0;flex:0 0 auto}',
+  '.admin-brand img{display:block;width:54px;height:44px;object-fit:contain;flex:0 0 auto}',
+  '.admin-brand-copy{display:grid;gap:2px;line-height:1.15;white-space:nowrap}',
+  '.admin-brand-copy strong{font-family:"Space Grotesk",Inter,sans-serif;font-size:.9rem;font-weight:700;color:var(--ink)}',
+  '.admin-brand-copy small{font-size:.7rem;color:var(--mut);font-weight:500}',
+  '.admin-nav-desktop{display:flex;align-items:center;gap:4px;margin-left:auto}',
+  '.admin-nav-link{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:44px;padding:8px 12px;border-radius:12px;color:#475467;font-size:.87rem;font-weight:650;text-decoration:none;transition:background-color .18s,color .18s,border-color .18s}',
+  '.admin-nav-link:hover{background:#F2F6FC;color:#1D4ED8;text-decoration:none}',
+  '.admin-nav-link:focus-visible,.admin-tab-link:focus-visible{outline:3px solid rgba(37,99,235,.35);outline-offset:2px}',
+  '.admin-nav-link[aria-current="page"]{background:#EAF1FE;color:#1D4ED8}',
+  '.admin-nav-link svg{width:19px;height:19px;flex:0 0 auto}',
+  '.admin-profile-host{display:flex;align-items:center;justify-content:flex-end;min-width:40px;min-height:40px;flex:0 0 auto}',
+  '.admin-mobile-nav{display:none}',
+  '.admin-shell main.admin-main{padding-bottom:80px}',
+  '.admin-tabs{display:flex;gap:6px;overflow-x:auto;overscroll-behavior-x:contain;margin:20px 0 8px;padding:4px;border:1px solid var(--line);border-radius:16px;background:#F7F9FC;scrollbar-width:thin}',
+  '.admin-tab-link{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:9px 14px;border:1px solid transparent;border-radius:12px;color:#475467;font-size:.9rem;font-weight:650;text-decoration:none;white-space:nowrap;transition:background-color .18s,color .18s,border-color .18s}',
+  '.admin-tab-link:hover{background:#fff;color:#1D4ED8;text-decoration:none}',
+  '.admin-tab-link[aria-selected="true"]{background:#fff;border-color:#D6E4FD;color:#1D4ED8;box-shadow:0 1px 3px rgba(16,24,40,.08)}',
+  '.admin-tab-count{display:inline-grid;place-items:center;min-width:23px;height:23px;padding:0 6px;border-radius:999px;background:#EEF2F7;color:#475467;font-size:.72rem;font-weight:700}',
+  '.admin-tab-link[aria-selected="true"] .admin-tab-count{background:#EAF1FE;color:#1D4ED8}',
+  '.admin-tab-panel[hidden]{display:none!important}',
+  '.admin-form-guide{margin:0 0 14px;padding:10px 12px;border:1px solid #D6E4FD;border-radius:12px;background:#F5F8FF;color:#344054;font-size:.88rem;line-height:1.5}',
+  '.admin-required{color:#B42318;font-weight:800}',
+  '.admin-form-summary{margin:0 0 14px;padding:12px 14px;border:1px solid #F3C2C2;border-radius:12px;background:#FEF3F2;color:#912018;font-size:.9rem;font-weight:650;line-height:1.5}',
+  '.admin-field-error{margin:6px 0 0;color:#B42318;font-size:.86rem;line-height:1.4}',
+  '.admin-main input[type="file"]{font-size:16px}',
+  '.admin-main input[aria-invalid="true"],.admin-main select[aria-invalid="true"],.admin-main textarea[aria-invalid="true"]{border-color:#B42318;box-shadow:0 0 0 3px rgba(180,35,24,.1)}',
+  '@media(max-width:760px){',
+  '.admin-shell .top .in{padding:9px 13px;gap:8px;min-height:60px}',
+  '.admin-nav-desktop{display:none}',
+  '.admin-profile-host{margin-left:auto}',
+  '.admin-brand-copy small{display:none}',
+  '.admin-mobile-nav{position:fixed;inset:auto 0 0;z-index:60;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding:7px 12px calc(7px + env(safe-area-inset-bottom));border-top:1px solid #E4EAF2;background:rgba(255,255,255,.97);box-shadow:0 -8px 24px rgba(16,24,40,.08);backdrop-filter:blur(14px)}',
+  '.admin-mobile-nav .admin-nav-link{flex-direction:column;gap:4px;min-height:52px;padding:5px 4px;border-radius:12px;font-size:.72rem;line-height:1.2}',
+  '.admin-mobile-nav .admin-nav-link svg{width:20px;height:20px}',
+  '.admin-shell main.admin-main{padding-bottom:calc(100px + env(safe-area-inset-bottom))}',
+  '.admin-tabs{margin-top:16px}',
+  '.admin-tab-link{flex:1 0 auto;min-width:100px;padding-inline:10px}',
+  '}',
+  '@media(max-width:480px){.admin-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));overflow:visible;gap:3px}.admin-tab-link{flex:initial;min-width:0;flex-direction:column;gap:2px;padding:7px 3px;white-space:normal;font-size:.78rem;line-height:1.2;text-align:center}.admin-tab-count{min-width:20px;height:19px;padding:0 5px;font-size:.68rem}}',
+  '@media(max-width:380px){.admin-brand{gap:7px}.admin-brand img{width:43px;height:40px}.admin-brand-copy strong{font-size:.84rem}.admin-brand-copy small{display:none}}',
+  '@media(prefers-reduced-motion:reduce){.admin-nav-link,.admin-tab-link{transition:none}}',
+].join('\n');
+
+const ADMIN_UX_SCRIPT = `(function(){
+  var tabs=Array.prototype.slice.call(document.querySelectorAll(".admin-tabs [data-admin-tab]"));
+  var panels=Array.prototype.slice.call(document.querySelectorAll("[data-admin-panel]"));
+  if(tabs.length&&panels.length){
+    function activate(id,updateHash){
+      var panel=document.getElementById(id);
+      if(!panel||!panel.hasAttribute("data-admin-panel"))return false;
+      tabs.forEach(function(tab){var active=tab.getAttribute("href")==="#"+id;tab.setAttribute("aria-selected",active?"true":"false");tab.setAttribute("tabindex",active?"0":"-1");});
+      panels.forEach(function(item){item.hidden=item.id!==id;});
+      if(updateHash)history.replaceState(null,"",location.pathname+location.search+"#"+id);
+      return true;
+    }
+    var initial="";
+    if(location.hash)initial=decodeURIComponent(location.hash.slice(1));
+    if(!activate(initial,false)){
+      var selected=tabs.find(function(tab){return tab.getAttribute("aria-selected")==="true";})||tabs[0];
+      activate(selected.getAttribute("href").slice(1),false);
+    }
+    tabs.forEach(function(tab,index){
+      tab.addEventListener("click",function(event){if(event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;event.preventDefault();activate(tab.getAttribute("href").slice(1),true);});
+      tab.addEventListener("keydown",function(event){
+        var next=index;
+        if(event.key==="ArrowRight")next=(index+1)%tabs.length;
+        else if(event.key==="ArrowLeft")next=(index+tabs.length-1)%tabs.length;
+        else if(event.key==="Home")next=0;
+        else if(event.key==="End")next=tabs.length-1;
+        else return;
+        event.preventDefault();tabs[next].focus();activate(tabs[next].getAttribute("href").slice(1),true);
+      });
+    });
+  }
+})();
+(function(){
+  var forms=Array.prototype.slice.call(document.querySelectorAll(".admin-main form"));
+  var sequence=0;
+  function validationFields(form){return Array.prototype.slice.call(form.querySelectorAll("input,select,textarea")).filter(function(field){return field.willValidate&&field.type!=="hidden";});}
+  function requiredFields(form){return validationFields(form).filter(function(field){return field.required;});}
+  function visible(field){return !field.disabled&&!field.closest("[hidden]");}
+  function ensureError(field){
+    var id=field.getAttribute("data-admin-error-id");
+    if(!id){id=(field.id||"admin-field-"+(++sequence))+"-error";field.setAttribute("data-admin-error-id",id);}
+    var error=document.getElementById(id);
+    if(!error){error=document.createElement("p");error.id=id;error.className="admin-field-error";error.setAttribute("role","alert");field.insertAdjacentElement("afterend",error);}
+    var described=(field.getAttribute("aria-describedby")||"").split(/\\s+/).filter(Boolean);
+    if(described.indexOf(id)<0)described.push(id);
+    field.setAttribute("aria-describedby",described.join(" "));field.setAttribute("aria-invalid","true");
+    return error;
+  }
+  function message(field){
+    var v=field.validity;
+    if(v.valueMissing){
+      if(field.type==="file")return "Seleccione al menos un archivo.";
+      if(field.tagName==="SELECT"){
+        var onlyOption=field.options&&field.options.length===1?field.options[0]:null;
+        if(onlyOption&&onlyOption.value===""&&/cliente/i.test(onlyOption.textContent||""))return "Primero cree un cliente en la pestaña Clientes.";
+        return "Elija una opción para continuar.";
+      }
+      return "Complete este campo para continuar.";
+    }
+    if(v.typeMismatch&&field.type==="email")return "Escriba un correo electrónico válido.";
+    if(v.typeMismatch)return "Revise el formato de este campo.";
+    if(v.patternMismatch)return "Revise el formato del dato.";
+    if(v.tooLong)return "El texto supera la cantidad máxima permitida.";
+    if(v.tooShort)return "Escriba un poco más de información.";
+    if(v.rangeUnderflow||v.rangeOverflow)return "Elija un valor dentro del rango permitido.";
+    return "Revise este campo antes de continuar.";
+  }
+  function showError(field){ensureError(field).textContent=message(field);}
+  function clearError(field){
+    var id=field.getAttribute("data-admin-error-id");if(!id)return;
+    var error=document.getElementById(id);if(error)error.remove();
+    field.removeAttribute("aria-invalid");
+    var described=(field.getAttribute("aria-describedby")||"").split(/\\s+/).filter(function(value){return value&&value!==id;});
+    if(described.length)field.setAttribute("aria-describedby",described.join(" "));else field.removeAttribute("aria-describedby");
+  }
+  function summaryText(invalid){
+    var missing=invalid.filter(function(field){return field.validity.valueMissing;}).length;
+    if(missing===invalid.length)return missing===1?"Falta 1 campo obligatorio. Complete el campo marcado con * para continuar.":"Faltan "+missing+" campos obligatorios. Complete los marcados con * para continuar.";
+    if(missing===1)return "Complete el campo obligatorio marcado con * y revise los otros campos señalados.";
+    if(missing)return "Complete los "+missing+" campos obligatorios marcados con * y revise los otros campos señalados.";
+    return invalid.length===1?"Hay 1 campo que necesita revisión. Corrija el dato señalado para continuar.":"Hay "+invalid.length+" campos que necesitan revisión. Corrija los datos señalados para continuar.";
+  }
+  function currentErrors(form){return validationFields(form).filter(function(field){return visible(field)&&!field.validity.valid;});}
+  function updateSummary(form){
+    var summary=form.querySelector(".admin-form-summary");if(!summary)return;
+    var invalid=currentErrors(form);
+    if(!invalid.length){summary.hidden=true;summary.textContent="";return;}
+    summary.hidden=false;summary.textContent=summaryText(invalid);
+  }
+  forms.forEach(function(form){
+    var fields=validationFields(form);if(!fields.length)return;
+    var required=requiredFields(form);
+    form.noValidate=true;
+    var guide=null;
+    if(required.length){guide=document.createElement("p");guide.className="admin-form-guide";guide.innerHTML='<span class="admin-required" aria-hidden="true">*</span> Los campos marcados con asterisco son obligatorios.';form.insertBefore(guide,form.firstChild);}
+    var summary=document.createElement("div");summary.className="admin-form-summary";summary.setAttribute("role","alert");summary.setAttribute("aria-live","assertive");summary.hidden=true;
+    if(guide)guide.insertAdjacentElement("afterend",summary);else form.insertBefore(summary,form.firstChild);
+    required.forEach(function(field){var label=field.labels&&field.labels[0];if(label&&!label.querySelector(".admin-required")){var mark=document.createElement("span");mark.className="admin-required";mark.setAttribute("aria-hidden","true");mark.textContent=" *";label.appendChild(mark);}});
+    ["input","change"].forEach(function(type){form.addEventListener(type,function(event){
+      var field=event.target;if(!field||!field.matches||!field.matches("input,select,textarea")||!field.willValidate)return;
+      if(form.dataset.adminAttempted==="true"){if(field.validity.valid)clearError(field);else showError(field);updateSummary(form);}
+    },true);});
+  });
+  document.addEventListener("submit",function(event){
+    var form=event.target;if(!form||!form.matches||!form.matches(".admin-main form"))return;
+    var fields=validationFields(form);if(!fields.length)return;
+    var invalid=fields.filter(function(field){return visible(field)&&!field.validity.valid;});
+    if(!invalid.length)return;
+    event.preventDefault();event.stopImmediatePropagation();form.dataset.adminAttempted="true";
+    invalid.forEach(showError);
+    var summary=form.querySelector(".admin-form-summary");
+    if(summary){summary.hidden=false;summary.textContent=summaryText(invalid);}
+    invalid[0].focus();
+    invalid[0].scrollIntoView({block:"center",behavior:window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});
+  },true);
+})();`;
+
+function adminMarca(): string {
+  return '<a class="logo admin-brand" href="/admin" aria-label="Panel de administración de Topografía Especializada">' +
+    '<img src="/images/logo-sin-fondopng-con-www.png" alt="" width="54" height="44" decoding="async">' +
+    '<span class="admin-brand-copy"><strong>Administración</strong><small>Topografía Especializada S.A.</small></span></a>';
+}
+
+function adminItems(options: AdminPageOptions): AdminNavItem[] {
+  const items: AdminNavItem[] = [
+    { section: 'panel', href: '/admin', label: 'Panel', icon: ADMIN_NAV_ICONS.panel },
+    { section: 'mapas', href: '/admin/mapas', label: 'Mapas', icon: ADMIN_NAV_ICONS.mapas },
+  ];
+  if (options.token) {
+    items.push({ section: 'blog', href: '/admin/' + encodeURIComponent(options.token) + '/blog', label: 'Blog', icon: ADMIN_NAV_ICONS.blog });
+  }
+  return items;
+}
+
+function adminNavigation(options: AdminPageOptions): { desktop: string; mobile: string } {
+  const items = options.navigation === false ? [] : adminItems(options);
+  const link = (item: AdminNavItem, mobile: boolean) =>
+    '<a class="admin-nav-link' + (mobile ? ' admin-nav-link-mobile' : '') + '" href="' + esc(item.href) + '" data-admin-section="' + item.section + '"' +
+    (options.section === item.section ? ' aria-current="page"' : '') + '>' + item.icon + '<span>' + item.label + '</span></a>';
+  return {
+    desktop: (items.length ? '<nav class="admin-nav-desktop" aria-label="Secciones del panel">' + items.map((item) => link(item, false)).join('') + '</nav>' : '') +
+      (options.profile === false ? '' : '<div class="admin-profile-host" id="zona-perfil" data-rsid-perfil-host></div>'),
+    mobile: items.length ? '<nav class="admin-mobile-nav" aria-label="Navegación del panel">' + items.map((item) => link(item, true)).join('') + '</nav>' : '',
+  };
+}
+
+export function page(title: string, body: string, status: number, cssExtra?: string, adminOptions?: AdminPageOptions): Response {
+  const isAdmin = !!adminOptions;
+  const navigation = adminOptions ? adminNavigation(adminOptions) : null;
+  const rsidMenu = adminOptions && adminOptions.profile !== false ? '<script>window.RSID_MENU=' + JSON.stringify({
+    donde: '#zona-perfil',
+    estilo: 'auto',
+    cosas: [
+      { t: 'Ver sitio público', u: SITE_ORIGIN + '/', i: 'punto' },
+      { t: 'Salir del panel', u: SITE_ORIGIN + '/admin/salir', i: 'salir' },
+    ],
+  }).replace(/</g, '\\u003c') + ';</script><script src="https://pay.rsanjur.com/sesion.js" defer></script>' : '';
   const html = '<!doctype html>\n<html lang="es" data-theme="topoblue"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width, initial-scale=1">' +
     '<meta name="robots" content="noindex">' +
+    (isAdmin ? '<meta name="theme-color" content="#ffffff">' : '') +
     '<title>' + esc(title) + ' | Topografia Especializada</title>' +
     '<link rel="preconnect" href="https://fonts.googleapis.com">' +
     '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
     '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">' +
-    '<style>' + CSS + (cssExtra ? '\n' + cssExtra : '') + '</style></head><body>' +
-    '<header class="top"><div class="in">' + adminBarra() + '</div></header>' +
-    '<main>' + body + '</main>\n' +
-    '<script>(function(){var bs=document.querySelectorAll("[data-copy]");for(var i=0;i<bs.length;i++){(function(b){b.addEventListener("click",function(){var t=b.getAttribute("data-copy")||"";if(!(navigator.clipboard&&navigator.clipboard.writeText)){window.prompt("Copie el enlace",t);return;}navigator.clipboard.writeText(t).then(function(){var o=b.textContent;b.textContent="Copiado";b.classList.add("ok");setTimeout(function(){b.textContent=o;},1600);});});})(bs[i]);}})();' +
-    '(function(){var fs=document.querySelectorAll("form[data-busy]");for(var i=0;i<fs.length;i++){fs[i].addEventListener("submit",function(){var b=this.querySelector("button[type=submit]");if(b){b.disabled=true;b.textContent=this.getAttribute("data-busy")||"Guardando...";}});}})();</script>' +
+    '<style>' + CSS + (cssExtra ? '\n' + cssExtra : '') + (isAdmin ? '\n' + ADMIN_UX_CSS : '') + '</style></head><body' + (isAdmin ? ' class="admin-shell"' : '') + '>' +
+    '<header class="top"><div class="in">' + (isAdmin ? adminMarca() : adminBarra()) + (navigation ? navigation.desktop : '') + '</div></header>' +
+    '<main' + (isAdmin ? ' class="admin-main"' : '') + '>' + body + '</main>' + (navigation ? navigation.mobile : '') + '\n' + rsidMenu +
+    '<script>' + (isAdmin ? ADMIN_UX_SCRIPT : '') +
+    '(function(){var bs=document.querySelectorAll("[data-copy]");for(var i=0;i<bs.length;i++){(function(b){b.addEventListener("click",function(){var t=b.getAttribute("data-copy")||"";if(!(navigator.clipboard&&navigator.clipboard.writeText)){window.prompt("Copie el enlace",t);return;}navigator.clipboard.writeText(t).then(function(){var o=b.textContent;b.textContent="Copiado";b.classList.add("ok");setTimeout(function(){b.textContent=o;},1600);});});})(bs[i]);}})();' +
+    '(function(){var fs=document.querySelectorAll("form[data-busy]");for(var i=0;i<fs.length;i++){fs[i].addEventListener("submit",function(event){if(event.defaultPrevented)return;var b=this.querySelector("button[type=submit]");if(b){b.disabled=true;b.textContent=this.getAttribute("data-busy")||"Guardando...";}});}})();</script>' +
     '</body></html>';
   return new Response(html, {
     status: status || 200,
@@ -1358,7 +1582,7 @@ function adminLoginPage(aviso: string, status: number): Response {
     '<details style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px"><summary class="muted small" style="cursor:pointer">Acceso por token (respaldo)</summary>' +
     '<p class="hint" style="margin-top:8px">El enlace directo con token <span class="code">/admin/&lt;token&gt;</span> sigue funcionando como respaldo para quien ya lo tenga.</p>' +
     '</details></div></div>';
-  return page('Panel', body, status || 200);
+  return page('Panel', body, status || 200, undefined, { section: 'panel', navigation: false, profile: false });
 }
 
 // GET /admin/entrar?rsid=<codigo> -> canjea el codigo con el RS ID y, si el correo
@@ -1397,7 +1621,7 @@ function handleAdminSalir(request: Request, env: Env): Response {
   return new Response(null, { status: 303, headers: headers });
 }
 
-async function handleInicio(request: Request, env: Env, tok: string, opts?: { salir?: boolean; blog?: boolean; mapas?: boolean }): Promise<Response> {
+async function handleInicio(request: Request, env: Env, tok: string): Promise<Response> {
   const url = new URL(request.url);
   const cRes = await env.DB
     .prepare('SELECT c.id, c.nombre, c.correo, c.telefono, c.token, c.activo, c.creado_en, ' +
@@ -1558,13 +1782,6 @@ async function handleInicio(request: Request, env: Env, tok: string, opts?: { sa
       esc(subidosN) + ' archivo(s) subido(s).</p></div>';
   }
 
-  /* Acciones de la sesion: solo con cuenta (no con el token suelto). */
-  const acciones = (opts && opts.salir)
-    ? '<a class="btn ghost sm" href="/admin/salir">Cerrar sesion</a>' +
-      ((opts && opts.blog) ? '<a class="btn ghost sm" href="/admin/' + esc(tok) + '/blog">Blog</a>' : '') +
-      ((opts && opts.mapas) ? '<a class="btn ghost sm" href="/admin/mapas">Mapas</a>' : '')
-    : '';
-
   const totalPlanos = clients.reduce(function (a: any, c: any) { return a + Number(c.planos || 0); }, 0);
   const totalDescargas = clients.reduce(function (a: any, c: any) { return a + Number(c.descargas || 0); }, 0);
 
@@ -1602,9 +1819,9 @@ async function handleInicio(request: Request, env: Env, tok: string, opts?: { sa
   const formCliente = '<details class="acc"' + (clients.length === 0 ? ' open' : '') + '><summary>' +
     '<span class="t">Nuevo cliente<small>Nombre obligatorio; correo y telefono son opcionales.</small></span><span class="chev">&#9662;</span></summary>' +
     '<div><form method="POST" action="/admin/' + tok + '/cliente" data-busy="Creando...">' +
-    '<label for="n-nombre">Nombre</label><input id="n-nombre" name="nombre" required autocomplete="off" placeholder="Ej. Felix Abadia">' +
-    '<div class="grid2"><div><label for="n-correo">Correo</label><input id="n-correo" name="correo" type="email" autocomplete="off" placeholder="cliente@correo.com"></div>' +
-    '<div><label for="n-tel">Telefono</label><input id="n-tel" name="telefono" type="tel" autocomplete="off" placeholder="6000-0000"></div></div>' +
+    '<label for="n-nombre">Nombre</label><input id="n-nombre" name="nombre" required autocomplete="off" placeholder="Ej.: Nombre Apellido">' +
+    '<div class="grid2"><div><label for="n-correo">Correo <span class="muted">(opcional)</span></label><input id="n-correo" name="correo" type="email" autocomplete="off" placeholder="cliente@correo.com"></div>' +
+    '<div><label for="n-tel">Teléfono <span class="muted">(opcional)</span></label><input id="n-tel" name="telefono" type="tel" autocomplete="off" placeholder="6000-0000"></div></div>' +
     '<p style="margin-top:16px"><button class="btn" type="submit">Crear cliente</button></p></form></div></details>';
 
   const formPlano = '<details class="acc" open><summary>' +
@@ -1625,10 +1842,19 @@ async function handleInicio(request: Request, env: Env, tok: string, opts?: { sa
     '<div><label for="c-desc">Cliente o descripcion <span class="muted">(opcional)</span></label><input id="c-desc" name="descripcion"></div></div>' +
     '<p style="margin-top:16px"><button class="btn ghost" type="submit">Emitir certificado</button></p></form></div></details>';
 
-  const body = '<div class="sec"><h1><span>Admin de planos</span></h1><div class="row" style="gap:8px">' + acciones + '</div></div>' +
+  const panelInicial = clients.length === 0 ? 'clientes' : 'planos';
+  const tabs = '<nav class="admin-tabs" role="tablist" aria-label="Áreas del panel">' +
+    '<a class="admin-tab-link" id="admin-tab-clientes" href="#admin-panel-clientes" role="tab" aria-controls="admin-panel-clientes" aria-selected="' + (panelInicial === 'clientes' ? 'true' : 'false') + '" tabindex="' + (panelInicial === 'clientes' ? '0' : '-1') + '" data-admin-tab>Clientes <span class="admin-tab-count">' + clients.length + '</span></a>' +
+    '<a class="admin-tab-link" id="admin-tab-planos" href="#admin-panel-planos" role="tab" aria-controls="admin-panel-planos" aria-selected="' + (panelInicial === 'planos' ? 'true' : 'false') + '" tabindex="' + (panelInicial === 'planos' ? '0' : '-1') + '" data-admin-tab>Subir planos <span class="admin-tab-count">' + totalPlanos + '</span></a>' +
+    '<a class="admin-tab-link" id="admin-tab-certificados" href="#admin-panel-certificados" role="tab" aria-controls="admin-panel-certificados" aria-selected="false" tabindex="-1" data-admin-tab>Certificados <span class="admin-tab-count">' + certs.length + '</span></a></nav>';
+  const paneles = '<section class="admin-tab-panel" id="admin-panel-clientes" role="tabpanel" aria-labelledby="admin-tab-clientes" data-admin-panel="clientes">' + tablaClientes + formCliente + '</section>' +
+    '<section class="admin-tab-panel" id="admin-panel-planos" role="tabpanel" aria-labelledby="admin-tab-planos" data-admin-panel="planos">' + formPlano + '</section>' +
+    '<section class="admin-tab-panel" id="admin-panel-certificados" role="tabpanel" aria-labelledby="admin-tab-certificados" data-admin-panel="certificados">' + formCert + tablaCerts + '</section>';
+
+  const body = '<div class="sec"><h1><span>Admin de planos</span></h1></div>' +
     '<p class="lead">Clientes, planos y certificados de Topografia Especializada.</p>' +
-    certBanner + resumen + tablaClientes + formCliente + formPlano + formCert + tablaCerts;
-  return page('Admin', body, 200);
+    certBanner + resumen + tabs + paneles;
+  return page('Admin', body, 200, undefined, { token: tok, section: 'panel' });
 }
 
 async function handleCreateClient(request: Request, env: Env, tok: string): Promise<Response> {
@@ -1637,7 +1863,7 @@ async function handleCreateClient(request: Request, env: Env, tok: string): Prom
   if (!nombre) {
     return page('Admin', '<div class="card errline"><h1><span>Falta el nombre</span></h1>' +
       '<p class="hint">El cliente necesita un nombre para crearlo.</p>' +
-      '<p style="margin-top:14px"><a class="btn ghost" href="/admin/' + tok + '">Volver</a></p></div>', 400);
+      '<p style="margin-top:14px"><a class="btn ghost" href="/admin/' + tok + '#admin-panel-clientes">Volver a clientes</a></p></div>', 400, undefined, { token: tok, section: 'panel' });
   }
   const id = crypto.randomUUID();
   const token = crypto.randomUUID().replace(/-/g, '');
@@ -1645,7 +1871,7 @@ async function handleCreateClient(request: Request, env: Env, tok: string): Prom
     .prepare('INSERT INTO clients (id, nombre, correo, telefono, token, activo, creado_en) VALUES (?, ?, ?, ?, ?, 1, ?)')
     .bind(id, nombre, str(form.get('correo')), str(form.get('telefono')), token, new Date().toISOString())
     .run();
-  return redirect('/admin/' + tok, 303);
+  return redirect('/admin/' + tok + '#admin-panel-clientes', 303);
 }
 
 async function handleUpload(request: Request, env: Env, ctx: Ctx, tok: string): Promise<Response> {
@@ -1659,13 +1885,13 @@ async function handleUpload(request: Request, env: Env, ctx: Ctx, tok: string): 
   if (!clientId || files.length === 0) {
     return page('Admin', '<div class="card errline"><h1><span>Datos incompletos</span></h1>' +
       '<p class="hint">Elige un cliente y al menos un archivo.</p>' +
-      '<p style="margin-top:14px"><a class="btn ghost" href="' + back + '">Volver</a></p></div>', 400);
+      '<p style="margin-top:14px"><a class="btn ghost" href="' + back + '#admin-panel-planos">Volver a subir planos</a></p></div>', 400, undefined, { token: tok, section: 'panel' });
   }
   const client = await env.DB.prepare('SELECT id, nombre FROM clients WHERE id = ?').bind(clientId).first();
   if (!client) {
     return page('Admin', '<div class="card errline"><h1><span>Cliente no encontrado</span></h1>' +
       '<p class="hint">Ese cliente ya no existe. Vuelve a elegir uno en la lista.</p>' +
-      '<p style="margin-top:14px"><a class="btn ghost" href="' + back + '">Volver</a></p></div>', 400);
+      '<p style="margin-top:14px"><a class="btn ghost" href="' + back + '#admin-panel-planos">Volver a subir planos</a></p></div>', 400, undefined, { token: tok, section: 'panel' });
   }
   const ahora = new Date().toISOString();
   try {
@@ -1725,7 +1951,7 @@ async function handleRevoke(request: Request, env: Env, tok: string): Promise<Re
       .bind(clientId)
       .run();
   }
-  return redirect('/admin/' + tok, 303);
+  return redirect('/admin/' + tok + '#admin-panel-clientes', 303);
 }
 
 /* ==================== certificados verificables ==================== */
@@ -1897,7 +2123,7 @@ async function handleEmitirCertificado(request: Request, env: Env, tok: string):
   if (!file || typeof file === 'string' || typeof file.arrayBuffer !== 'function') {
     return page('Admin', '<div class="card errline"><h1><span>Falta el archivo</span></h1>' +
       '<p class="hint">Elige el documento a certificar.</p>' +
-      '<p style="margin-top:14px"><a class="btn ghost" href="' + back + '">Volver</a></p></div>', 400);
+      '<p style="margin-top:14px"><a class="btn ghost" href="' + back + '#admin-panel-certificados">Volver a certificados</a></p></div>', 400, undefined, { token: tok, section: 'panel' });
   }
   try {
     await ensureCertificados(env);
@@ -1911,11 +2137,11 @@ async function handleEmitirCertificado(request: Request, env: Env, tok: string):
     ).bind(id, huella, nombre, file.type || 'application/octet-stream',
       Number(file.size) || bytes.byteLength, descripcion, EMISOR + ' - ' + EMISOR_ORG,
       new Date().toISOString(), tok).run();
-    return redirect(back + '?cert=' + id, 303);
+    return redirect(back + '?cert=' + id + '#admin-panel-certificados', 303);
   } catch (e) {
     return page('Admin', '<div class="card errline"><h1><span>No se pudo emitir</span></h1>' +
       '<p class="hint">' + esc(String((e as any) && (e as any).message || e)) + '</p>' +
-      '<p style="margin-top:14px"><a class="btn ghost" href="' + back + '">Volver</a></p></div>', 500);
+      '<p style="margin-top:14px"><a class="btn ghost" href="' + back + '#admin-panel-certificados">Volver a certificados</a></p></div>', 500, undefined, { token: tok, section: 'panel' });
   }
 }
 
@@ -2060,7 +2286,7 @@ export default {
       const adminToken = String(env.ADMIN_TOKEN || '');
       const email = await adminAutorizado(request, env);
       // Con sesion valida: el panel se abre aqui mismo (sin token en la URL).
-      if (email && adminToken) return handleInicio(request, env, adminToken, { salir: true, blog: true, mapas: true });
+      if (email && adminToken) return handleInicio(request, env, adminToken);
       if (email && !adminToken) return adminLoginPage('El panel no esta configurado (falta ADMIN_TOKEN).', 500);
       const err = str(url.searchParams.get('error'));
       const aviso = err ? adminAvisoDeError(err) : '';
