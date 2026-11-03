@@ -182,20 +182,11 @@ const limit = featured ? 3 : 24;
         }
       };
 
-      if ("IntersectionObserver" in window) {
-        const observer = new IntersectionObserver((entries) => {
-          if (entries.some((entry) => entry.isIntersecting)) {
-            observer.disconnect();
-            void load();
-          }
-        }, { rootMargin: "240px 0px" });
-        observer.observe(visual);
-      } else {
-        void load();
-      }
+      // Una card usa solo una tesela pequeña; iniciarla al pintar la card, no al entrar al viewport.
+      void load();
     }
 
-    function card(item: any): HTMLElement {
+    function card(item: any, index = 0): HTMLElement {
       const article = document.createElement("article");
       article.className = "group flex min-h-full flex-col overflow-hidden rounded-2xl border border-base-300 bg-base-100 transition duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 motion-reduce:transform-none motion-reduce:transition-none";
 
@@ -210,8 +201,8 @@ const limit = featured ? 3 : 24;
       preview.className = "pointer-events-none absolute inset-0 z-[1] h-full w-full object-cover opacity-0 transition-opacity duration-300";
       preview.alt = "";
       preview.decoding = "async";
-      preview.loading = "eager";
-      preview.fetchPriority = "high";
+      preview.loading = index < 6 ? "eager" : "lazy";
+      preview.fetchPriority = index < 6 ? "high" : "low";
       preview.setAttribute("aria-hidden", "true");
       preview.addEventListener("load", () => {
         preview.classList.remove("opacity-0");
@@ -311,7 +302,7 @@ const limit = featured ? 3 : 24;
 
       try {
         const response = await fetch(`/api/mapas?limit=${limit}&offset=${offset}`, { headers: { accept: "application/json" } });
-        if (!response.ok) throw new Error("gallery");
+        if (!response.ok) throw new Error(`gallery_http_${response.status}`);
         const payload = await response.json();
         const items = Array.isArray(payload.data) ? payload.data : [];
         const pageTotal = Number(payload.meta?.total || 0);
@@ -320,7 +311,8 @@ const limit = featured ? 3 : 24;
         else root.append(...items.map(card));
         offset += items.length;
         if (more) more.classList.toggle("hidden", !payload.meta?.has_more);
-      } catch {
+      } catch (loadError) {
+        console.error("[mapas-catalogo] gallery load failed", loadError);
         if (error) {
           error.textContent = copy.failed;
           error.classList.remove("hidden");
