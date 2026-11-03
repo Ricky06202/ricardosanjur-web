@@ -384,6 +384,67 @@ async function adminAutorizado(request: Request, env: Env): Promise<string | nul
   return lista.indexOf(norm) > -1 ? norm : null;
 }
 
+async function perfilRsidParaWidget(env: Env, email: string): Promise<{ perfil?: { nombre?: string; apellido?: string } }> {
+  // El secreto de módulo se envía solo al host fijo oficial de RS ID, nunca a
+  // una URL que pueda cambiar por una variable mal configurada.
+  const base = new URL(RS_ID_CANJE_URL_DEFAULT);
+  const resultado: { perfil?: { nombre?: string; apellido?: string } } = {};
+  const secreto = String(env.RS_ID_CANJE_SECRET || '');
+  if (secreto) {
+    try {
+      const perfilUrl = new URL('/api/perfil/modulo', base);
+      const response = await fetch(perfilUrl.toString(), {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          'x-rsid-app-secret': secreto,
+        },
+        body: JSON.stringify({ email }),
+        redirect: 'manual',
+        cache: 'no-store',
+      });
+      if (response.ok) {
+        let data: any = null;
+        try {
+          data = await response.json();
+        } catch (error) {
+          console.warn('[admin-profile] RS ID profile returned invalid JSON', error instanceof Error ? error.name : 'unknown');
+        }
+        const origen = data && data.ok && data.perfil && typeof data.perfil === 'object' ? data.perfil : null;
+        if (origen) {
+          const nombre = str(origen.nombre).trim().slice(0, 100);
+          const apellido = str(origen.apellido).trim().slice(0, 100);
+          if (nombre || apellido) {
+            resultado.perfil = {};
+            if (nombre) resultado.perfil.nombre = nombre;
+            if (apellido) resultado.perfil.apellido = apellido;
+          }
+        }
+      } else {
+        console.warn('[admin-profile] RS ID profile lookup returned HTTP', response.status);
+      }
+    } catch (error) {
+      console.warn('[admin-profile] RS ID profile lookup failed', error instanceof Error ? error.name : 'unknown');
+    }
+  }
+
+  return resultado;
+}
+
+async function handleAdminSesionYo(request: Request, env: Env): Promise<Response> {
+  const email = await adminAutorizado(request, env);
+  const responder = (data: unknown) => {
+    const response = jsonResponse(data, 200);
+    response.headers.set('vary', 'Cookie');
+    return response;
+  };
+  if (!email) return responder({ autenticado: false });
+
+  const perfil = await perfilRsidParaWidget(env, email);
+  return responder({ autenticado: true, email, ...perfil });
+}
+
 function formatBytes(n: number): string {
   if (!isFinite(n) || n <= 0) return '';
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -1247,14 +1308,20 @@ function adminNavigation(options: AdminPageOptions): { desktop: string; mobile: 
 export function page(title: string, body: string, status: number, cssExtra?: string, adminOptions?: AdminPageOptions): Response {
   const isAdmin = !!adminOptions;
   const navigation = adminOptions ? adminNavigation(adminOptions) : null;
+  const perfilLocal = !!(adminOptions && adminOptions.profile !== false);
   const rsidMenu = adminOptions && adminOptions.profile !== false ? '<script>window.RSID_MENU=' + JSON.stringify({
     donde: '#zona-perfil',
     estilo: 'auto',
+    ...(perfilLocal ? {
+      yoUrl: '/api/sesion/yo',
+      entrar: entrarHref(),
+      salirUrl: '/admin/salir',
+    } : {}),
     cosas: [
       { t: 'Ver sitio público', u: SITE_ORIGIN + '/', i: 'punto' },
-      { t: 'Salir del panel', u: SITE_ORIGIN + '/admin/salir', i: 'salir' },
+      ...(!perfilLocal ? [{ t: 'Salir del panel', u: SITE_ORIGIN + '/admin/salir', i: 'salir' }] : []),
     ],
-  }).replace(/</g, '\\u003c') + ';</script><script src="https://pay.rsanjur.com/sesion.js" defer></script>' : '';
+  }).replace(/</g, '\\u003c') + ';</script><script src="https://pay.rsanjur.com/sesion.js' + (perfilLocal ? '?v=3' : '') + '" defer></script>' : '';
   const html = '<!doctype html>\n<html lang="es" data-theme="topoblue"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width, initial-scale=1">' +
     '<meta name="robots" content="noindex">' +
@@ -1616,11 +1683,13 @@ async function handleAdminEntrar(request: Request, env: Env): Promise<Response> 
   return new Response(null, { status: 303, headers: headers });
 }
 
-// GET /admin/salir -> cierra la sesion propia del panel.
+// GET /admin/salir -> borra la sesion propia y luego cierra RS ID globalmente.
 function handleAdminSalir(request: Request, env: Env): Response {
   const headers = new Headers();
   headers.set('set-cookie', clearAdminCookie(request, env));
-  headers.set('location', '/admin');
+  const salirRsid = new URL('/salir', new URL(RS_ID_CANJE_URL_DEFAULT).origin);
+  salirRsid.searchParams.set('volver', new URL('/admin', SITE_ORIGIN).toString());
+  headers.set('location', salirRsid.toString());
   headers.set('cache-control', 'no-store');
   return new Response(null, { status: 303, headers: headers });
 }
@@ -2216,6 +2285,10 @@ export default {
     if (method === 'GET' && mZip) {
       return handleZip(mZip[1], env);
     }
+
+    // La consulta del chip usa la sesión propia del sitio; nunca lee datos de un
+    // visitante no autorizado ni depende de cookies de terceros.
+    if (method === 'GET' && path === '/api/sesion/yo') return handleAdminSesionYo(request, env);
 
     // Panel de ortomosaicos: ruta limpia, protegida por la sesión autorizada de RS ID.
     const mAdminMapas = path.match(/^\/admin\/mapas(?:\/(nuevo|crear|[0-9a-fA-F-]{36})(?:\/(guardar|estado))?)?$/);
