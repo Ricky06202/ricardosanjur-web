@@ -349,6 +349,7 @@ async function canjearRsid(env: Env, codigo: string, origen: string): Promise<{ 
   try {
     const res = await fetch(target, {
       method: 'POST',
+      redirect: 'manual',
       headers: {
         'content-type': 'application/json',
         accept: 'application/json',
@@ -356,6 +357,7 @@ async function canjearRsid(env: Env, codigo: string, origen: string): Promise<{ 
       },
       body: JSON.stringify({ codigo: codigo, origen: origen }),
     });
+    if (res.status >= 300 && res.status < 400) return { error: 'canje_fallido' };
     let data: any = null;
     try { data = await res.json(); } catch (e) { data = null; }
     if (!res.ok || !data || data.ok !== true) return { error: (data && data.error) || 'canje_fallido' };
