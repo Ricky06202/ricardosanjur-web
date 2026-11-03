@@ -68,6 +68,8 @@ export const ui = {
           description:
             "Levantamiento aéreo para modelos digitales de terreno, ortofotos y cálculo de volúmenes.",
           image: "/images/176070209_204156991250335_7340951298165577398_n.jpg",
+          width: 1080,
+          height: 1350,
           tag: "Dron",
           pos: "top",
         },
@@ -76,6 +78,8 @@ export const ui = {
           description:
             "Levantamientos y replanteo para carreteras, puentes, edificaciones e infraestructura vial.",
           image: "/images/20250130_121614.jpg",
+          width: 2183,
+          height: 1229,
           tag: "Obra",
         },
         {
@@ -83,6 +87,8 @@ export const ui = {
           description:
             "Mediciones geodésicas de alta precisión con tecnología GPS/GNSS RTK de última generación.",
           image: "/images/20240821_163941.jpg",
+          width: 1639,
+          height: 1229,
           tag: "GNSS",
         },
         {
@@ -90,6 +96,8 @@ export const ui = {
           description:
             "Planos con curvas de nivel, puntos de control y detalle planimétrico preciso.",
           image: "/images/imageye___-_305715561_489067489342767_4814350727418359153_n.jpeg",
+          width: 1080,
+          height: 1105,
           tag: "Planos",
           pos: "top",
         },
@@ -98,6 +106,8 @@ export const ui = {
           description:
             "Sistemas de Información Geográfica y gestión catastral para administrar el territorio.",
           image: "/images/161274447_3623318507793664_4342023233341068761_n.jpg",
+          width: 1440,
+          height: 1440,
           tag: "SIG",
         },
         {
@@ -105,6 +115,8 @@ export const ui = {
           description:
             "Dictámenes periciales para juicios de propiedad, linderos y conflictos territoriales.",
           image: "/images/20240824_125553-1.jpg",
+          width: 920,
+          height: 675,
           tag: "Peritaje",
           price: "Desde B/. 1,500",
         },
@@ -488,6 +500,8 @@ export const ui = {
           title: "Drone Surveying",
           description: "Aerial surveying for digital terrain models, orthophotos and volume calculation.",
           image: "/images/176070209_204156991250335_7340951298165577398_n.jpg",
+          width: 1080,
+          height: 1350,
           tag: "Drone",
           pos: "top",
         },
@@ -495,18 +509,24 @@ export const ui = {
           title: "Civil Works Surveying",
           description: "Surveys and staking out for roads, bridges, buildings and road infrastructure.",
           image: "/images/20250130_121614.jpg",
+          width: 2183,
+          height: 1229,
           tag: "Works",
         },
         {
           title: "Geodesy and GNSS",
           description: "High-precision geodetic measurements using state-of-the-art GPS/GNSS RTK technology.",
           image: "/images/20240821_163941.jpg",
+          width: 1639,
+          height: 1229,
           tag: "GNSS",
         },
         {
           title: "Topographic Maps",
           description: "Maps with contour lines, control points and precise planimetric detail.",
           image: "/images/imageye___-_305715561_489067489342767_4814350727418359153_n.jpeg",
+          width: 1080,
+          height: 1105,
           tag: "Maps",
           pos: "top",
         },
@@ -514,12 +534,16 @@ export const ui = {
           title: "Cadastre and GIS",
           description: "Geographic Information Systems and cadastral management to administer the territory.",
           image: "/images/161274447_3623318507793664_4342023233341068761_n.jpg",
+          width: 1440,
+          height: 1440,
           tag: "GIS",
         },
         {
           title: "Survey Expert Appraisals",
           description: "Expert reports for property, boundary and territorial disputes.",
           image: "/images/20240824_125553-1.jpg",
+          width: 920,
+          height: 675,
           tag: "Appraisal",
           price: "From B/. 1,500",
         },
