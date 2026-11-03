@@ -10,11 +10,12 @@ export const routes = {
   services: "/services/",
   about: "/about/",
   blog: "/blog/",
+  maps: "/mapas/",
   contact: "/contact/",
 } as const;
 
 export type RouteKey = keyof typeof routes;
-export const routeKeys: RouteKey[] = ["home", "services", "about", "blog", "contact"];
+export const routeKeys: RouteKey[] = ["home", "services", "about", "blog", "maps", "contact"];
 
 /** Locale detected from a URL pathname ("/en/..." => en, otherwise es). */
 export function getLangFromUrl(url: URL): Lang {

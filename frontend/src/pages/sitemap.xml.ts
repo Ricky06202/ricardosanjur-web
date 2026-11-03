@@ -25,6 +25,7 @@ export const GET: APIRoute = async () => {
     { es: "/services/", en: "/en/services/" },
     { es: "/about/", en: "/en/about/" },
     { es: "/blog/", en: "/en/blog/" },
+    { es: "/mapas/", en: "/en/mapas/" },
     { es: "/contact/", en: "/en/contact/" },
   ];
   for (const r of routes) {

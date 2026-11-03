@@ -156,7 +156,7 @@ const jsonLd = { "@context": "https://schema.org", "@graph": [...graph, ...extra
       <nav class="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6">
         <a href={routeHref("home", lang)} class="flex shrink-0 items-center gap-3" aria-label={t.ariaHome}>
           <span class="flex items-center rounded-2xl bg-white px-2.5 py-1.5 shadow-lg shadow-primary/25 ring-1 ring-white/20">
-            <img src="/images/logo-sin-fondopng-con-www.png" alt="Topografía Especializada" class="h-12 w-auto" />
+            <img src="/images/logo-sin-fondopng-con-www.png" alt="Topografía Especializada" width="1800" height="1323" class="h-12 w-auto" />
           </span>
           <span class="hidden font-display text-sm font-bold leading-tight sm:block">
             TOPOGRAFÍA<br /><span class="text-primary">ESPECIALIZADA</span>
@@ -225,8 +225,8 @@ const jsonLd = { "@context": "https://schema.org", "@graph": [...graph, ...extra
       </span>
     </a>
     <!-- Lo que se le manda: se ve arriba del botón y se puede tocar para cerrar. -->
-    <div id="wa-globo" class="fixed bottom-[96px] right-3 z-40 hidden max-w-[260px] rounded-2xl rounded-br-md bg-white py-2 pl-3 pr-9 text-[13px] leading-snug text-[#0b1220] shadow-xl shadow-black/20 ring-1 ring-black/5 sm:right-5 sm:bottom-[100px]">
-      <button type="button" id="wa-globo-cerrar" class="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full text-base-content/40 hover:text-base-content/80" aria-label="Cerrar">&times;</button>
+    <div id="wa-globo" class="fixed bottom-[96px] right-3 z-40 hidden max-w-[260px] rounded-2xl rounded-br-md bg-white py-2 pl-3 pr-12 text-[13px] leading-snug text-[#0b1220] shadow-xl shadow-black/20 ring-1 ring-black/5 sm:right-5 sm:bottom-[100px]">
+      <button type="button" id="wa-globo-cerrar" class="absolute right-0 top-0 flex h-11 w-11 items-center justify-center rounded-full text-base-content/40 hover:text-base-content/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary" aria-label="Cerrar">&times;</button>
       <span id="wa-globo-texto"></span>
     </div>
 
@@ -235,7 +235,7 @@ const jsonLd = { "@context": "https://schema.org", "@graph": [...graph, ...extra
       <div class="relative mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr]">
         <div>
           <span class="inline-flex items-center rounded-2xl bg-white px-3 py-2 shadow-lg shadow-primary/20">
-            <img src="/images/logo-sin-fondopng-con-www.png" alt="Topografía Especializada" class="h-20 w-auto" />
+            <img src="/images/logo-sin-fondopng-con-www.png" alt="Topografía Especializada" width="1800" height="1323" class="h-20 w-auto" />
           </span>
           <p class="mt-4 max-w-sm text-sm text-base-content/70">
             {t.footer.tagline}
@@ -264,8 +264,8 @@ const jsonLd = { "@context": "https://schema.org", "@graph": [...graph, ...extra
         <div class="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-6 text-xs text-base-content/50 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <p>© {new Date().getFullYear()} Topografía Especializada S.A. · Ricardo A. Sanjur A.</p>
           <p class="font-mono">{t.footer.rights}</p>
-          <a href="https://rsanjur.com/#contacto" target="_blank" rel="noopener" class="inline-flex items-center gap-2 transition-colors hover:text-primary">
-            <img src="/images/rs-logo.svg" alt="rsanjur.com" class="h-5 w-5 rounded-md" />
+          <a href="https://rsanjur.com/#contacto" target="_blank" rel="noopener" class="inline-flex min-h-11 items-center gap-2 transition-colors hover:text-primary">
+            <img src="/images/rs-logo.svg" alt="rsanjur.com" width="512" height="512" class="h-5 w-5 rounded-md" />
             <span>{t.footer.madeBy} <strong class="text-base-content/80">rsanjur.com</strong> · {t.footer.madeByCta}</span>
           </a>
         </div>

@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch the dedicated ortomosaics TileServer GL configuration
+
+[Path]
+PathChanged=/opt/ricardosanjur-mapas/data/config.json
+Unit=ricardosanjur-mapas-reload.service
+
+[Install]
+WantedBy=multi-user.target

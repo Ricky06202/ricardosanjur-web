@@ -1,0 +1,8 @@
+[Unit]
+Description=Reload the dedicated ortomosaics TileServer GL
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/docker kill --signal=HUP rsanjur-mapas-tileserver

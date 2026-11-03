@@ -1,0 +1,116 @@
+name: rsanjur-mapas
+
+services:
+  api:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    image: rsanjur/ortomosaicos-api:local
+    container_name: rsanjur-mapas-api
+    restart: unless-stopped
+    init: true
+    user: "1000:1000"
+    group_add:
+      - "999"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      MAPS_DIR: /data/maps
+      TILESERVER_CONFIG: /data/config.json
+      TILESERVER_URL: http://tileserver:8080
+      MAPS_MAX_UPLOAD_BYTES: "90000000"
+      MAPS_BACKEND_SECRET_FILE: /run/secrets/maps_backend_secret
+    volumes:
+      - ./data:/data
+    secrets:
+      - maps_backend_secret
+    expose:
+      - "3000"
+    depends_on:
+      tileserver:
+        condition: service_healthy
+    networks:
+      - mapas
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  tileserver:
+    image: maptiler/tileserver-gl:v5.7.0
+    container_name: rsanjur-mapas-tileserver
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=256m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    command:
+      - --config
+      - /data/config.json
+      - --port
+      - "8080"
+      - --bind
+      - 0.0.0.0
+      - --public_url
+      - https://tiles.ricardosanjur.com/
+    volumes:
+      - ./data:/data:ro
+    expose:
+      - "8080"
+    networks:
+      - mapas
+    healthcheck:
+      test: ["CMD", "node", "/usr/src/app/src/healthcheck.js"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  tunnel:
+    image: cloudflare/cloudflared:2026.10.7
+    container_name: rsanjur-mapas-tunnel
+    restart: unless-stopped
+    command:
+      - tunnel
+      - --no-autoupdate
+      - run
+      - --token-file
+      - /run/secrets/cloudflare_tunnel_token
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    secrets:
+      - cloudflare_tunnel_token
+    depends_on:
+      api:
+        condition: service_healthy
+      tileserver:
+        condition: service_healthy
+    networks:
+      - mapas
+
+networks:
+  mapas:
+    driver: bridge
+
+secrets:
+  maps_backend_secret:
+    file: ./secrets/maps-backend-secret
+  cloudflare_tunnel_token:
+    file: ./secrets/cloudflare-tunnel-token

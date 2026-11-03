@@ -1,15 +1,8 @@
-import { serve } from '@hono/node-server'
-import { Hono } from 'hono'
+import { serve } from '@hono/node-server';
+import { app } from './app.js';
 
-const app = new Hono()
+const port = Number(process.env.PORT || 3000);
 
-app.get('/', (c) => {
-  return c.text('Hello Hono!')
-})
-
-serve({
-  fetch: app.fetch,
-  port: 3000
-}, (info) => {
-  console.log(`Server is running on http://localhost:${info.port}`)
-})
+serve({ fetch: app.fetch, port, hostname: '0.0.0.0' }, (info) => {
+  console.log(`Ortomosaicos API escuchando en el puerto ${info.port}`);
+});

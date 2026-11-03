@@ -6,9 +6,11 @@
 
 import RSQR from './qr.js';
 import { handleBlogLista, handleBlogForm, handleBlogGuardar, handleBlogBorrar } from './admin-blog';
+import { handleAdminMapaCrear, handleAdminMapaEstado, handleAdminMapaForm, handleAdminMapaGuardar, handleAdminMapaLista } from './admin-mapas';
 import { handleBlogIndex, handleBlogPost, BLOG_SCHEMA, handleBlogArchivo, handleBlogTarjeta, handleBlogPostHtml, NUBE_CSS } from './blog';
 import { ARCHIVOS_BLOG } from './blog-archivos';
 import { FICHAS } from '../src/content/blog-fichas';
+import { ensureMapasTable, getPublishedMapa, handleAdminMapaUploadApi, handleMapasApi } from './mapas';
 
 interface Env {
   ASSETS: { fetch: (request: Request) => Promise<Response> };
@@ -36,6 +38,10 @@ interface Env {
   RS_ID_CANJE_SECRET?: string;
   RS_ID_CANJE_URL?: string;
   ADMIN_SESSION_SECRET?: string;
+  MAPAS_BACKEND_URL?: string;
+  MAPAS_BACKEND_SECRET?: string;
+  MAPAS_TILES_URL?: string;
+  MAPAS_MAX_UPLOAD_BYTES?: string;
 }
 
 // Contexto del worker (waitUntil para trabajo en segundo plano).
@@ -105,6 +111,17 @@ function esc(value: unknown): string {
     if (c === '"') return '&quot;';
     return '&#39;';
   });
+}
+
+function truncateMeta(value: unknown, maxLength: number): string {
+  const text = String(value ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim();
+  if (text.length <= maxLength) return text;
+  let shortened = '';
+  for (const character of Array.from(text)) {
+    if ((shortened + character).length > maxLength - 1) break;
+    shortened += character;
+  }
+  return shortened.trimEnd() + '…';
 }
 
 function str(value: unknown): string | null {
@@ -629,7 +646,7 @@ async function handleSitemap(env: Env, url: URL): Promise<Response> {
   const agregar = (loc: string, lastmod: string) => filas.push({ loc, lastmod });
   for (const [es, en] of [
     ['/', '/en/'], ['/services/', '/en/services/'], ['/about/', '/en/about/'],
-    ['/blog/', '/en/blog/'], ['/contact/', '/en/contact/'],
+    ['/blog/', '/en/blog/'], ['/mapas/', '/en/mapas/'], ['/contact/', '/en/contact/'],
   ]) {
     agregar(ruta(es), hoy);
     agregar(ruta(en), hoy);
@@ -645,11 +662,82 @@ async function handleSitemap(env: Env, url: URL): Promise<Response> {
   } catch {
     /* sin tabla: solo las páginas fijas */
   }
+  try {
+    await ensureMapasTable(env.DB);
+    const r = await env.DB.prepare(
+      "SELECT slug, actualizado_en FROM ortomosaicos WHERE estado = 'publicado' AND archivo_nombre IS NOT NULL ORDER BY actualizado_en DESC",
+    ).all<{ slug: string; actualizado_en: string }>();
+    for (const mapa of (r && r.results) || []) {
+      const lastmod = String(mapa.actualizado_en || '').slice(0, 10) || hoy.slice(0, 10);
+      agregar(ruta('/mapas/' + mapa.slug + '/'), lastmod);
+      agregar(ruta('/en/mapas/' + mapa.slug + '/'), lastmod);
+    }
+  } catch {
+    /* la galería todavía no tiene tabla o no hay mapas publicados */
+  }
   const cuerpo = '<?xml version="1.0" encoding="UTF-8"?>\n' +
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
     filas.map((f) => '  <url>\n    <loc>' + f.loc + '</loc>\n    <lastmod>' + f.lastmod + '</lastmod>\n  </url>').join('\n') +
     '\n</urlset>\n';
   return new Response(cuerpo, { headers: { 'content-type': 'application/xml; charset=utf-8', 'cache-control': 'public, max-age=300' } });
+}
+
+async function handleMapaPublico(request: Request, env: Env, slug: string, lang: 'es' | 'en'): Promise<Response> {
+  try {
+    const mapa = await getPublishedMapa(env as any, slug);
+    if (!mapa) {
+      return new Response('Mapa no encontrado', {
+        status: 404,
+        headers: { 'content-type': 'text/plain; charset=utf-8', 'x-robots-tag': 'noindex', 'cache-control': 'no-store' },
+      });
+    }
+
+    const url = new URL(request.url);
+    const templatePath = lang === 'en' ? '/en/mapas/visor/' : '/mapas/visor/';
+    const templateUrl = new URL(templatePath, url.origin);
+    const template = await env.ASSETS.fetch(new Request(templateUrl, {
+      headers: request.headers,
+      cf: { cacheEverything: false, cacheTtl: 0 },
+    } as RequestInit));
+    if (!template.ok) {
+      console.log('[mapas] no se pudo cargar la plantilla del visor: ' + template.status);
+      return new Response('No se pudo abrir el visor', { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } });
+    }
+
+    let html = await template.text();
+    const fecha = new Date(String(mapa.fecha_captura) + 'T00:00:00.000Z');
+    const fechaTexto = Number.isNaN(fecha.getTime())
+      ? String(mapa.fecha_captura || '')
+      : fecha.toLocaleDateString(lang === 'en' ? 'en-US' : 'es-PA', {
+        day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC',
+      });
+    const metaDescriptionSource = (lang === 'en' ? 'Orthomosaic · ' : 'Ortomosaico · ') + mapa.lugar + '. ' + mapa.descripcion;
+    const metaTitle = truncateMeta(mapa.titulo, 38);
+    const metaDescription = truncateMeta(metaDescriptionSource, 155);
+    html = html
+      .replaceAll('__MAPA_TITULO__', esc(mapa.titulo))
+      .replaceAll('__MAPA_DESCRIPCION__', esc(mapa.descripcion))
+      .replaceAll('__MAPA_LUGAR__', esc(mapa.lugar))
+      .replaceAll('__MAPA_FECHA__', esc(fechaTexto))
+      .replaceAll('__MAPA_SLUG__', esc(mapa.slug))
+      .replaceAll('__SEO_TITLE_MAPA__', esc(metaTitle))
+      .replaceAll('__SEO_DESCRIPTION_MAPA__', esc(metaDescription));
+    const canonicalEs = SITE_ORIGIN + '/mapas/' + mapa.slug + '/';
+    const canonicalEn = SITE_ORIGIN + '/en/mapas/' + mapa.slug + '/';
+    html = html
+      .replaceAll(SITE_ORIGIN + '/mapas/visor/', canonicalEs)
+      .replaceAll(SITE_ORIGIN + '/en/mapas/visor/', canonicalEn);
+    return new Response(html, {
+      status: 200,
+      headers: {
+        'content-type': 'text/html; charset=utf-8',
+        'cache-control': 'public, max-age=60, s-maxage=120',
+        'x-content-type-options': 'nosniff',
+      },
+    });
+  } catch {
+    return new Response('No se pudo cargar este mapa', { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' } });
+  }
 }
 
 async function handleDescargaArchivo(request: Request, env: Env, id: string): Promise<Response> {
@@ -1309,7 +1397,7 @@ function handleAdminSalir(request: Request, env: Env): Response {
   return new Response(null, { status: 303, headers: headers });
 }
 
-async function handleInicio(request: Request, env: Env, tok: string, opts?: { salir?: boolean; blog?: boolean }): Promise<Response> {
+async function handleInicio(request: Request, env: Env, tok: string, opts?: { salir?: boolean; blog?: boolean; mapas?: boolean }): Promise<Response> {
   const url = new URL(request.url);
   const cRes = await env.DB
     .prepare('SELECT c.id, c.nombre, c.correo, c.telefono, c.token, c.activo, c.creado_en, ' +
@@ -1473,7 +1561,8 @@ async function handleInicio(request: Request, env: Env, tok: string, opts?: { sa
   /* Acciones de la sesion: solo con cuenta (no con el token suelto). */
   const acciones = (opts && opts.salir)
     ? '<a class="btn ghost sm" href="/admin/salir">Cerrar sesion</a>' +
-      ((opts && opts.blog) ? '<a class="btn ghost sm" href="/admin/' + esc(tok) + '/blog">Blog</a>' : '')
+      ((opts && opts.blog) ? '<a class="btn ghost sm" href="/admin/' + esc(tok) + '/blog">Blog</a>' : '') +
+      ((opts && opts.mapas) ? '<a class="btn ghost sm" href="/admin/mapas">Mapas</a>' : '')
     : '';
 
   const totalPlanos = clients.reduce(function (a: any, c: any) { return a + Number(c.planos || 0); }, 0);
@@ -1898,6 +1987,35 @@ export default {
       return handleZip(mZip[1], env);
     }
 
+    // Panel de ortomosaicos: ruta limpia, protegida por la sesión autorizada de RS ID.
+    const mAdminMapas = path.match(/^\/admin\/mapas(?:\/(nuevo|crear|[0-9a-fA-F-]{36})(?:\/(guardar|estado))?)?$/);
+    if (mAdminMapas) {
+      if (!adminEmails(env).length) return adminLoginPage('sin_lista', 200);
+      const email = await adminAutorizado(request, env);
+      if (!email) return Response.redirect(new URL('/admin', url).toString(), 303);
+      if (method === 'POST' && request.headers.get('Origin') !== url.origin) {
+        return new Response('Solicitud no autorizada', { status: 403, headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' } });
+      }
+
+      const item = mAdminMapas[1] || '';
+      const accion = mAdminMapas[2] || '';
+      const aviso = str(url.searchParams.get('aviso')) || '';
+      if (method === 'GET') {
+        if (!item) return handleAdminMapaLista(env as any, aviso);
+        if (item === 'nuevo' && !accion) return handleAdminMapaForm(env as any, 'nuevo', aviso);
+        if (/^[0-9a-fA-F-]{36}$/.test(item) && !accion) return handleAdminMapaForm(env as any, item, aviso);
+      }
+      if (method === 'POST') {
+        if (item === 'crear' && !accion) return handleAdminMapaCrear(request, env as any, email);
+        if (/^[0-9a-fA-F-]{36}$/.test(item) && accion === 'guardar') return handleAdminMapaGuardar(request, env as any, item);
+        if (/^[0-9a-fA-F-]{36}$/.test(item) && accion === 'estado') return handleAdminMapaEstado(request, env as any, item);
+      }
+      return new Response('Método o ruta no permitidos', {
+        status: method === 'GET' || method === 'POST' ? 404 : 405,
+        headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' },
+      });
+    }
+
     // Admin por token en la URL (sin login, sin cookies).
     const mAdmin = path.match(/^\/admin\/([A-Za-z0-9_-]{16,})(\/(cliente|plano|revocar|certificado|blog)(\/(nuevo|[A-Za-z0-9_-]{3,}))?)?$/);
     if (mAdmin) {
@@ -1942,13 +2060,21 @@ export default {
       const adminToken = String(env.ADMIN_TOKEN || '');
       const email = await adminAutorizado(request, env);
       // Con sesion valida: el panel se abre aqui mismo (sin token en la URL).
-      if (email && adminToken) return handleInicio(request, env, adminToken, { salir: true, blog: true });
+      if (email && adminToken) return handleInicio(request, env, adminToken, { salir: true, blog: true, mapas: true });
       if (email && !adminToken) return adminLoginPage('El panel no esta configurado (falta ADMIN_TOKEN).', 500);
       const err = str(url.searchParams.get('error'));
       const aviso = err ? adminAvisoDeError(err) : '';
       const hayCookie = !!readCookie(request, RS_ID_COOKIE) || !!readCookie(request, ADMIN_COOKIE);
       if (aviso) return adminLoginPage(aviso, 401);
       return adminLoginPage(hayCookie ? 'Su correo no esta autorizado para el panel.' : '', hayCookie ? 401 : 200);
+    }
+
+    // Galería pública de ortomosaicos y páginas de visor por slug.
+    if (method === 'GET' && path === '/mapas' && url.pathname === '/mapas') return redirect('/mapas/', 301);
+    if (method === 'GET' && path === '/en/mapas' && url.pathname === '/en/mapas') return redirect('/en/mapas/', 301);
+    const mMapaPublico = path.match(/^\/(en\/)?mapas\/([a-z0-9-]{3,80})$/);
+    if (method === 'GET' && mMapaPublico) {
+      return handleMapaPublico(request, env, mMapaPublico[2], mMapaPublico[1] ? 'en' : 'es');
     }
 
     // Certificado publico por id (pagina que abre el QR; sin clave, noindex).
@@ -1961,6 +2087,18 @@ export default {
     if (path === '/api/contact') {
       if (method === 'POST') return handleContact(request, env, ctx);
       return jsonResponse({ ok: false, error: 'method' }, 405);
+    }
+
+    if (path === '/api/mapas' || path.startsWith('/api/mapas/')) {
+      const response = await handleMapasApi(request, env as any);
+      if (response) return response;
+      return jsonResponse({ ok: false, error: 'method' }, method === 'GET' ? 404 : 405);
+    }
+
+    if (path.startsWith('/api/admin/mapas/')) {
+      if (method !== 'PUT') return jsonResponse({ ok: false, error: 'method' }, 405);
+      const email = await adminAutorizado(request, env);
+      return handleAdminMapaUploadApi(request, env as any, email);
     }
 
     // Descarga de un adjunto de cotizacion desde el correo (link firmado y con caducidad).

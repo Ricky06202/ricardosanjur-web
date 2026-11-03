@@ -1,0 +1,166 @@
+---
+import MainLayout from "../../layouts/MainLayout.astro";
+import type { Lang } from "../../i18n/ui";
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const es = lang === "es";
+const title = es ? "Galería de ortomosaicos en Chiriquí" : "Orthomosaic gallery in Chiriquí";
+const description = es
+  ? "Explore ortomosaicos de levantamientos topográficos con drones en Chiriquí y Panamá, publicados por Topografía Especializada."
+  : "Explore drone survey orthomosaics from Chiriquí and Panama, published by Topografía Especializada.";
+const indexPath = es ? "/mapas/" : "/en/mapas/";
+---
+
+<MainLayout
+  title={title}
+  description={description}
+  lang={lang}
+  breadcrumbs={[{ name: es ? "Mapas" : "Maps", path: indexPath }]}
+>
+  <section class="relative overflow-hidden bg-[#05070f] text-white">
+    <div class="grid-bg pointer-events-none absolute inset-0 opacity-50"></div>
+    <div class="pointer-events-none absolute -right-32 -top-40 h-[30rem] w-[30rem] rounded-full bg-[#2b5cff]/20 blur-3xl"></div>
+    <div class="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28">
+      <p class="font-mono text-xs uppercase tracking-[.22em] text-[#9db4ff]">{es ? "Fotogrametría · David, Chiriquí" : "Photogrammetry · David, Chiriquí"}</p>
+      <h1 class="mt-5 max-w-4xl font-display text-4xl font-bold leading-[1.04] tracking-tight sm:text-6xl lg:text-7xl">
+        {es ? <>Territorio visto <span class="text-[#91aaff]">con precisión.</span></> : <>The land, seen <span class="text-[#91aaff]">in detail.</span></>}
+      </h1>
+      <p class="mt-6 max-w-2xl text-base leading-7 text-white/70 sm:text-lg">
+        {es
+          ? "Ortomosaicos creados a partir de levantamientos con drones y procesamiento geoespacial. Abra cada proyecto y explore la imagen en su ubicación real."
+          : "Orthomosaics produced from drone surveys and geospatial processing. Open a project and explore its imagery at the real location."}
+      </p>
+      <a href="#galeria" class="btn btn-primary mt-8 min-h-12 rounded-full px-6">
+        {es ? "Explorar galería" : "Explore the gallery"}
+      </a>
+    </div>
+  </section>
+
+  <section id="galeria" class="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20">
+    <div class="mb-8 flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <p class="font-mono text-[11px] uppercase tracking-[.2em] text-primary">{es ? "/ Colección pública" : "/ Public collection"}</p>
+        <h2 class="mt-2 font-display text-3xl font-bold sm:text-4xl">{es ? "Ortomosaicos" : "Orthomosaics"}</h2>
+      </div>
+      <p id="mapas-total" class="text-sm text-base-content/60" aria-live="polite"></p>
+    </div>
+
+    <div id="mapas-lista" class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" aria-live="polite" aria-busy="true">
+      <div class="col-span-full rounded-2xl border border-base-300 bg-base-100 p-6 text-sm text-base-content/70">
+        {es ? "Cargando ortomosaicos…" : "Loading orthomosaics…"}
+      </div>
+    </div>
+    <p id="mapas-error" class="mt-5 hidden rounded-2xl border border-error/30 bg-error/5 p-4 text-sm text-error" role="alert"></p>
+    <button id="mapas-mas" type="button" class="btn btn-outline mx-auto mt-8 hidden min-h-12 rounded-full px-6">
+      {es ? "Cargar más mapas" : "Load more maps"}
+    </button>
+  </section>
+
+  <script>
+    const root = document.getElementById("mapas-lista");
+    const total = document.getElementById("mapas-total");
+    const error = document.getElementById("mapas-error");
+    const more = document.getElementById("mapas-mas") as HTMLButtonElement | null;
+    const lang = document.documentElement.lang === "en" ? "en" : "es";
+    const copy = lang === "en"
+      ? { empty: "There are no public orthomosaics yet.", failed: "The gallery could not be loaded. Please try again.", place: "Location", date: "Survey date", open: "Open map", totalSingular: "map published", totalPlural: "maps published", retry: "Try again" }
+      : { empty: "Todavía no hay ortomosaicos publicados.", failed: "No se pudo cargar la galería. Intente otra vez.", place: "Lugar", date: "Fecha del levantamiento", open: "Abrir mapa", totalSingular: "mapa publicado", totalPlural: "mapas publicados", retry: "Intentar de nuevo" };
+    const limit = 24;
+    let offset = 0;
+    let busy = false;
+
+    function fecha(value: string): string {
+      const parsed = new Date(`${value}T00:00:00Z`);
+      if (Number.isNaN(parsed.getTime())) return value;
+      return parsed.toLocaleDateString(lang === "en" ? "en-US" : "es-PA", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+    }
+
+    function card(item: any): HTMLElement {
+      const article = document.createElement("article");
+      article.className = "group flex min-h-full flex-col overflow-hidden rounded-2xl border border-base-300 bg-base-100 transition duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 motion-reduce:transform-none motion-reduce:transition-none";
+      const visual = document.createElement("div");
+      visual.className = "relative flex h-40 items-end overflow-hidden bg-[#081328] p-5 text-white sm:h-48";
+      visual.setAttribute("aria-hidden", "true");
+      visual.innerHTML = '<div class="pointer-events-none absolute inset-0 opacity-80" style="background-image:radial-gradient(ellipse at 50% 120%,rgba(43,92,255,.65),transparent 55%),linear-gradient(135deg,transparent 48%,rgba(145,170,255,.2) 49%,transparent 50%),linear-gradient(45deg,transparent 48%,rgba(145,170,255,.15) 49%,transparent 50%);background-size:auto,44px 44px,54px 54px"></div>' +
+        '<span class="relative rounded-full border border-white/20 bg-black/25 px-3 py-1 font-mono text-[10px] uppercase tracking-[.16em] backdrop-blur">' + (lang === "en" ? "Drone survey" : "Levantamiento con dron") + '</span>';
+      const body = document.createElement("div");
+      body.className = "flex flex-1 flex-col p-5 sm:p-6";
+      const title = document.createElement("h3");
+      title.className = "font-display text-xl font-bold leading-snug";
+      title.textContent = String(item.title || "Ortomosaico");
+      const description = document.createElement("p");
+      description.className = "mt-2 line-clamp-3 text-base leading-6 text-base-content/70";
+      description.textContent = String(item.description || "");
+      const meta = document.createElement("dl");
+      meta.className = "mt-5 grid gap-3 border-t border-base-300 pt-4 text-sm";
+      for (const [label, value] of [[copy.place, item.place], [copy.date, fecha(String(item.capture_date || ""))]]) {
+        const row = document.createElement("div");
+        row.className = "flex min-w-0 items-start justify-between gap-3";
+        const dt = document.createElement("dt");
+        dt.className = "shrink-0 text-xs font-semibold uppercase tracking-wide text-base-content/50";
+        dt.textContent = label;
+        const dd = document.createElement("dd");
+        dd.className = "min-w-0 text-right font-medium text-base-content/80";
+        dd.textContent = String(value || "—");
+        row.append(dt, dd);
+        meta.append(row);
+      }
+      const link = document.createElement("a");
+      link.className = "btn btn-primary mt-5 min-h-11 w-full cursor-pointer rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary motion-reduce:transition-none";
+      link.href = `${lang === "en" ? "/en/mapas/" : "/mapas/"}${encodeURIComponent(String(item.slug))}/`;
+      link.textContent = copy.open;
+      body.append(title, description, meta, link);
+      article.append(visual, body);
+      return article;
+    }
+
+    async function load(reset = false) {
+      if (!root || busy) return;
+      busy = true;
+      if (reset) {
+        offset = 0;
+        root.replaceChildren();
+      }
+      root.setAttribute("aria-busy", "true");
+      if (error) { error.classList.add("hidden"); error.textContent = ""; }
+      if (more) more.disabled = true;
+      try {
+        const response = await fetch(`/api/mapas?limit=${limit}&offset=${offset}`, { headers: { accept: "application/json" } });
+        if (!response.ok) throw new Error("gallery");
+        const payload = await response.json();
+        const items = Array.isArray(payload.data) ? payload.data : [];
+        const pageTotal = Number(payload.meta?.total || 0);
+        if (total) total.textContent = `${pageTotal} ${pageTotal === 1 ? copy.totalSingular : copy.totalPlural}`;
+        if (items.length === 0 && offset === 0) {
+          const empty = document.createElement("div");
+          empty.className = "col-span-full rounded-2xl border border-dashed border-base-300 bg-base-100 p-8 text-center text-base-content/65";
+          empty.textContent = copy.empty;
+          root.append(empty);
+        } else {
+          root.append(...items.map(card));
+        }
+        offset += items.length;
+        if (more) more.classList.toggle("hidden", !payload.meta?.has_more);
+      } catch {
+        if (error) {
+          error.textContent = copy.failed;
+          error.classList.remove("hidden");
+          const retry = document.createElement("button");
+          retry.type = "button";
+          retry.className = "ml-2 underline underline-offset-2";
+          retry.textContent = copy.retry;
+          retry.addEventListener("click", () => load(true));
+          error.append(retry);
+        }
+      } finally {
+        root.setAttribute("aria-busy", "false");
+        if (more) more.disabled = false;
+        busy = false;
+      }
+    }
+
+    more?.addEventListener("click", () => load());
+    load(true);
+  </script>
+</MainLayout>

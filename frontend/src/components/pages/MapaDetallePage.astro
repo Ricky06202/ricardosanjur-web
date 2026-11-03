@@ -1,0 +1,121 @@
+---
+import MainLayout from "../../layouts/MainLayout.astro";
+import type { Lang } from "../../i18n/ui";
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const es = lang === "es";
+const title = "__MAPA_TITULO__";
+const description = "__MAPA_DESCRIPCION__";
+const metaTitle = "__SEO_TITLE_MAPA__";
+const metaDescription = "__SEO_DESCRIPTION_MAPA__";
+const galleryPath = es ? "/mapas/" : "/en/mapas/";
+---
+
+<MainLayout
+  title={metaTitle}
+  description={metaDescription}
+  lang={lang}
+  breadcrumbs={[{ name: es ? "Mapas" : "Maps", path: galleryPath }]}
+>
+  <section class="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 sm:py-14">
+    <a href={galleryPath} class="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-primary hover:underline">
+      <span aria-hidden="true">←</span>{es ? "Volver a la galería" : "Back to gallery"}
+    </a>
+    <div class="mt-5 grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
+      <div>
+        <p class="font-mono text-[11px] uppercase tracking-[.2em] text-primary">{es ? "Ortomosaico" : "Orthomosaic"} · {"__MAPA_LUGAR__"}</p>
+        <h1 class="mt-2 max-w-4xl font-display text-3xl font-bold leading-tight sm:text-5xl">{title}</h1>
+        <p class="mt-3 max-w-3xl text-base leading-7 text-base-content/70">{description}</p>
+      </div>
+      <p class="mb-1 rounded-xl border border-base-300 bg-base-100 px-4 py-3 text-sm">
+        <span class="block text-[10px] font-semibold uppercase tracking-[.15em] text-base-content/50">{es ? "Fecha del levantamiento" : "Survey date"}</span>
+        <span class="mt-1 block font-semibold">__MAPA_FECHA__</span>
+      </p>
+    </div>
+
+    <div class="mt-7 overflow-hidden rounded-2xl border border-base-300 bg-[#e8edf5] shadow-xl shadow-black/10">
+      <div id="ortomosaico-map" class="h-[62vh] min-h-[380px] w-full sm:h-[68vh] sm:min-h-[500px]" data-slug="__MAPA_SLUG__" role="application" aria-label={es ? "Visor interactivo del ortomosaico" : "Interactive orthomosaic viewer"}></div>
+    </div>
+    <p id="ortomosaico-status" class="mt-3 min-h-6 text-base text-base-content/65" role="status" aria-live="polite">
+      {es ? "Cargando el visor…" : "Loading the map viewer…"}
+    </p>
+    <p class="mt-2 text-xs leading-5 text-base-content/50">
+      {es ? "Arrastre para explorar. Use los controles + y − para acercar o alejar." : "Drag to explore. Use the + and − controls to zoom."}
+    </p>
+  </section>
+
+  <script>
+    import L from "leaflet";
+    import "leaflet/dist/leaflet.css";
+
+    const container = document.getElementById("ortomosaico-map") as HTMLElement | null;
+    const status = document.getElementById("ortomosaico-status");
+    const en = document.documentElement.lang === "en";
+    const setStatus = (message: string) => { if (status) status.textContent = message; };
+
+    async function iniciar() {
+      if (!container) return;
+      const slug = container.dataset.slug || "";
+      try {
+        const mapResponse = await fetch(`/api/mapas/${encodeURIComponent(slug)}`, { headers: { accept: "application/json" } });
+        if (!mapResponse.ok) throw new Error("MAP_NOT_FOUND");
+        const payload = await mapResponse.json();
+        const mapa = payload.data;
+        const tileJsonUrl = new URL(String(mapa.tilejson_url));
+        if (tileJsonUrl.protocol !== "https:" || tileJsonUrl.hostname !== "tiles.ricardosanjur.com") throw new Error("INVALID_TILES_URL");
+        const tileResponse = await fetch(tileJsonUrl, { headers: { accept: "application/json" } });
+        if (!tileResponse.ok) throw new Error("TILES_UNAVAILABLE");
+        const tileJson = await tileResponse.json();
+        const template = Array.isArray(tileJson.tiles) ? String(tileJson.tiles[0] || "") : "";
+        const templateUrl = new URL(template);
+        if (templateUrl.origin !== tileJsonUrl.origin || !template.includes("{z}") || !template.includes("{x}") || !template.includes("{y}")) {
+          throw new Error("INVALID_TILE_SOURCE");
+        }
+
+        const map = L.map(container, { scrollWheelZoom: false, zoomControl: true, preferCanvas: true });
+        const ortho = L.tileLayer(template, {
+          minZoom: Number(tileJson.minzoom ?? mapa.min_zoom ?? 0),
+          maxZoom: Number(tileJson.maxzoom ?? mapa.max_zoom ?? 22),
+          maxNativeZoom: Number(tileJson.maxzoom ?? mapa.max_zoom ?? 22),
+          attribution: "Ortomosaico · Topografía Especializada",
+          updateWhenIdle: true,
+          keepBuffer: 2,
+        });
+        const streets = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 19,
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>',
+        });
+        ortho.addTo(map);
+        L.control.layers(en ? { "Orthomosaic": ortho, "Street map": streets } : { "Ortomosaico": ortho, "Mapa de calles": streets }).addTo(map);
+        const bounds = Array.isArray(tileJson.bounds) ? tileJson.bounds.map(Number) : [];
+        if (bounds.length === 4 && bounds.every(Number.isFinite) && bounds[0] < bounds[2] && bounds[1] < bounds[3]) {
+          map.fitBounds([[bounds[1], bounds[0]], [bounds[3], bounds[2]]], { padding: [18, 18], maxZoom: Number(tileJson.maxzoom ?? mapa.max_zoom ?? 22) });
+        } else {
+          const center = tileJson.center || [];
+          const lat = Number(center[1] ?? mapa.center?.lat);
+          const lng = Number(center[0] ?? mapa.center?.lng);
+          const zoom = Number(center[2] ?? mapa.center?.zoom ?? 16);
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw new Error("LOCATION_MISSING");
+          map.setView([lat, lng], zoom);
+        }
+        window.setTimeout(() => map.invalidateSize(), 150);
+        setStatus(en ? "Orthomosaic ready. Use the layer selector to switch to the street map." : "Ortomosaico listo. Use el selector de capas para cambiar al mapa de calles.");
+      } catch (error) {
+        const code = error instanceof Error ? error.message : "";
+        const messages: Record<string, { es: string; en: string }> = {
+          MAP_NOT_FOUND: { es: "No se encontró este mapa.", en: "This map could not be found." },
+          INVALID_TILES_URL: { es: "La dirección del servidor de mapas no es válida.", en: "The map server address is invalid." },
+          TILES_UNAVAILABLE: { es: "Las teselas del mapa no están disponibles todavía.", en: "Map tiles are not available yet." },
+          INVALID_TILE_SOURCE: { es: "La fuente del mapa no es válida.", en: "The map tile source is invalid." },
+          LOCATION_MISSING: { es: "Este mapa no incluye una ubicación para centrar el visor.", en: "This map has no location to center the viewer." },
+        };
+        setStatus(messages[code]?.[en ? "en" : "es"] || (en
+          ? "The map is temporarily unavailable. Check your connection and try again."
+          : "El visor no está disponible ahora. Revise su conexión e inténtelo de nuevo."));
+      }
+    }
+
+    iniciar();
+  </script>
+</MainLayout>
