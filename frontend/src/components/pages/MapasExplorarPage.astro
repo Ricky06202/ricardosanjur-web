@@ -360,7 +360,7 @@ const pageDescription = en
   function renderDrawingPreview() {
     if (!map || !drawingMode || drawingPoints.length === 0) return;
     if (previewLayer) map.removeLayer(previewLayer);
-    const style = { color: "#1d4ed8", weight: 4, fillColor: "#3b82f6", fillOpacity: 0.18, dashArray: "8 5" };
+    const style = { pane: "explorer-measurements", color: "#1d4ed8", weight: 4, fillColor: "#3b82f6", fillOpacity: 0.18, dashArray: "8 5" };
     previewLayer = drawingMode === "Polygon" && drawingPoints.length >= 3
       ? L.polygon(drawingPoints, style)
       : L.polyline(drawingPoints, style);
@@ -371,6 +371,7 @@ const pageDescription = en
     if (!drawingMode || !map || drawingPoints.length >= 500) return;
     drawingPoints.push(event.latlng);
     drawingPointsGroup?.addLayer(L.circleMarker(event.latlng, {
+      pane: "explorer-measurements",
       radius: 5,
       color: "#ffffff",
       weight: 2,
@@ -395,7 +396,7 @@ const pageDescription = en
       if (measureResult) measureResult.textContent = shape === "Line" ? copy.needLine : copy.needArea;
       return;
     }
-    const style = { color: "#1d4ed8", weight: 4, fillColor: "#3b82f6", fillOpacity: 0.18 };
+    const style = { pane: "explorer-measurements", color: "#1d4ed8", weight: 4, fillColor: "#3b82f6", fillOpacity: 0.18 };
     const layer = shape === "Line" ? L.polyline(drawingPoints, style) : L.polygon(drawingPoints, style);
     measurementGroup?.addLayer(layer);
     updateMeasurementResult(layer, shape);
@@ -493,6 +494,9 @@ const pageDescription = en
     const orthoPane = map.createPane("explorer-orthomosaic");
     orthoPane.style.zIndex = "450";
     orthoPane.style.pointerEvents = "none";
+    const measurementPane = map.createPane("explorer-measurements");
+    measurementPane.style.zIndex = "460";
+    measurementPane.style.pointerEvents = "none";
     currentBase = baseLayers.satellite.addTo(map);
     L.control.zoom({ position: "bottomleft" }).addTo(map);
     L.control.scale({ metric: true, imperial: false, position: "bottomright" }).addTo(map);
