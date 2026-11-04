@@ -2417,8 +2417,14 @@ export default {
 
     if (path === '/api/mapas' || path.startsWith('/api/mapas/')) {
       const response = await handleMapasApi(request, env as any);
-      if (response) return response;
-      return jsonResponse({ ok: false, error: 'method' }, method === 'GET' ? 404 : 405);
+      const result = response || jsonResponse({ ok: false, error: 'method' }, method === 'GET' ? 404 : 405);
+      if (method !== 'GET') return result;
+
+      // La portada estática del apex puede pedir este catálogo público y seguir el redirect a www.
+      // No hay credenciales ni datos privados, así que el GET admite ambos hosts sin credenciales.
+      const headers = new Headers(result.headers);
+      headers.set('access-control-allow-origin', '*');
+      return new Response(result.body, { status: result.status, statusText: result.statusText, headers });
     }
 
     if (path.startsWith('/api/admin/mapas/')) {
