@@ -113,8 +113,8 @@ const pageDescription = en
             </p>
           </div>
           <div class="mt-3 grid gap-2 sm:grid-cols-3">
-            <button id="map-measure-line" type="button" class="btn btn-outline min-h-12" disabled>{en ? "Measure distance" : "Medir distancia"}</button>
-            <button id="map-measure-area" type="button" class="btn btn-outline min-h-12" disabled>{en ? "Measure area" : "Medir área"}</button>
+            <button id="map-measure-line" type="button" class="btn btn-outline min-h-12" aria-pressed="false" disabled>{en ? "Measure distance" : "Medir distancia"}</button>
+            <button id="map-measure-area" type="button" class="btn btn-outline min-h-12" aria-pressed="false" disabled>{en ? "Measure area" : "Medir área"}</button>
             <button id="map-measure-clear" type="button" class="btn btn-ghost min-h-12" disabled>{en ? "Clear measurements" : "Borrar mediciones"}</button>
           </div>
           <p id="map-measure-result" class="mt-3 min-h-6 text-sm font-medium text-base-content" aria-live="polite"></p>
@@ -349,6 +349,10 @@ const pageDescription = en
     cancelButton?.classList.add("hidden");
     lineButton?.setAttribute("aria-pressed", "false");
     areaButton?.setAttribute("aria-pressed", "false");
+    lineButton?.classList.remove("btn-primary");
+    lineButton?.classList.add("btn-outline");
+    areaButton?.classList.remove("btn-primary");
+    areaButton?.classList.add("btn-outline");
     if (measureHint) measureHint.textContent = copy.readyToDraw;
     if (clearResult && measureResult) measureResult.textContent = "";
   }
@@ -408,6 +412,10 @@ const pageDescription = en
     map.on("click", addDrawingPoint);
     lineButton?.setAttribute("aria-pressed", String(shape === "Line"));
     areaButton?.setAttribute("aria-pressed", String(shape === "Polygon"));
+    lineButton?.classList.toggle("btn-primary", shape === "Line");
+    lineButton?.classList.toggle("btn-outline", shape !== "Line");
+    areaButton?.classList.toggle("btn-primary", shape === "Polygon");
+    areaButton?.classList.toggle("btn-outline", shape !== "Polygon");
     finishButton?.classList.remove("hidden");
     cancelButton?.classList.remove("hidden");
     if (measureHint) measureHint.textContent = shape === "Line" ? copy.lineHint : copy.areaHint;
@@ -688,6 +696,9 @@ const pageDescription = en
   :global(.leaflet-container) { font: inherit; }
   :global(.leaflet-control-zoom a), :global(.leaflet-touch .leaflet-control-zoom a) { width: 44px; height: 44px; line-height: 42px; font-size: 22px; }
   :global(.leaflet-control-attribution) { max-width: min(82vw, 440px); white-space: normal; line-height: 1.35; }
+  :global(.leaflet-control-attribution a) { display: inline-flex; min-height: 32px; align-items: center; padding: 0 2px; }
+  /* The fixed WhatsApp CTA otherwise obscures measurement controls on this tool; contact remains in the footer. */
+  :global(#wa-flotante) { display: none !important; }
   .map-canvas.is-drawing { cursor: crosshair; }
   @media (max-width: 640px) {
     .map-canvas { height: 62vh; min-height: 390px; }
