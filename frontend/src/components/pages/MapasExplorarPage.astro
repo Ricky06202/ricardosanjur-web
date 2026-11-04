@@ -247,6 +247,7 @@ const pageDescription = en
   let map: L.Map | null = null;
   let currentBase: L.TileLayer | null = null;
   let currentOrtho: L.TileLayer | null = null;
+  let coordinateMarker: L.CircleMarker | null = null;
   let measurementGroup: L.FeatureGroup | null = null;
   let drawingPointsGroup: L.FeatureGroup | null = null;
   let previewLayer: L.Polyline | L.Polygon | null = null;
@@ -405,6 +406,8 @@ const pageDescription = en
 
   function startDrawing(shape: "Line" | "Polygon") {
     if (!map) return;
+    coordinateMarker?.remove();
+    coordinateMarker = null;
     stopDrawing(true);
     drawingMode = shape;
     if (measureResult) measureResult.textContent = "";
@@ -433,6 +436,22 @@ const pageDescription = en
     }
   }
 
+  function updateCoordinateMarker(point: L.LatLng) {
+    if (!map || drawingMode) return;
+    if (coordinateMarker) {
+      coordinateMarker.setLatLng(point).bringToFront();
+      return;
+    }
+    coordinateMarker = L.circleMarker(point, {
+      pane: "explorer-measurements",
+      radius: 7,
+      color: "#ffffff",
+      weight: 3,
+      fillColor: "#e11d48",
+      fillOpacity: 1,
+    }).addTo(map);
+  }
+
   function updateCurtain() {
     if (!curtainRange || !curtainValue) return;
     const position = Number(curtainRange.value);
@@ -441,7 +460,17 @@ const pageDescription = en
     curtainRange.setAttribute("aria-valuetext", percent);
     if (curtain) curtain.style.left = percent;
     const container = currentOrtho?.getContainer();
-    if (container) container.style.clipPath = compareActive ? `inset(0 ${100 - position}% 0 0)` : "";
+    if (!container || !map) return;
+    container.style.clipPath = "";
+    if (!compareActive) {
+      container.style.clip = "";
+      return;
+    }
+    const size = map.getSize();
+    const northWest = map.containerPointToLayerPoint([0, 0]);
+    const southEast = map.containerPointToLayerPoint(size);
+    const dividerX = northWest.x + Math.round(size.x * position / 100);
+    container.style.clip = `rect(${northWest.y}px, ${dividerX}px, ${southEast.y}px, ${northWest.x}px)`;
   }
 
   function setCurtainFromClientX(clientX: number) {
@@ -503,13 +532,18 @@ const pageDescription = en
     measurementGroup = L.featureGroup().addTo(map);
     drawingPointsGroup = L.featureGroup().addTo(map);
     map.on("mousemove", (event: L.LeafletMouseEvent) => updateCoordinates(event.latlng));
-    map.on("click", (event: L.LeafletMouseEvent) => updateCoordinates(event.latlng));
-    map.on("resize", updateCurtain);
+    map.on("click", (event: L.LeafletMouseEvent) => {
+      updateCoordinates(event.latlng);
+      updateCoordinateMarker(event.latlng);
+    });
+    map.on("move zoom resize", updateCurtain);
     window.setTimeout(() => map?.invalidateSize(), 100);
   }
 
   async function loadProject(project: any, updateUrl = true) {
     const sequence = ++loadSequence;
+    coordinateMarker?.remove();
+    coordinateMarker = null;
     setError(null);
     setStatus(`${copy.loading} ${project.title || project.slug}…`);
     if (projectSelect) projectSelect.disabled = true;
