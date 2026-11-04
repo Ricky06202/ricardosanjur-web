@@ -641,7 +641,14 @@ const pageDescription = en
       });
     });
   });
-  compareToggle?.addEventListener("click", () => setCompare(!compareActive));
+  compareToggle?.addEventListener("click", () => {
+    const activate = !compareActive;
+    setCompare(activate);
+    if (activate && window.matchMedia("(max-width: 640px)").matches) {
+      const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+      requestAnimationFrame(() => mapElement?.scrollIntoView({ behavior, block: "center" }));
+    }
+  });
   curtainRange?.addEventListener("input", updateCurtain);
   curtainHandle?.addEventListener("pointerdown", (event: PointerEvent) => {
     if (!compareActive) return;
