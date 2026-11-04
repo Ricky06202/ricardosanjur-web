@@ -11,6 +11,7 @@ const { lang, featured = false } = Astro.props;
 const en = lang === "en";
 const mapsHref = routeHref("maps", lang);
 const quoteHref = `${routeHref("services", lang)}#cotizacion`;
+const viewerHref = en ? "/en/mapas/visor/explorar/" : "/mapas/visor/explorar/";
 const listId = featured ? "mapas-destacados-lista" : "mapas-lista";
 const totalId = featured ? "mapas-destacados-total" : "mapas-total";
 const errorId = featured ? "mapas-destacados-error" : "mapas-error";
@@ -39,6 +40,9 @@ const limit = featured ? 3 : 24;
     </div>
     <div class="flex flex-wrap items-center gap-4">
       <p id={totalId} data-map-total class="text-sm text-base-content/60" aria-live="polite"></p>
+      <a href={viewerHref} class="btn btn-outline btn-sm min-h-11 rounded-full px-4">
+        {en ? "Open interactive viewer" : "Abrir visor interactivo"}
+      </a>
       {featured && (
         <a href={mapsHref} class="min-h-10 inline-flex items-center font-mono text-xs uppercase tracking-widest text-base-content/70 transition-colors hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary">
           {en ? "View full gallery →" : "Ver galería completa →"}

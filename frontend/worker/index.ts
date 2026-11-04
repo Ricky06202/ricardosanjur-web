@@ -732,6 +732,7 @@ async function handleSitemap(env: Env, url: URL): Promise<Response> {
   for (const [es, en] of [
     ['/', '/en/'], ['/services/', '/en/services/'], ['/about/', '/en/about/'],
     ['/blog/', '/en/blog/'], ['/mapas/', '/en/mapas/'], ['/contact/', '/en/contact/'],
+    ['/mapas/visor/explorar/', '/en/mapas/visor/explorar/'],
   ]) {
     agregar(ruta(es), hoy);
     agregar(ruta(en), hoy);

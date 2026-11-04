@@ -17,6 +17,7 @@
     "astro": "^6.0.6",
     "daisyui": "^5.5.19",
     "leaflet": "^1.9.4",
+    "proj4": "2.11.0",
     "tailwindcss": "^4.2.2"
   },
   "devDependencies": {

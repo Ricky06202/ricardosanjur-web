@@ -1,0 +1,700 @@
+---
+import MainLayout from "../../layouts/MainLayout.astro";
+import type { Lang } from "../../i18n/ui";
+
+interface Props { lang: Lang }
+
+const { lang } = Astro.props;
+const en = lang === "en";
+const galleryPath = en ? "/en/mapas/" : "/mapas/";
+const explorerPath = en ? "/en/mapas/visor/explorar/" : "/mapas/visor/explorar/";
+const pageTitle = en ? "Interactive orthomosaic viewer" : "Visor interactivo de ortomosaicos";
+const pageDescription = en
+  ? "Explore published drone orthomosaics, switch between satellite and street maps, measure distances and areas, and compare imagery with a map base."
+  : "Explore ortomosaicos publicados, cambie entre satélite y calles, mida distancias y áreas y compare la imagen con el mapa base.";
+---
+
+<MainLayout
+  title={pageTitle}
+  description={pageDescription}
+  lang={lang}
+  breadcrumbs={[
+    { name: en ? "Maps" : "Mapas", path: galleryPath },
+    { name: pageTitle, path: explorerPath },
+  ]}
+>
+  <section id="map-explorer" data-lang={lang} class="mx-auto w-full max-w-[1500px] px-4 py-8 sm:px-6 sm:py-12">
+    <a href={galleryPath} class="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary">
+      <span aria-hidden="true">←</span>{en ? "Back to maps" : "Volver a mapas"}
+    </a>
+
+    <header class="mt-5 max-w-3xl">
+      <p class="font-mono text-[11px] uppercase tracking-[.2em] text-primary">{en ? "Geospatial explorer" : "Exploración geoespacial"}</p>
+      <h1 class="mt-2 font-display text-3xl font-bold leading-tight sm:text-5xl">{pageTitle}</h1>
+      <p class="mt-3 text-base leading-7 text-base-content/70">
+        {en
+          ? "Choose a published project, inspect its orthomosaic and use the map tools. Measurements are approximate, stay in this browser and are not saved."
+          : "Elija un proyecto publicado, explore su ortomosaico y use las herramientas del mapa. Las mediciones son aproximadas, se quedan en este navegador y no se guardan."}
+      </p>
+    </header>
+
+    <section class="mt-7" aria-label={en ? "Map explorer controls" : "Controles del visor"}>
+      <div class="grid gap-4 rounded-2xl border border-base-300 bg-base-100 p-4 shadow-sm sm:p-5 lg:grid-cols-[minmax(15rem,1.4fr)_minmax(14rem,1fr)_auto] lg:items-end">
+        <label class="block min-w-0">
+          <span class="mb-2 block text-sm font-semibold">{en ? "Project" : "Proyecto"}</span>
+          <select id="map-project" class="select select-bordered min-h-12 w-full text-base" disabled aria-describedby="map-status">
+            <option value="">{en ? "Loading published maps…" : "Cargando mapas publicados…"}</option>
+          </select>
+        </label>
+
+        <fieldset id="map-basemaps" class="min-w-0" disabled>
+          <legend class="mb-2 text-sm font-semibold">{en ? "Map base" : "Mapa base"}</legend>
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" data-basemap="satellite" aria-pressed="true" class="btn btn-primary min-h-12 text-sm">{en ? "Satellite" : "Satélite"}</button>
+            <button type="button" data-basemap="streets" aria-pressed="false" class="btn btn-outline min-h-12 text-sm">{en ? "Streets" : "Calles"}</button>
+          </div>
+        </fieldset>
+
+        <button id="map-compare-toggle" type="button" class="btn btn-outline min-h-12 w-full lg:w-auto" aria-pressed="false" disabled>
+          {en ? "Compare with map base" : "Comparar con mapa base"}
+        </button>
+      </div>
+
+      <div id="map-load-error" class="mt-4 hidden rounded-xl border border-error/40 bg-error/5 p-4 text-base-content" role="alert">
+        <p id="map-load-error-text" class="text-sm leading-6"></p>
+        <button id="map-retry" type="button" class="btn btn-outline btn-sm mt-3 min-h-11">{en ? "Try again" : "Intentar de nuevo"}</button>
+      </div>
+
+      <div id="map-empty" class="mt-4 hidden rounded-xl border border-base-300 bg-base-200/60 p-6 text-center" role="status">
+        <p class="font-semibold">{en ? "No published maps yet" : "Todavía no hay mapas publicados"}</p>
+        <p class="mt-1 text-sm text-base-content/65">{en ? "Published projects will appear here." : "Los proyectos publicados aparecerán aquí."}</p>
+      </div>
+
+      <div id="map-selected-project" class="mt-5 flex flex-wrap items-end justify-between gap-3" hidden>
+        <div class="min-w-0">
+          <p id="map-selected-place" class="font-mono text-[11px] uppercase tracking-[.16em] text-primary"></p>
+          <h2 id="map-selected-title" class="mt-1 break-words font-display text-2xl font-bold sm:text-3xl"></h2>
+        </div>
+        <p class="text-sm text-base-content/60">
+          <span class="font-semibold">{en ? "Survey date" : "Fecha del levantamiento"}:</span>
+          <span id="map-selected-date"></span>
+        </p>
+      </div>
+
+      <div id="map-shell" class="map-shell mt-4 overflow-hidden rounded-2xl border border-base-300 bg-[#e8edf5] shadow-xl shadow-black/10" hidden>
+        <div id="map-canvas" class="map-canvas" role="application" aria-label={en ? "Interactive orthomosaic map" : "Mapa interactivo de ortomosaicos"}>
+          <div id="map-curtain" class="map-curtain" hidden aria-hidden="true">
+            <span class="map-curtain-handle"><span></span><span></span></span>
+          </div>
+          <div id="map-curtain-labels" class="map-curtain-labels" hidden aria-hidden="true">
+            <span>{en ? "ORTHOMOSAIC" : "ORTOMOSAICO"}</span>
+            <span>{en ? "MAP BASE" : "MAPA BASE"}</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="map-curtain-controls" class="mt-3 hidden rounded-xl border border-base-300 bg-base-100 px-4 py-3">
+        <div class="flex items-center gap-3">
+          <label for="map-curtain-range" class="min-w-0 flex-1 text-sm font-semibold">{en ? "Curtain position" : "Posición de la cortina"}</label>
+          <output id="map-curtain-value" for="map-curtain-range" class="w-12 text-right font-mono text-sm">50%</output>
+        </div>
+        <input id="map-curtain-range" type="range" min="5" max="95" value="50" class="mt-2 h-11 w-full accent-primary" aria-valuetext="50%" />
+        <p class="mt-1 text-xs leading-5 text-base-content/65">
+          {en ? "Orthomosaic on the left; the selected satellite or street map on the right." : "Ortomosaico a la izquierda; el mapa satelital o de calles seleccionado a la derecha."}
+        </p>
+      </div>
+
+      <div class="mt-4 grid gap-4 lg:grid-cols-2">
+        <section class="rounded-2xl border border-base-300 bg-base-100 p-4 sm:p-5" aria-labelledby="map-measure-heading">
+          <div class="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 id="map-measure-heading" class="font-display text-xl font-bold">{en ? "Measure" : "Medir"}</h2>
+            <p id="map-measure-hint" class="text-sm text-base-content/60" role="status" aria-live="polite">
+              {en ? "Choose a tool, draw on the map, then finish." : "Elija una herramienta, dibuje en el mapa y termine."}
+            </p>
+          </div>
+          <div class="mt-3 grid gap-2 sm:grid-cols-3">
+            <button id="map-measure-line" type="button" class="btn btn-outline min-h-12" disabled>{en ? "Measure distance" : "Medir distancia"}</button>
+            <button id="map-measure-area" type="button" class="btn btn-outline min-h-12" disabled>{en ? "Measure area" : "Medir área"}</button>
+            <button id="map-measure-clear" type="button" class="btn btn-ghost min-h-12" disabled>{en ? "Clear measurements" : "Borrar mediciones"}</button>
+          </div>
+          <p id="map-measure-result" class="mt-3 min-h-6 text-sm font-medium text-base-content" aria-live="polite"></p>
+          <div class="mt-2 flex flex-wrap gap-2">
+            <button id="map-measure-finish" type="button" class="btn btn-primary btn-sm min-h-11 hidden">{en ? "Finish drawing" : "Terminar dibujo"}</button>
+            <button id="map-measure-cancel" type="button" class="btn btn-ghost btn-sm min-h-11 hidden">{en ? "Cancel" : "Cancelar"}</button>
+          </div>
+        </section>
+
+        <section class="rounded-2xl border border-base-300 bg-base-100 p-4 sm:p-5" aria-labelledby="map-coordinates-heading">
+          <h2 id="map-coordinates-heading" class="font-display text-xl font-bold">{en ? "Point coordinates" : "Coordenadas del punto"}</h2>
+          <p class="mt-1 text-sm text-base-content/60">{en ? "Move over or tap the map." : "Mueva el cursor o toque el mapa."}</p>
+          <dl class="mt-3 grid gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
+            <div>
+              <dt class="text-xs font-semibold uppercase tracking-wide text-base-content/55">Latitud / Lat</dt>
+              <dd id="map-coordinate-lat" class="mt-1 break-all font-mono">—</dd>
+            </div>
+            <div>
+              <dt class="text-xs font-semibold uppercase tracking-wide text-base-content/55">Longitud / Lon</dt>
+              <dd id="map-coordinate-lng" class="mt-1 break-all font-mono">—</dd>
+            </div>
+            <div class="sm:col-span-2">
+              <dt class="text-xs font-semibold uppercase tracking-wide text-base-content/55">UTM 17N · EPSG:32617</dt>
+              <dd id="map-coordinate-utm" class="mt-1 break-words font-mono">—</dd>
+            </div>
+          </dl>
+        </section>
+      </div>
+
+      <p id="map-status" class="mt-3 min-h-6 text-sm text-base-content/65" role="status" aria-live="polite">
+        {en ? "Loading published projects…" : "Cargando proyectos publicados…"}
+      </p>
+    </section>
+  </section>
+</MainLayout>
+
+<script>
+  import L from "leaflet";
+  import "leaflet/dist/leaflet.css";
+  import proj4 from "proj4";
+
+  proj4.defs("EPSG:32617", "+proj=utm +zone=17 +datum=WGS84 +units=m +no_defs");
+
+  const root = document.getElementById("map-explorer");
+  const projectSelect = document.getElementById("map-project") as HTMLSelectElement | null;
+  const baseFieldset = document.getElementById("map-basemaps") as HTMLFieldSetElement | null;
+  const compareToggle = document.getElementById("map-compare-toggle") as HTMLButtonElement | null;
+  const mapShell = document.getElementById("map-shell");
+  const mapElement = document.getElementById("map-canvas");
+  const mapStatus = document.getElementById("map-status");
+  const errorPanel = document.getElementById("map-load-error");
+  const errorText = document.getElementById("map-load-error-text");
+  const retryButton = document.getElementById("map-retry") as HTMLButtonElement | null;
+  const emptyPanel = document.getElementById("map-empty");
+  const selectedPanel = document.getElementById("map-selected-project");
+  const selectedTitle = document.getElementById("map-selected-title");
+  const selectedPlace = document.getElementById("map-selected-place");
+  const selectedDate = document.getElementById("map-selected-date");
+  const curtain = document.getElementById("map-curtain");
+  const curtainHandle = document.querySelector<HTMLElement>(".map-curtain-handle");
+  const curtainLabels = document.getElementById("map-curtain-labels");
+  const curtainControls = document.getElementById("map-curtain-controls");
+  const curtainRange = document.getElementById("map-curtain-range") as HTMLInputElement | null;
+  const curtainValue = document.getElementById("map-curtain-value");
+  const lineButton = document.getElementById("map-measure-line") as HTMLButtonElement | null;
+  const areaButton = document.getElementById("map-measure-area") as HTMLButtonElement | null;
+  const clearButton = document.getElementById("map-measure-clear") as HTMLButtonElement | null;
+  const finishButton = document.getElementById("map-measure-finish") as HTMLButtonElement | null;
+  const cancelButton = document.getElementById("map-measure-cancel") as HTMLButtonElement | null;
+  const measureHint = document.getElementById("map-measure-hint");
+  const measureResult = document.getElementById("map-measure-result");
+  const coordinateLat = document.getElementById("map-coordinate-lat");
+  const coordinateLng = document.getElementById("map-coordinate-lng");
+  const coordinateUtm = document.getElementById("map-coordinate-utm");
+  const en = root?.dataset.lang === "en";
+
+  const copy = en
+    ? {
+        listError: "Published maps could not be loaded. Check your connection and try again.",
+        mapError: "This map is temporarily unavailable. Choose another project or try again.",
+        loading: "Loading map…",
+        ready: "Map ready. The orthomosaic stays visible over the selected base map.",
+        noMaps: "No published maps are available yet.",
+        noCenter: "This project has no valid location to center the map.",
+        lineHint: "Tap or click points on the map, then finish the line.",
+        areaHint: "Tap or click the parcel corners, then finish the polygon.",
+        drawingLine: "Distance: {value}",
+        drawingArea: "Area: {area} · {ha} ha · Perimeter: {perimeter}",
+        needLine: "Add at least two points to measure a distance.",
+        needArea: "Add at least three points to measure an area.",
+        lineLabel: "Distance measurement",
+        areaLabel: "Area measurement",
+        readyToDraw: "Choose a tool, draw on the map, then finish.",
+        cleared: "Measurements cleared.",
+      }
+    : {
+        listError: "No se pudieron cargar los mapas publicados. Revise la conexión e inténtelo de nuevo.",
+        mapError: "Este mapa no está disponible ahora. Elija otro proyecto o vuelva a intentarlo.",
+        loading: "Cargando mapa…",
+        ready: "Mapa listo. El ortomosaico se mantiene sobre el mapa base seleccionado.",
+        noMaps: "Todavía no hay mapas publicados.",
+        noCenter: "Este proyecto no tiene una ubicación válida para centrar el mapa.",
+        lineHint: "Toque o haga clic en los puntos; después termine la línea.",
+        areaHint: "Toque o haga clic en las esquinas; después termine el polígono.",
+        drawingLine: "Distancia: {value}",
+        drawingArea: "Área: {area} · {ha} ha · Perímetro: {perimeter}",
+        needLine: "Agregue por lo menos dos puntos para medir una distancia.",
+        needArea: "Agregue por lo menos tres puntos para medir un área.",
+        lineLabel: "Medición de distancia",
+        areaLabel: "Medición de área",
+        readyToDraw: "Elija una herramienta, dibuje en el mapa y termine.",
+        cleared: "Se borraron las mediciones.",
+      };
+
+  const numberFormat = new Intl.NumberFormat(en ? "en-US" : "es-PA", { maximumFractionDigits: 2 });
+  const baseLayers = {
+    satellite: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 23,
+      maxNativeZoom: 19,
+      attribution: 'Source: <a href="https://www.esri.com/" target="_blank" rel="noopener">Esri</a>',
+    }),
+    streets: L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 23,
+      maxNativeZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>',
+    }),
+  };
+
+  const maps = [] as any[];
+  let map: L.Map | null = null;
+  let currentBase: L.TileLayer | null = null;
+  let currentOrtho: L.TileLayer | null = null;
+  let measurementGroup: L.FeatureGroup | null = null;
+  let drawingPointsGroup: L.FeatureGroup | null = null;
+  let previewLayer: L.Polyline | L.Polygon | null = null;
+  let drawingPoints: L.LatLng[] = [];
+  let selectedMap: any = null;
+  let compareActive = false;
+  let loadSequence = 0;
+  let drawingMode: "Line" | "Polygon" | null = null;
+  let curtainPointer: number | null = null;
+  let restoreMapDragging = false;
+
+  function setStatus(message: string) {
+    if (mapStatus) mapStatus.textContent = message;
+  }
+
+  function setError(message: string | null) {
+    if (!errorPanel || !errorText) return;
+    errorPanel.classList.toggle("hidden", !message);
+    errorText.textContent = message || "";
+  }
+
+  function setDrawButtonsEnabled(enabled: boolean) {
+    if (lineButton) lineButton.disabled = !enabled;
+    if (areaButton) areaButton.disabled = !enabled;
+    if (clearButton) clearButton.disabled = !enabled;
+    if (compareToggle) compareToggle.disabled = !enabled;
+  }
+
+  function formatDistance(meters: number): string {
+    return meters >= 1000
+      ? `${numberFormat.format(meters / 1000)} km`
+      : `${numberFormat.format(meters)} m`;
+  }
+
+  function getPoints(layer: L.Polyline | L.Polygon): L.LatLng[] {
+    const raw = layer.getLatLngs() as L.LatLng[] | L.LatLng[][];
+    return Array.isArray(raw[0]) ? raw[0] as L.LatLng[] : raw as L.LatLng[];
+  }
+
+  function lineLength(points: L.LatLng[]): number {
+    if (!map) return 0;
+    let total = 0;
+    for (let index = 0; index < points.length - 1; index++) total += map.distance(points[index], points[index + 1]);
+    return total;
+  }
+
+  function polygonArea(points: L.LatLng[]): number {
+    if (points.length < 3) return 0;
+    const radius = 6378137;
+    let area = 0;
+    for (let index = 0; index < points.length; index++) {
+      const first = points[index];
+      const second = points[(index + 1) % points.length];
+      area += ((second.lng - first.lng) * Math.PI / 180) *
+        (2 + Math.sin(first.lat * Math.PI / 180) + Math.sin(second.lat * Math.PI / 180));
+    }
+    return Math.abs(area * radius * radius / 2);
+  }
+
+  function updateMeasurementResult(layer: L.Polyline | L.Polygon, shape: string) {
+    if (!measureResult) return;
+    const points = getPoints(layer);
+    if (shape === "Line") {
+      if (points.length < 2) {
+        measureResult.textContent = copy.needLine;
+        return;
+      }
+      const distance = formatDistance(lineLength(points));
+      measureResult.textContent = copy.drawingLine.replace("{value}", distance);
+      layer.bindTooltip(`${copy.lineLabel}: ${distance}`, { permanent: true, direction: "center" });
+      return;
+    }
+    if (shape === "Polygon") {
+      if (points.length < 3) {
+        measureResult.textContent = copy.needArea;
+        return;
+      }
+      const area = polygonArea(points);
+      const hectares = area / 10000;
+      const perimeter = lineLength([...points, points[0]]);
+      measureResult.textContent = copy.drawingArea
+        .replace("{area}", `${numberFormat.format(area)} m²`)
+        .replace("{ha}", numberFormat.format(hectares))
+        .replace("{perimeter}", formatDistance(perimeter));
+      layer.bindTooltip(`${numberFormat.format(area)} m² · ${numberFormat.format(hectares)} ha`, { permanent: true, direction: "center" });
+    }
+  }
+
+  function stopDrawing(clearResult = false) {
+    if (!map) return;
+    map.off("click", addDrawingPoint);
+    if (previewLayer) map.removeLayer(previewLayer);
+    previewLayer = null;
+    drawingPoints = [];
+    drawingPointsGroup?.clearLayers();
+    map.doubleClickZoom.enable();
+    map.getContainer().classList.remove("is-drawing");
+    drawingMode = null;
+    finishButton?.classList.add("hidden");
+    cancelButton?.classList.add("hidden");
+    lineButton?.setAttribute("aria-pressed", "false");
+    areaButton?.setAttribute("aria-pressed", "false");
+    if (measureHint) measureHint.textContent = copy.readyToDraw;
+    if (clearResult && measureResult) measureResult.textContent = "";
+  }
+
+  function renderDrawingPreview() {
+    if (!map || !drawingMode || drawingPoints.length === 0) return;
+    if (previewLayer) map.removeLayer(previewLayer);
+    const style = { color: "#1d4ed8", weight: 4, fillColor: "#3b82f6", fillOpacity: 0.18, dashArray: "8 5" };
+    previewLayer = drawingMode === "Polygon" && drawingPoints.length >= 3
+      ? L.polygon(drawingPoints, style)
+      : L.polyline(drawingPoints, style);
+    previewLayer.addTo(map);
+  }
+
+  function addDrawingPoint(event: L.LeafletMouseEvent) {
+    if (!drawingMode || !map || drawingPoints.length >= 500) return;
+    drawingPoints.push(event.latlng);
+    drawingPointsGroup?.addLayer(L.circleMarker(event.latlng, {
+      radius: 5,
+      color: "#ffffff",
+      weight: 2,
+      fillColor: "#1d4ed8",
+      fillOpacity: 1,
+    }));
+    updateCoordinates(event.latlng);
+    renderDrawingPreview();
+    if (measureHint) {
+      const count = drawingPoints.length;
+      measureHint.textContent = en
+        ? `${count} point${count === 1 ? "" : "s"} added · finish when ready.`
+        : `${count} punto${count === 1 ? "" : "s"} agregado${count === 1 ? "" : "s"} · termine cuando esté listo.`;
+    }
+  }
+
+  function finishDrawing() {
+    if (!map || !drawingMode) return;
+    const shape = drawingMode;
+    const minimum = shape === "Line" ? 2 : 3;
+    if (drawingPoints.length < minimum) {
+      if (measureResult) measureResult.textContent = shape === "Line" ? copy.needLine : copy.needArea;
+      return;
+    }
+    const style = { color: "#1d4ed8", weight: 4, fillColor: "#3b82f6", fillOpacity: 0.18 };
+    const layer = shape === "Line" ? L.polyline(drawingPoints, style) : L.polygon(drawingPoints, style);
+    measurementGroup?.addLayer(layer);
+    updateMeasurementResult(layer, shape);
+    stopDrawing(false);
+  }
+
+  function startDrawing(shape: "Line" | "Polygon") {
+    if (!map) return;
+    stopDrawing(true);
+    drawingMode = shape;
+    if (measureResult) measureResult.textContent = "";
+    map.doubleClickZoom.disable();
+    map.getContainer().classList.add("is-drawing");
+    map.on("click", addDrawingPoint);
+    lineButton?.setAttribute("aria-pressed", String(shape === "Line"));
+    areaButton?.setAttribute("aria-pressed", String(shape === "Polygon"));
+    finishButton?.classList.remove("hidden");
+    cancelButton?.classList.remove("hidden");
+    if (measureHint) measureHint.textContent = shape === "Line" ? copy.lineHint : copy.areaHint;
+  }
+
+  function updateCoordinates(point: L.LatLng) {
+    if (coordinateLat) coordinateLat.textContent = `${point.lat.toFixed(6)}°`;
+    if (coordinateLng) coordinateLng.textContent = `${point.lng.toFixed(6)}°`;
+    try {
+      const [easting, northing] = proj4("EPSG:4326", "EPSG:32617", [point.lng, point.lat]);
+      if (coordinateUtm) coordinateUtm.textContent = `E ${numberFormat.format(easting)} m · N ${numberFormat.format(northing)} m`;
+    } catch {
+      if (coordinateUtm) coordinateUtm.textContent = "—";
+    }
+  }
+
+  function updateCurtain() {
+    if (!curtainRange || !curtainValue) return;
+    const position = Number(curtainRange.value);
+    const percent = `${position}%`;
+    curtainValue.textContent = percent;
+    curtainRange.setAttribute("aria-valuetext", percent);
+    if (curtain) curtain.style.left = percent;
+    const container = currentOrtho?.getContainer();
+    if (container) container.style.clipPath = compareActive ? `inset(0 ${100 - position}% 0 0)` : "";
+  }
+
+  function setCurtainFromClientX(clientX: number) {
+    const bounds = mapElement?.getBoundingClientRect();
+    if (!bounds || bounds.width <= 0 || !curtainRange) return;
+    const position = Math.max(5, Math.min(95, Math.round(((clientX - bounds.left) / bounds.width) * 100)));
+    curtainRange.value = String(position);
+    updateCurtain();
+  }
+
+  function setCompare(active: boolean) {
+    compareActive = active && Boolean(currentOrtho);
+    curtainControls?.classList.toggle("hidden", !compareActive);
+    if (curtain) curtain.hidden = !compareActive;
+    if (curtainLabels) curtainLabels.hidden = !compareActive;
+    compareToggle?.setAttribute("aria-pressed", String(compareActive));
+    if (compareToggle) compareToggle.textContent = compareActive
+      ? (en ? "Turn off comparison" : "Desactivar cortina")
+      : (en ? "Compare with map base" : "Comparar con mapa base");
+    updateCurtain();
+  }
+
+  function updateSelectedMapDetails(project: any) {
+    if (selectedPanel) selectedPanel.hidden = false;
+    if (selectedTitle) selectedTitle.textContent = project.title || project.slug;
+    if (selectedPlace) selectedPlace.textContent = project.place || (en ? "Published project" : "Proyecto publicado");
+    if (selectedDate) {
+      const value = String(project.capture_date || "");
+      const date = /^\d{4}-\d{2}-\d{2}$/.test(value)
+        ? new Date(`${value}T12:00:00Z`).toLocaleDateString(en ? "en-US" : "es-PA", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" })
+        : value;
+      selectedDate.textContent = ` ${date || "—"}`;
+    }
+  }
+
+  function projectView(project: any, tileJson: any): { center: L.LatLngExpression; zoom: number } {
+    const center = project.center;
+    const tileCenter = Array.isArray(tileJson.center) ? tileJson.center : null;
+    const lng = Number(center?.lng ?? tileCenter?.[0]);
+    const lat = Number(center?.lat ?? tileCenter?.[1]);
+    const zoom = Number(center?.zoom ?? tileCenter?.[2] ?? 16);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(zoom)) throw new Error("LOCATION_MISSING");
+    return { center: [lat, lng], zoom: Math.max(0, Math.min(23, zoom)) };
+  }
+
+  function initializeMap(view: { center: L.LatLngExpression; zoom: number }) {
+    if (!mapElement || map) return;
+    mapShell?.removeAttribute("hidden");
+    map = L.map(mapElement, { center: view.center, zoom: view.zoom, maxZoom: 23, scrollWheelZoom: false, zoomControl: false, preferCanvas: true });
+    const orthoPane = map.createPane("explorer-orthomosaic");
+    orthoPane.style.zIndex = "450";
+    orthoPane.style.pointerEvents = "none";
+    currentBase = baseLayers.satellite.addTo(map);
+    L.control.zoom({ position: "bottomleft" }).addTo(map);
+    L.control.scale({ metric: true, imperial: false, position: "bottomright" }).addTo(map);
+    measurementGroup = L.featureGroup().addTo(map);
+    drawingPointsGroup = L.featureGroup().addTo(map);
+    map.on("mousemove", (event: L.LeafletMouseEvent) => updateCoordinates(event.latlng));
+    map.on("click", (event: L.LeafletMouseEvent) => updateCoordinates(event.latlng));
+    map.on("resize", updateCurtain);
+    window.setTimeout(() => map?.invalidateSize(), 100);
+  }
+
+  async function loadProject(project: any, updateUrl = true) {
+    const sequence = ++loadSequence;
+    setError(null);
+    setStatus(`${copy.loading} ${project.title || project.slug}…`);
+    if (projectSelect) projectSelect.disabled = true;
+
+    try {
+      const tileJsonUrl = new URL(String(project.tilejson_url));
+      if (tileJsonUrl.protocol !== "https:" || tileJsonUrl.hostname !== "tiles.ricardosanjur.com" || tileJsonUrl.pathname !== `/data/${project.id}.json`) {
+        throw new Error("INVALID_TILES_URL");
+      }
+      const tileResponse = await fetch(tileJsonUrl, { headers: { accept: "application/json" } });
+      if (!tileResponse.ok) throw new Error(`TILES_HTTP_${tileResponse.status}`);
+      const tileJson = await tileResponse.json();
+      const template = Array.isArray(tileJson.tiles) ? String(tileJson.tiles[0] || "") : "";
+      const templateUrl = new URL(template);
+      if (templateUrl.origin !== tileJsonUrl.origin || !template.includes("{z}") || !template.includes("{x}") || !template.includes("{y}")) {
+        throw new Error("INVALID_TILE_SOURCE");
+      }
+      const view = projectView(project, tileJson);
+      if (sequence !== loadSequence) return;
+
+      initializeMap(view);
+      if (!map) throw new Error("MAP_UNAVAILABLE");
+      const nextLayer = L.tileLayer(template, {
+        pane: "explorer-orthomosaic",
+        minZoom: 0,
+        minNativeZoom: Number(tileJson.minzoom ?? project.min_zoom ?? 0),
+        maxZoom: 23,
+        maxNativeZoom: Number(tileJson.maxzoom ?? project.max_zoom ?? 22),
+        attribution: "Ortomosaico · Topografía Especializada",
+        updateWhenIdle: true,
+        keepBuffer: 2,
+      });
+      nextLayer.addTo(map);
+      const previousLayer = currentOrtho;
+      currentOrtho = nextLayer;
+      previousLayer?.remove();
+      map.setMaxZoom(23);
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      map.flyTo(view.center, view.zoom, { animate: !reducedMotion, duration: reducedMotion ? 0 : 0.8 });
+      measurementGroup?.clearLayers();
+      if (measureResult) measureResult.textContent = "";
+      stopDrawing(true);
+      setCompare(compareActive);
+      updateSelectedMapDetails(project);
+      selectedMap = project;
+      if (projectSelect) projectSelect.disabled = false;
+      if (baseFieldset) baseFieldset.disabled = false;
+      setDrawButtonsEnabled(true);
+      if (updateUrl) {
+        const url = new URL(window.location.href);
+        url.searchParams.set("map", project.slug);
+        window.history.replaceState(null, "", url);
+      }
+      setStatus(copy.ready);
+    } catch (error) {
+      if (sequence !== loadSequence) return;
+      console.error("[mapas-explorar] no se pudo cargar el mapa", error);
+      if (projectSelect) projectSelect.disabled = false;
+      if (projectSelect && selectedMap) projectSelect.value = selectedMap.slug;
+      setStatus("");
+      setError(error instanceof Error && error.message === "LOCATION_MISSING" ? copy.noCenter : copy.mapError);
+    }
+  }
+
+  async function loadCatalog() {
+    if (!projectSelect) return;
+    setError(null);
+    setStatus(en ? "Loading published projects…" : "Cargando proyectos publicados…");
+    projectSelect.disabled = true;
+    if (retryButton) retryButton.disabled = true;
+
+    try {
+      const records: any[] = [];
+      let offset = 0;
+      let hasMore = true;
+      let pages = 0;
+      while (hasMore && pages < 20) {
+        const response = await fetch(`/api/mapas?limit=24&offset=${offset}`, { headers: { accept: "application/json" } });
+        if (!response.ok) throw new Error(`CATALOG_HTTP_${response.status}`);
+        const payload = await response.json();
+        const page = Array.isArray(payload.data) ? payload.data : [];
+        records.push(...page);
+        offset += page.length;
+        hasMore = Boolean(payload.meta?.has_more) && page.length > 0;
+        pages++;
+      }
+      if (records.length === 0) {
+        emptyPanel?.classList.remove("hidden");
+        setStatus(copy.noMaps);
+        if (retryButton) retryButton.disabled = false;
+        return;
+      }
+      maps.splice(0, maps.length, ...records);
+      projectSelect.replaceChildren();
+      for (const project of maps) {
+        const option = document.createElement("option");
+        option.value = String(project.slug);
+        option.textContent = `${String(project.title || project.slug)} · ${String(project.place || "")}`.trim();
+        projectSelect.append(option);
+      }
+      projectSelect.disabled = false;
+      if (retryButton) retryButton.disabled = false;
+
+      const requestedSlug = new URLSearchParams(window.location.search).get("map");
+      const first = maps.find((project) => project.slug === requestedSlug) || maps[0];
+      projectSelect.value = first.slug;
+      await loadProject(first, true);
+      emptyPanel?.classList.add("hidden");
+    } catch (error) {
+      console.error("[mapas-explorar] no se pudo cargar el catálogo", error);
+      setStatus("");
+      setError(copy.listError);
+      if (projectSelect) projectSelect.disabled = true;
+      if (retryButton) retryButton.disabled = false;
+    }
+  }
+
+  projectSelect?.addEventListener("change", () => {
+    const next = maps.find((project) => project.slug === projectSelect.value);
+    if (next) void loadProject(next);
+  });
+  document.querySelectorAll<HTMLButtonElement>("[data-basemap]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (!map) return;
+      const name = button.dataset.basemap === "streets" ? "streets" : "satellite";
+      if (currentBase) map.removeLayer(currentBase);
+      currentBase = baseLayers[name].addTo(map);
+      document.querySelectorAll<HTMLButtonElement>("[data-basemap]").forEach((candidate) => {
+        const active = candidate === button;
+        candidate.setAttribute("aria-pressed", String(active));
+        candidate.classList.toggle("btn-primary", active);
+        candidate.classList.toggle("btn-outline", !active);
+      });
+    });
+  });
+  compareToggle?.addEventListener("click", () => setCompare(!compareActive));
+  curtainRange?.addEventListener("input", updateCurtain);
+  curtainHandle?.addEventListener("pointerdown", (event: PointerEvent) => {
+    if (!compareActive) return;
+    event.preventDefault();
+    event.stopPropagation();
+    curtainPointer = event.pointerId;
+    restoreMapDragging = Boolean(map?.dragging.enabled());
+    if (restoreMapDragging) map?.dragging.disable();
+    curtainHandle.setPointerCapture(event.pointerId);
+    setCurtainFromClientX(event.clientX);
+  });
+  curtainHandle?.addEventListener("pointermove", (event: PointerEvent) => {
+    if (curtainPointer !== event.pointerId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setCurtainFromClientX(event.clientX);
+  });
+  const stopCurtainDrag = (event: PointerEvent) => {
+    if (curtainPointer !== event.pointerId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    curtainPointer = null;
+    if (restoreMapDragging) map?.dragging.enable();
+    restoreMapDragging = false;
+    if (curtainHandle?.hasPointerCapture(event.pointerId)) curtainHandle.releasePointerCapture(event.pointerId);
+  };
+  curtainHandle?.addEventListener("pointerup", stopCurtainDrag);
+  curtainHandle?.addEventListener("pointercancel", stopCurtainDrag);
+  lineButton?.addEventListener("click", () => startDrawing("Line"));
+  areaButton?.addEventListener("click", () => startDrawing("Polygon"));
+  finishButton?.addEventListener("click", () => finishDrawing());
+  cancelButton?.addEventListener("click", () => stopDrawing(true));
+  clearButton?.addEventListener("click", () => {
+    stopDrawing(true);
+    measurementGroup?.clearLayers();
+    if (measureResult) measureResult.textContent = copy.cleared;
+  });
+  retryButton?.addEventListener("click", () => void loadCatalog());
+
+  setDrawButtonsEnabled(false);
+  void loadCatalog();
+</script>
+
+<style>
+  .map-shell { isolation: isolate; }
+  .map-canvas { position: relative; width: 100%; height: min(68vh, 760px); min-height: 420px; background: #e8edf5; }
+  .map-curtain { position: absolute; z-index: 700; top: 0; bottom: 0; width: 2px; transform: translateX(-1px); background: #fff; box-shadow: 0 0 0 1px rgb(15 23 42 / 18%); pointer-events: none; }
+  .map-curtain-handle { position: absolute; top: 50%; left: 50%; display: flex; width: 38px; height: 46px; align-items: center; justify-content: center; gap: 3px; transform: translate(-50%, -50%); border: 2px solid #fff; border-radius: 999px; background: #1d4ed8; box-shadow: 0 2px 12px rgb(15 23 42 / 30%); cursor: ew-resize; pointer-events: auto; touch-action: none; }
+  .map-curtain-handle span { width: 2px; height: 14px; border-radius: 999px; background: #fff; }
+  .map-curtain-labels { position: absolute; z-index: 650; top: 12px; right: 12px; left: 12px; display: flex; justify-content: space-between; pointer-events: none; }
+  .map-curtain-labels span { padding: 5px 8px; border: 1px solid rgb(255 255 255 / 70%); border-radius: 999px; background: rgb(255 255 255 / 92%); color: #172554; font: 700 10px/1.2 ui-monospace, monospace; letter-spacing: .08em; }
+  :global(.leaflet-container) { font: inherit; }
+  :global(.leaflet-control-zoom a), :global(.leaflet-touch .leaflet-control-zoom a) { width: 44px; height: 44px; line-height: 42px; font-size: 22px; }
+  :global(.leaflet-control-attribution) { max-width: min(82vw, 440px); white-space: normal; line-height: 1.35; }
+  .map-canvas.is-drawing { cursor: crosshair; }
+  @media (max-width: 640px) {
+    .map-canvas { height: 62vh; min-height: 390px; }
+    .map-curtain-labels { top: 8px; right: 8px; left: 8px; }
+    .map-curtain-labels span { font-size: 9px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .map-curtain-handle { transition: none; }
+  }
+</style>
