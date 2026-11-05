@@ -34,20 +34,70 @@ const galleryPath = es ? "/mapas/" : "/en/mapas/";
       </p>
     </div>
 
-    <div class="mt-7 overflow-hidden rounded-2xl border border-base-300 bg-[#e8edf5] shadow-xl shadow-black/10">
+    <div class="relative mt-7 overflow-hidden rounded-2xl border border-base-300 bg-[#e8edf5] shadow-xl shadow-black/10">
       <div id="ortomosaico-map" class="h-[62vh] min-h-[380px] w-full sm:h-[68vh] sm:min-h-[500px]" data-slug="__MAPA_SLUG__" role="application" aria-label={es ? "Visor interactivo del ortomosaico" : "Interactive orthomosaic viewer"}></div>
     </div>
     <p id="ortomosaico-status" class="mt-3 min-h-6 text-base text-base-content/65" role="status" aria-live="polite">
       {es ? "Cargando el visor…" : "Loading the map viewer…"}
     </p>
     <p class="mt-2 text-sm leading-6 text-base-content/50">
-      {es ? "Arrastre para explorar y use + o − para acercar. Abra el selector de capas para elegir calles o satélite; el ortomosaico se muestra encima." : "Drag to explore and use + or − to zoom. Open the layer selector to choose streets or satellite; the orthomosaic stays on top."}
+      {es ? "Arrastre para explorar y use + o − para acercar. Cambie calles o satélite con los botones; compare y mida sin guardar sus anotaciones." : "Drag to explore and use + or − to zoom. Switch between streets and satellite with the buttons; compare and measure without saving annotations."}
     </p>
+
+    <section class="mt-4 grid gap-4 xl:grid-cols-[0.9fr_1.1fr]" aria-label={es ? "Herramientas del mapa" : "Map tools"}>
+      <section class="min-w-0 rounded-2xl border border-base-300 bg-base-100 p-4 sm:p-5" aria-labelledby="map-detail-compare-heading">
+        <h2 id="map-detail-compare-heading" class="font-display text-xl font-bold">{es ? "Explorar y comparar" : "Explore and compare"}</h2>
+        <p class="mt-1 text-sm leading-6 text-base-content/65">{es ? "Cambia el mapa base o compara el ortomosaico con la imagen que hay debajo." : "Change the base map or compare the orthomosaic with the imagery beneath it."}</p>
+        <fieldset id="map-detail-basemaps" disabled class="mt-4 min-w-0">
+          <legend class="mb-2 text-sm font-semibold">{es ? "Mapa base" : "Base map"}</legend>
+          <div class="grid grid-cols-2 gap-2">
+            <button id="map-detail-basemap-satellite" type="button" data-map-detail-basemap="satellite" aria-pressed="true" disabled class="btn btn-primary min-h-12 text-sm">{es ? "Satélite" : "Satellite"}</button>
+            <button id="map-detail-basemap-streets" type="button" data-map-detail-basemap="streets" aria-pressed="false" disabled class="btn btn-outline min-h-12 text-sm">{es ? "Calles" : "Streets"}</button>
+          </div>
+        </fieldset>
+        <button id="map-detail-compare-toggle" type="button" aria-pressed="false" disabled class="btn btn-outline mt-3 min-h-12 w-full">{es ? "Comparar ortomosaico" : "Compare orthomosaic"}</button>
+        <div id="map-detail-curtain-controls" hidden class="mt-3 rounded-xl border border-base-300 bg-base-100 px-4 py-3">
+          <label for="map-detail-curtain-range" class="block text-sm font-semibold">{es ? "Posición de la comparación" : "Comparison position"}</label>
+          <input id="map-detail-curtain-range" type="range" min="0" max="100" value="50" disabled class="range range-primary mt-2 w-full" aria-label={es ? "Mover la cortina de comparación" : "Move the comparison curtain"} />
+          <p class="mt-1 text-xs text-base-content/60">{es ? "Izquierda: ortomosaico · derecha: mapa base" : "Left: orthomosaic · right: base map"}</p>
+        </div>
+      </section>
+
+      <section class="min-w-0 rounded-2xl border border-base-300 bg-base-100 p-4 sm:p-5" aria-labelledby="map-detail-measure-heading">
+        <div class="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 id="map-detail-measure-heading" class="font-display text-xl font-bold">{es ? "Medir" : "Measure"}</h2>
+          <p id="map-detail-measure-hint" class="text-sm text-base-content/60" role="status" aria-live="polite">{es ? "Elija una herramienta, marque puntos y termine." : "Choose a tool, mark points, then finish."}</p>
+        </div>
+        <p class="mt-1 text-xs text-base-content/55">{es ? "Cálculos aproximados; se quedan en este navegador y no se guardan." : "Approximate measurements; they stay in this browser and are not saved."}</p>
+        <div class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <button id="map-detail-measure-distance" type="button" aria-pressed="false" disabled class="btn btn-outline min-h-12 text-sm">{es ? "Distancia" : "Distance"}</button>
+          <button id="map-detail-measure-area" type="button" aria-pressed="false" disabled class="btn btn-outline min-h-12 text-sm">{es ? "Área" : "Area"}</button>
+          <button id="map-detail-measure-finish" type="button" disabled hidden class="btn btn-primary min-h-12 text-sm">{es ? "Terminar" : "Finish"}</button>
+          <button id="map-detail-measure-cancel" type="button" disabled hidden class="btn btn-ghost min-h-12 text-sm">{es ? "Cancelar" : "Cancel"}</button>
+        </div>
+        <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
+          <p id="map-detail-measure-result" class="min-h-6 text-sm font-semibold text-primary" role="status" aria-live="polite"></p>
+          <button id="map-detail-measure-clear" type="button" disabled class="btn btn-ghost btn-sm min-h-11">{es ? "Borrar mediciones" : "Clear measurements"}</button>
+        </div>
+        <div class="mt-3 border-t border-base-300 pt-3">
+          <h3 class="text-sm font-semibold">{es ? "Coordenadas del punto" : "Point coordinates"}</h3>
+          <p class="mt-1 text-xs text-base-content/60">{es ? "Mueva el cursor o toque el mapa." : "Move over or tap the map."}</p>
+          <dl class="mt-2 grid gap-2 text-sm sm:grid-cols-3">
+            <div><dt class="text-xs font-semibold uppercase tracking-wide text-base-content/55">Latitud / Lat</dt><dd id="map-detail-coordinate-lat" class="mt-1 break-all font-mono">—</dd></div>
+            <div><dt class="text-xs font-semibold uppercase tracking-wide text-base-content/55">Longitud / Lon</dt><dd id="map-detail-coordinate-lng" class="mt-1 break-all font-mono">—</dd></div>
+            <div><dt class="text-xs font-semibold uppercase tracking-wide text-base-content/55">UTM 17N · EPSG:32617</dt><dd id="map-detail-coordinate-utm" class="mt-1 break-all font-mono">—</dd></div>
+          </dl>
+        </div>
+      </section>
+    </section>
   </section>
 
   <script>
     import L from "leaflet";
     import "leaflet/dist/leaflet.css";
+    import proj4 from "proj4";
+
+    proj4.defs("EPSG:32617", "+proj=utm +zone=17 +datum=WGS84 +units=m +no_defs");
 
     const container = document.getElementById("ortomosaico-map") as HTMLElement | null;
     const status = document.getElementById("ortomosaico-status");
@@ -104,14 +154,269 @@ const galleryPath = es ? "/mapas/" : "/en/mapas/";
         });
         satellite.addTo(map);
         ortho.addTo(map);
-        const baseLayers = en
-          ? { "Street map": streets, "Satellite": satellite }
-          : { "Mapa de calles": streets, "Satélite": satellite };
         const overlays = en ? { "Orthomosaic": ortho } : { "Ortomosaico": ortho };
-        const layersControl = L.control.layers(baseLayers, overlays, { collapsed: true }).addTo(map);
+        const layersControl = L.control.layers({}, overlays, { collapsed: true }).addTo(map);
         const layersButton = layersControl.getContainer()?.querySelector(".leaflet-control-layers-toggle");
         layersButton?.setAttribute("aria-label", en ? "Choose map layers" : "Elegir capas del mapa");
         layersButton?.setAttribute("title", en ? "Choose map layers" : "Elegir capas del mapa");
+
+        let currentBase: L.TileLayer = satellite;
+        const baseFieldset = document.getElementById("map-detail-basemaps") as HTMLFieldSetElement | null;
+        const baseButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-map-detail-basemap]"));
+        const compareButton = document.getElementById("map-detail-compare-toggle") as HTMLButtonElement | null;
+        const curtainControls = document.getElementById("map-detail-curtain-controls");
+        const curtainRange = document.getElementById("map-detail-curtain-range") as HTMLInputElement | null;
+        let compareActive = false;
+
+        const curtain = document.createElement("div");
+        curtain.className = "map-detail-curtain-overlay";
+        curtain.hidden = true;
+        curtain.setAttribute("aria-hidden", "true");
+        const curtainLabels = document.createElement("div");
+        curtainLabels.className = "map-detail-curtain-labels";
+        const leftLabel = document.createElement("span");
+        leftLabel.textContent = en ? "Orthomosaic" : "Ortomosaico";
+        const rightLabel = document.createElement("span");
+        rightLabel.textContent = en ? "Base map" : "Mapa base";
+        curtainLabels.append(leftLabel, rightLabel);
+        const curtainDivider = document.createElement("span");
+        curtainDivider.className = "map-detail-curtain-divider";
+        const curtainHandle = document.createElement("span");
+        curtainHandle.className = "map-detail-curtain-handle";
+        curtainHandle.append(document.createElement("span"), document.createElement("span"));
+        curtain.append(curtainLabels, curtainDivider, curtainHandle);
+        container.append(curtain);
+
+        function updateCurtain() {
+          const position = Math.min(100, Math.max(0, Number(curtainRange?.value ?? 50)));
+          const layerContainer = ortho.getContainer();
+          if (layerContainer) {
+            if (compareActive) layerContainer.style.clipPath = `inset(0 ${100 - position}% 0 0)`;
+            else layerContainer.style.removeProperty("clip-path");
+          }
+          curtainDivider.style.left = `${position}%`;
+          curtainHandle.style.left = `${position}%`;
+        }
+
+        function setCompare(active: boolean) {
+          compareActive = active && map.hasLayer(ortho);
+          curtain.hidden = !compareActive;
+          curtain.setAttribute("aria-hidden", String(!compareActive));
+          if (curtainControls) curtainControls.hidden = !compareActive;
+          if (curtainRange) curtainRange.disabled = !compareActive;
+          if (compareButton) {
+            compareButton.setAttribute("aria-pressed", String(compareActive));
+            compareButton.textContent = compareActive
+              ? (en ? "Close comparison" : "Cerrar comparación")
+              : (en ? "Compare orthomosaic" : "Comparar ortomosaico");
+            compareButton.classList.toggle("btn-primary", compareActive);
+            compareButton.classList.toggle("btn-outline", !compareActive);
+          }
+          updateCurtain();
+        }
+
+        compareButton?.addEventListener("click", () => {
+          if (!map.hasLayer(ortho)) map.addLayer(ortho);
+          setCompare(!compareActive);
+        });
+        curtainRange?.addEventListener("input", updateCurtain);
+        map.on("move zoom resize", updateCurtain);
+        map.on("overlayadd", (event: any) => { if (event.layer === ortho && compareActive) updateCurtain(); });
+        map.on("overlayremove", (event: any) => { if (event.layer === ortho && compareActive) setCompare(false); });
+
+        for (const button of baseButtons) {
+          button.disabled = false;
+          button.addEventListener("click", () => {
+            const name = button.dataset.mapDetailBasemap === "streets" ? "streets" : "satellite";
+            const nextBase = name === "streets" ? streets : satellite;
+            if (currentBase !== nextBase) {
+              if (map.hasLayer(currentBase)) map.removeLayer(currentBase);
+              currentBase = nextBase;
+              currentBase.addTo(map);
+            }
+            for (const candidate of baseButtons) {
+              const active = candidate === button;
+              candidate.setAttribute("aria-pressed", String(active));
+              candidate.classList.toggle("btn-primary", active);
+              candidate.classList.toggle("btn-outline", !active);
+            }
+            updateCurtain();
+          });
+        }
+        if (baseFieldset) baseFieldset.disabled = false;
+        if (compareButton) compareButton.disabled = false;
+
+        const numberFormat = new Intl.NumberFormat(en ? "en-US" : "es-PA", { maximumFractionDigits: 2 });
+        const lineButton = document.getElementById("map-detail-measure-distance") as HTMLButtonElement | null;
+        const areaButton = document.getElementById("map-detail-measure-area") as HTMLButtonElement | null;
+        const finishButton = document.getElementById("map-detail-measure-finish") as HTMLButtonElement | null;
+        const cancelButton = document.getElementById("map-detail-measure-cancel") as HTMLButtonElement | null;
+        const clearButton = document.getElementById("map-detail-measure-clear") as HTMLButtonElement | null;
+        const measureHint = document.getElementById("map-detail-measure-hint");
+        const measureResult = document.getElementById("map-detail-measure-result");
+        const coordinateLat = document.getElementById("map-detail-coordinate-lat");
+        const coordinateLng = document.getElementById("map-detail-coordinate-lng");
+        const coordinateUtm = document.getElementById("map-detail-coordinate-utm");
+        const measurementPane = map.createPane("map-detail-measurements");
+        measurementPane.style.zIndex = "460";
+        measurementPane.style.pointerEvents = "none";
+        const measurements = L.featureGroup().addTo(map);
+        const drawingPreview = L.featureGroup().addTo(map);
+        let coordinateMarker: L.CircleMarker | null = null;
+        let drawingMode: "line" | "area" | null = null;
+        let drawingPoints: L.LatLng[] = [];
+
+        function lineLength(points: L.LatLng[]): number {
+          return points.reduce((total, point, index) => index ? total + point.distanceTo(points[index - 1]) : total, 0);
+        }
+
+        function formatDistance(value: number): string {
+          return value < 1000 ? `${numberFormat.format(value)} m` : `${numberFormat.format(value / 1000)} km`;
+        }
+
+        function polygonArea(points: L.LatLng[]): number {
+          if (points.length < 3) return 0;
+          const radius = 6378137;
+          let area = 0;
+          for (let index = 0; index < points.length; index++) {
+            const first = points[index];
+            const second = points[(index + 1) % points.length];
+            area += ((second.lng - first.lng) * Math.PI / 180) *
+              (2 + Math.sin(first.lat * Math.PI / 180) + Math.sin(second.lat * Math.PI / 180));
+          }
+          return Math.abs(area * radius * radius / 2);
+        }
+
+        function updateCoordinates(point: L.LatLng) {
+          if (coordinateLat) coordinateLat.textContent = `${point.lat.toFixed(6)}°`;
+          if (coordinateLng) coordinateLng.textContent = `${point.lng.toFixed(6)}°`;
+          if (coordinateUtm) {
+            const [easting, northing] = proj4("EPSG:4326", "EPSG:32617", [point.lng, point.lat]);
+            coordinateUtm.textContent = `${numberFormat.format(easting)} m E · ${numberFormat.format(northing)} m N`;
+          }
+        }
+
+        function renderDrawingPreview() {
+          drawingPreview.clearLayers();
+          for (const point of drawingPoints) {
+            drawingPreview.addLayer(L.circleMarker(point, {
+              pane: "map-detail-measurements", radius: 5, color: "#ffffff", weight: 2,
+              fillColor: "#1d4ed8", fillOpacity: 1,
+            }));
+          }
+          if (drawingPoints.length >= 2) {
+            const style = { pane: "map-detail-measurements", color: "#1d4ed8", weight: 4, fillColor: "#3b82f6", fillOpacity: 0.18 };
+            const preview = drawingMode === "area" && drawingPoints.length >= 3
+              ? L.polygon(drawingPoints, style)
+              : L.polyline(drawingPoints, style);
+            drawingPreview.addLayer(preview);
+            const distance = formatDistance(lineLength(drawingPoints));
+            if (measureResult && drawingMode === "line") measureResult.textContent = en ? `Distance: ${distance}` : `Distancia: ${distance}`;
+            if (measureResult && drawingMode === "area" && drawingPoints.length >= 3) {
+              const area = polygonArea(drawingPoints);
+              const perimeter = formatDistance(lineLength([...drawingPoints, drawingPoints[0]]));
+              measureResult.textContent = en
+                ? `Area: ${numberFormat.format(area)} m² · ${numberFormat.format(area / 10000)} ha · Perimeter: ${perimeter}`
+                : `Área: ${numberFormat.format(area)} m² · ${numberFormat.format(area / 10000)} ha · Perímetro: ${perimeter}`;
+            }
+          }
+        }
+
+        function stopDrawing(clearResult: boolean) {
+          if (drawingMode) map.doubleClickZoom.enable();
+          drawingMode = null;
+          drawingPoints = [];
+          drawingPreview.clearLayers();
+          if (clearResult && measureResult) measureResult.textContent = "";
+          if (lineButton) lineButton.setAttribute("aria-pressed", "false");
+          if (areaButton) areaButton.setAttribute("aria-pressed", "false");
+          if (finishButton) { finishButton.hidden = true; finishButton.disabled = true; }
+          if (cancelButton) { cancelButton.hidden = true; cancelButton.disabled = true; }
+          map.getContainer().style.cursor = "";
+        }
+
+        function startDrawing(shape: "line" | "area") {
+          coordinateMarker?.remove();
+          coordinateMarker = null;
+          stopDrawing(true);
+          drawingMode = shape;
+          map.doubleClickZoom.disable();
+          map.getContainer().style.cursor = "crosshair";
+          if (lineButton) lineButton.setAttribute("aria-pressed", String(shape === "line"));
+          if (areaButton) areaButton.setAttribute("aria-pressed", String(shape === "area"));
+          if (finishButton) { finishButton.hidden = false; finishButton.disabled = false; }
+          if (cancelButton) { cancelButton.hidden = false; cancelButton.disabled = false; }
+          if (measureHint) measureHint.textContent = en
+            ? (shape === "line" ? "Tap the map to add points; finish when ready." : "Tap the map to outline an area; finish when ready.")
+            : (shape === "line" ? "Toque el mapa para agregar puntos y termine al completar." : "Toque el mapa para dibujar el área y termine al completar.");
+        }
+
+        function addMapPoint(event: L.LeafletMouseEvent) {
+          updateCoordinates(event.latlng);
+          if (!drawingMode) {
+            if (!coordinateMarker) coordinateMarker = L.circleMarker(event.latlng, {
+              pane: "map-detail-measurements", radius: 5, color: "#ffffff", weight: 2,
+              fillColor: "#1d4ed8", fillOpacity: 1,
+            }).addTo(map);
+            else coordinateMarker.setLatLng(event.latlng);
+            return;
+          }
+          drawingPoints.push(event.latlng);
+          renderDrawingPreview();
+          if (measureHint) measureHint.textContent = en
+            ? `${drawingPoints.length} point${drawingPoints.length === 1 ? "" : "s"} added · finish when ready.`
+            : `${drawingPoints.length} punto${drawingPoints.length === 1 ? "" : "s"} agregado${drawingPoints.length === 1 ? "" : "s"} · termine cuando esté listo.`;
+        }
+
+        function finishDrawing() {
+          if (!drawingMode) return;
+          const shape = drawingMode;
+          const minimum = shape === "line" ? 2 : 3;
+          if (drawingPoints.length < minimum) {
+            if (measureHint) measureHint.textContent = en
+              ? (shape === "line" ? "Add at least two points first." : "Add at least three points first.")
+              : (shape === "line" ? "Agregue por lo menos dos puntos primero." : "Agregue por lo menos tres puntos primero.");
+            return;
+          }
+          const points = [...drawingPoints];
+          const style = { pane: "map-detail-measurements", color: "#1d4ed8", weight: 4, fillColor: "#3b82f6", fillOpacity: 0.18 };
+          const layer = shape === "line" ? L.polyline(points, style) : L.polygon(points, style);
+          if (shape === "line") {
+            const distance = formatDistance(lineLength(points));
+            layer.bindTooltip(`${en ? "Distance" : "Distancia"}: ${distance}`, { permanent: true, direction: "center" });
+            if (measureResult) measureResult.textContent = en ? `Distance: ${distance}` : `Distancia: ${distance}`;
+          } else {
+            const area = polygonArea(points);
+            const perimeter = formatDistance(lineLength([...points, points[0]]));
+            const areaText = `${numberFormat.format(area)} m² · ${numberFormat.format(area / 10000)} ha`;
+            layer.bindTooltip(`${en ? "Area" : "Área"}: ${areaText}`, { permanent: true, direction: "center" });
+            if (measureResult) measureResult.textContent = en
+              ? `Area: ${areaText} · Perimeter: ${perimeter}`
+              : `Área: ${areaText} · Perímetro: ${perimeter}`;
+          }
+          measurements.addLayer(layer);
+          stopDrawing(false);
+          if (measureHint) measureHint.textContent = en ? "Measurement complete." : "Medición completada.";
+        }
+
+        lineButton?.addEventListener("click", () => startDrawing("line"));
+        areaButton?.addEventListener("click", () => startDrawing("area"));
+        finishButton?.addEventListener("click", finishDrawing);
+        cancelButton?.addEventListener("click", () => {
+          stopDrawing(true);
+          if (measureHint) measureHint.textContent = en ? "Drawing cancelled." : "Dibujo cancelado.";
+        });
+        clearButton?.addEventListener("click", () => {
+          stopDrawing(true);
+          measurements.clearLayers();
+          coordinateMarker?.remove();
+          coordinateMarker = null;
+          if (measureHint) measureHint.textContent = en ? "Measurements cleared." : "Se borraron las mediciones.";
+        });
+        map.on("mousemove", (event: L.LeafletMouseEvent) => updateCoordinates(event.latlng));
+        map.on("click", addMapPoint);
+        for (const control of [lineButton, areaButton, clearButton]) if (control) control.disabled = false;
+
         const bounds = Array.isArray(tileJson.bounds) ? tileJson.bounds.map(Number) : [];
         if (bounds.length === 4 && bounds.every(Number.isFinite) && bounds[0] < bounds[2] && bounds[1] < bounds[3]) {
           map.fitBounds([[bounds[1], bounds[0]], [bounds[3], bounds[2]]], { padding: [18, 18], maxZoom: Number(tileJson.maxzoom ?? mapa.max_zoom ?? 22) });
@@ -125,8 +430,8 @@ const galleryPath = es ? "/mapas/" : "/en/mapas/";
         }
         window.setTimeout(() => map.invalidateSize(), 150);
         setStatus(en
-          ? "Orthomosaic ready. Switch between the street and satellite base maps; the orthomosaic stays on top."
-          : "Ortomosaico listo. Cambie entre calles y satélite; el ortomosaico se mantiene encima.");
+          ? "Orthomosaic ready. Use the tools below to switch base maps, compare, and measure."
+          : "Ortomosaico listo. Use las herramientas de abajo para cambiar el mapa base, comparar y medir.");
       } catch (error) {
         const code = error instanceof Error ? error.message : "";
         const messages: Record<string, { es: string; en: string }> = {
@@ -183,5 +488,77 @@ const galleryPath = es ? "/mapas/" : "/en/mapas/";
     max-width: min(82vw, 420px);
     white-space: normal;
     line-height: 1.35;
+  }
+
+  :global(.map-detail-curtain-overlay) {
+    position: absolute;
+    z-index: 650;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  :global(.map-detail-curtain-overlay[hidden]) {
+    display: none;
+  }
+
+  :global(.map-detail-curtain-labels) {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    left: 12px;
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  :global(.map-detail-curtain-labels span) {
+    padding: 5px 9px;
+    border: 1px solid rgb(255 255 255 / 85%);
+    border-radius: 999px;
+    background: rgb(255 255 255 / 94%);
+    color: #0f172a;
+    font-size: 12px;
+    font-weight: 700;
+    box-shadow: 0 1px 6px rgb(15 23 42 / 18%);
+  }
+
+  :global(.map-detail-curtain-divider) {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 2px;
+    transform: translateX(-50%);
+    background: #fff;
+    box-shadow: 0 0 5px rgb(15 23 42 / 65%);
+  }
+
+  :global(.map-detail-curtain-handle) {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    display: flex;
+    width: 38px;
+    height: 46px;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    transform: translate(-50%, -50%);
+    border: 2px solid #fff;
+    border-radius: 999px;
+    background: #1d4ed8;
+    box-shadow: 0 2px 12px rgb(15 23 42 / 30%);
+  }
+
+  :global(.map-detail-curtain-handle span) {
+    width: 2px;
+    height: 14px;
+    border-radius: 999px;
+    background: #fff;
+  }
+
+  @media (max-width: 480px) {
+    :global(.map-detail-curtain-labels) { top: 8px; right: 8px; left: 8px; }
+    :global(.map-detail-curtain-labels span) { font-size: 10px; }
   }
 </style>

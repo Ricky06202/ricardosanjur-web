@@ -287,6 +287,7 @@ const jsonLd = { "@context": "https://schema.org", "@graph": [...graph, ...extra
         const boton = document.getElementById("wa-flotante") as HTMLAnchorElement | null;
         if (!boton) return;
         const camino = (window.location.pathname || "/").replace(/\/+$/, "") || "/";
+        const esVisorMapa = /^\/(?:en\/)?mapas\/visor(?:\/|$)/.test(camino);
         const paginas: Record<string, [string, string]> = {
           // [español, inglés]
           "/": ["la página principal", "the home page"],
@@ -315,7 +316,7 @@ const jsonLd = { "@context": "https://schema.org", "@graph": [...graph, ...extra
           // Se muestra a los 2 s (sin tapar la pantalla al entrar) y vuelve cada 5 visitas.
           const visto = Number(localStorage.getItem("wa_globo_visto") || "0");
           localStorage.setItem("wa_globo_visto", String(visto + 1));
-          if (visto % 5 === 0) setTimeout(() => globo.classList.remove("hidden"), 2000);
+          if (!esVisorMapa && visto % 5 === 0) setTimeout(() => globo.classList.remove("hidden"), 2000);
         }
         cerrar?.addEventListener("click", (e) => {
           e.preventDefault();

@@ -144,6 +144,111 @@ const pageDescription = en
         </section>
       </div>
 
+      <section id="map-cad-panel" class="mt-4 rounded-2xl border border-primary/25 bg-base-100 shadow-sm" aria-labelledby="map-cad-heading">
+        <details open>
+          <summary class="flex min-h-14 cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5">
+            <span>
+              <span id="map-cad-heading" class="block font-display text-xl font-bold">{en ? "CAD / GIS tools" : "Herramientas CAD / GIS"}</span>
+              <span class="mt-1 block text-sm text-base-content/65">{en ? "Public tools. Temporary previews and conversions; no account required." : "Herramientas públicas. Previsualizaciones y conversiones temporales; no necesitas cuenta."}</span>
+            </span>
+            <span class="rounded-full border border-primary/30 px-3 py-1 font-mono text-[11px] uppercase tracking-wide text-primary">{en ? "PUBLIC" : "PÚBLICO"}</span>
+          </summary>
+
+          <div class="grid gap-4 border-t border-base-300 p-4 sm:p-5 xl:grid-cols-2">
+            <section class="min-w-0 rounded-xl border border-base-300 bg-base-100 p-4" aria-labelledby="map-cad-overlay-heading">
+              <h3 id="map-cad-overlay-heading" class="font-display text-lg font-bold">{en ? "Overlay a CAD / GIS plan" : "Superponer un plano CAD / GIS"}</h3>
+              <p class="mt-1 text-sm leading-6 text-base-content/65">
+                {en ? "Preview a supported CAD / GIS drawing over the selected map. It is temporary and only appears in this browser." : "Superponga un plano CAD / GIS compatible sobre el mapa seleccionado. Es temporal y solo se muestra en este navegador."}
+              </p>
+              <form id="map-cad-overlay-form" class="mt-4 space-y-3">
+                <label class="block min-w-0">
+                  <span class="mb-1.5 block text-sm font-semibold">{en ? "Plan file" : "Archivo del plano"}</span>
+                  <input id="map-cad-overlay-file" type="file" accept=".dwg,.dxf,.zip,.kml,.geojson,.gpkg" class="file-input file-input-bordered min-h-12 w-full text-base" aria-describedby="map-cad-overlay-help" required />
+                </label>
+                <p id="map-cad-overlay-help" class="text-xs leading-5 text-base-content/65">
+                  {en ? "Max 25 MB. For Shapefiles, upload a ZIP containing .shp, .shx and .dbf." : "Máximo 25 MB. Para Shapefile, suba un ZIP con .shp, .shx y .dbf."}
+                </p>
+                <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_7rem]">
+                  <label class="block min-w-0">
+                    <span class="mb-1.5 block text-sm font-semibold">{en ? "Source CRS" : "CRS de origen"}</span>
+                    <select id="map-cad-source-crs" class="select select-bordered min-h-12 w-full text-base">
+                      <option value="auto">{en ? "Auto · read file metadata" : "Auto · leer del archivo"}</option>
+                      <option value="EPSG:32617">EPSG:32617 · WGS 84 / UTM 17N</option>
+                      <option value="EPSG:26717">EPSG:26717 · NAD27 / UTM 17N</option>
+                      <option value="EPSG:4326">EPSG:4326 · WGS 84</option>
+                    </select>
+                  </label>
+                  <label class="block min-w-0">
+                    <span class="mb-1.5 block text-sm font-semibold">{en ? "Color" : "Color"}</span>
+                    <input id="map-cad-color" type="color" value="#2563eb" class="input input-bordered min-h-12 w-full cursor-pointer p-1" aria-label={en ? "Overlay color" : "Color de la capa"} />
+                  </label>
+                </div>
+                <button id="map-cad-overlay-submit" type="submit" class="btn btn-primary min-h-12 w-full">{en ? "Preview on this map" : "Previsualizar en este mapa"}</button>
+                <button id="map-cad-clear-overlay" type="button" hidden class="btn btn-outline min-h-12 w-full">{en ? "Remove temporary overlay" : "Quitar superposición temporal"}</button>
+                <button id="map-cad-save-layer" type="button" hidden disabled class="btn btn-outline min-h-12 w-full">{en ? "Save this layer to the official map" : "Guardar esta capa en el mapa oficial"}</button>
+                <p id="map-cad-overlay-status" class="min-h-6 text-sm text-base-content/70" role="status" aria-live="polite"></p>
+              </form>
+              <div id="map-cad-admin-layers" hidden class="mt-4 border-t border-base-300 pt-3">
+                <h4 class="text-sm font-bold">{en ? "Saved layers for this project" : "Capas guardadas de este proyecto"}</h4>
+                <div id="map-cad-saved-layers" class="mt-2 space-y-2" aria-live="polite">
+                  <p class="text-sm text-base-content/60">{en ? "Choose a project to see saved layers." : "Elija un proyecto para ver las capas guardadas."}</p>
+                </div>
+              </div>
+            </section>
+
+            <section class="min-w-0 rounded-xl border border-base-300 bg-base-100 p-4" aria-labelledby="map-cad-media-heading">
+              <h3 id="map-cad-media-heading" class="font-display text-lg font-bold">{en ? "Convert / plot plans and documents" : "Convertir / plotear planos y documentos"}</h3>
+              <p class="mt-1 text-sm leading-6 text-base-content/65">
+                {en ? "DWG/DXF to PDF, SVG, JPG or PNG; PDF pages to JPG/PNG (a ZIP for multi-page files); GIS to KML/GeoJSON." : "DWG/DXF a PDF, SVG, JPG o PNG; páginas PDF a JPG/PNG (ZIP si tiene varias); GIS a KML/GeoJSON."}
+              </p>
+              <form id="map-cad-media-form" class="mt-4 space-y-3">
+                <label class="block min-w-0">
+                  <span class="mb-1.5 block text-sm font-semibold">{en ? "File to convert" : "Archivo a convertir"}</span>
+                  <input id="map-cad-media-file" type="file" accept=".dwg,.dxf,.pdf,.zip,.kml,.geojson,.gpkg" class="file-input file-input-bordered min-h-12 w-full text-base" required />
+                </label>
+                <div class="grid gap-3 sm:grid-cols-2">
+                  <label class="block min-w-0">
+                    <span class="mb-1.5 block text-sm font-semibold">{en ? "Output format" : "Formato de salida"}</span>
+                    <select id="map-cad-media-format" class="select select-bordered min-h-12 w-full text-base">
+                      <option value="pdf">PDF</option>
+                      <option value="jpg">JPG</option>
+                      <option value="png">PNG</option>
+                      <option value="svg">SVG</option>
+                      <option value="kml">KML</option>
+                      <option value="geojson">GeoJSON</option>
+                    </select>
+                  </label>
+                  <label class="block min-w-0">
+                    <span class="mb-1.5 block text-sm font-semibold">DPI</span>
+                    <select id="map-cad-media-dpi" class="select select-bordered min-h-12 w-full text-base">
+                      <option value="300">300</option>
+                      <option value="150">150</option>
+                    </select>
+                  </label>
+                </div>
+                <label class="block min-w-0">
+                  <span class="mb-1.5 block text-sm font-semibold">{en ? "Source CRS (for KML / GeoJSON)" : "CRS de origen (para KML / GeoJSON)"}</span>
+                  <select id="map-cad-media-crs" class="select select-bordered min-h-12 w-full text-base">
+                    <option value="auto">{en ? "Auto · read file metadata" : "Auto · leer del archivo"}</option>
+                    <option value="EPSG:32617">EPSG:32617 · WGS 84 / UTM 17N</option>
+                    <option value="EPSG:26717">EPSG:26717 · NAD27 / UTM 17N</option>
+                    <option value="EPSG:4326">EPSG:4326 · WGS 84</option>
+                  </select>
+                </label>
+                <p class="text-xs leading-5 text-base-content/65">{en ? "Maximum 25 MB and 40 PDF pages. Raster exports are limited to 150 or 300 DPI." : "Máximo 25 MB y 40 páginas PDF. Las imágenes salen a 150 o 300 DPI."}</p>
+                <button id="map-cad-media-submit" type="submit" class="btn btn-outline min-h-12 w-full">{en ? "Convert and download" : "Convertir y descargar"}</button>
+                <p id="map-cad-media-status" class="min-h-6 text-sm text-base-content/70" role="status" aria-live="polite"></p>
+              </form>
+            </section>
+          </div>
+        </details>
+        <p class="mx-4 mb-4 rounded-xl border border-warning/35 bg-warning/10 px-4 py-3 text-sm leading-relaxed text-base-content/75 sm:mx-5" role="note">
+          {en
+            ? "No account is required. Public uploads and previews are temporary: the server removes each file after conversion, and previews are not published. Limit: 25 MB, 40 PDF pages, 5 conversions per 15 minutes per connection. An administrator can separately save a layer to an official map. GeoJSON may omit unsupported CAD presentation such as 3D solids, dimensions or annotations; export PDF/SVG when visual fidelity matters. Upload only material you are authorized to use."
+            : "No necesitas cuenta. Las cargas y previsualizaciones públicas son temporales: el servidor elimina cada archivo al terminar y no publica la previsualización. Límite: 25 MB, 40 páginas PDF y 5 conversiones cada 15 minutos por conexión. Un administrador puede guardar por separado una capa en el mapa oficial. GeoJSON puede omitir elementos CAD no compatibles, como sólidos 3D, cotas o anotaciones; exporta a PDF/SVG si importa la apariencia. Sube solo material que tengas autorización para usar."}
+        </p>
+      </section>
+
       <p id="map-status" class="mt-3 min-h-6 text-sm text-base-content/65" role="status" aria-live="polite">
         {en ? "Loading published projects…" : "Cargando proyectos publicados…"}
       </p>
@@ -190,6 +295,23 @@ const pageDescription = en
   const coordinateLng = document.getElementById("map-coordinate-lng");
   const coordinateUtm = document.getElementById("map-coordinate-utm");
   const en = root?.dataset.lang === "en";
+  const cadOverlayForm = document.getElementById("map-cad-overlay-form") as HTMLFormElement | null;
+  const cadOverlayFile = document.getElementById("map-cad-overlay-file") as HTMLInputElement | null;
+  const cadSourceCrs = document.getElementById("map-cad-source-crs") as HTMLSelectElement | null;
+  const cadColor = document.getElementById("map-cad-color") as HTMLInputElement | null;
+  const cadOverlaySubmit = document.getElementById("map-cad-overlay-submit") as HTMLButtonElement | null;
+  const cadSaveLayerButton = document.getElementById("map-cad-save-layer") as HTMLButtonElement | null;
+  const cadClearOverlayButton = document.getElementById("map-cad-clear-overlay") as HTMLButtonElement | null;
+  const cadOverlayStatus = document.getElementById("map-cad-overlay-status");
+  const cadSavedLayers = document.getElementById("map-cad-saved-layers");
+  const cadAdminLayers = document.getElementById("map-cad-admin-layers");
+  const cadMediaForm = document.getElementById("map-cad-media-form") as HTMLFormElement | null;
+  const cadMediaFile = document.getElementById("map-cad-media-file") as HTMLInputElement | null;
+  const cadMediaFormat = document.getElementById("map-cad-media-format") as HTMLSelectElement | null;
+  const cadMediaDpi = document.getElementById("map-cad-media-dpi") as HTMLSelectElement | null;
+  const cadMediaCrs = document.getElementById("map-cad-media-crs") as HTMLSelectElement | null;
+  const cadMediaSubmit = document.getElementById("map-cad-media-submit") as HTMLButtonElement | null;
+  const cadMediaStatus = document.getElementById("map-cad-media-status");
 
   const copy = en
     ? {
@@ -229,6 +351,50 @@ const pageDescription = en
         cleared: "Se borraron las mediciones.",
       };
 
+  const cadText = en
+    ? {
+        serviceUnavailable: "The conversion service is temporarily unavailable.",
+        rateLimited: "Too many conversions. Try again in a few minutes.",
+        fileTooLarge: "The public file limit is 25 MB.",
+        chooseProject: "Choose a published project first.",
+        chooseFile: "Choose a file to continue.",
+        overlayWorking: "Converting a temporary preview… keep this page open.",
+        overlayAdded: (name: string, count: number) => `${name} is now overlaid (${count} features).`,
+        overlayCleared: "Temporary overlay removed from this map.",
+        layerSaved: (name: string) => `${name} was saved to the official map.`,
+        savingLayer: "Saving the layer to the official map…",
+        overlayFailed: "The plan could not be overlaid.",
+        layersLoading: "Loading saved layers…",
+        noLayers: "No saved layers for this project yet.",
+        layersFailed: "Saved layers could not be loaded.",
+        layerFailed: "That saved layer could not be loaded.",
+        mediaWorking: "Converting the file… keep this page open.",
+        mediaDone: "Conversion complete. Your download has started.",
+        mediaFailed: "The file could not be converted.",
+        sessionExpired: "Your admin session expired. Sign in again to use these tools.",
+      }
+    : {
+        serviceUnavailable: "El servicio de conversión no está disponible ahora.",
+        rateLimited: "Se alcanzó el límite de conversiones. Intente de nuevo en unos minutos.",
+        fileTooLarge: "El límite de tamaño público es 25 MB.",
+        chooseProject: "Seleccione primero un proyecto publicado.",
+        chooseFile: "Seleccione un archivo para continuar.",
+        overlayWorking: "Convirtiendo una previsualización temporal… mantenga esta página abierta.",
+        overlayAdded: (name: string, count: number) => `Se superpuso ${name} (${count} elementos).`,
+        overlayCleared: "Se quitó la superposición temporal del mapa.",
+        layerSaved: (name: string) => `${name} quedó guardado en el mapa oficial.`,
+        savingLayer: "Guardando la capa en el mapa oficial…",
+        overlayFailed: "No se pudo superponer el plano.",
+        layersLoading: "Cargando capas guardadas…",
+        noLayers: "Todavía no hay capas guardadas para este proyecto.",
+        layersFailed: "No se pudieron cargar las capas guardadas.",
+        layerFailed: "No se pudo cargar esa capa guardada.",
+        mediaWorking: "Convirtiendo el archivo… mantenga esta página abierta.",
+        mediaDone: "Conversión completa. Ya inició la descarga.",
+        mediaFailed: "No se pudo convertir el archivo.",
+        sessionExpired: "La sesión administrativa venció. Inicie sesión otra vez para usar estas herramientas.",
+      };
+
   const numberFormat = new Intl.NumberFormat(en ? "en-US" : "es-PA", { maximumFractionDigits: 2 });
   const baseLayers = {
     satellite: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
@@ -258,6 +424,9 @@ const pageDescription = en
   let drawingMode: "Line" | "Polygon" | null = null;
   let curtainPointer: number | null = null;
   let restoreMapDragging = false;
+  let cadAdminReady = false;
+  let temporaryCadOverlay: L.GeoJSON | null = null;
+  const cadOverlays = new Map<string, L.GeoJSON>();
 
   function setStatus(message: string) {
     if (mapStatus) mapStatus.textContent = message;
@@ -523,6 +692,9 @@ const pageDescription = en
     const orthoPane = map.createPane("explorer-orthomosaic");
     orthoPane.style.zIndex = "450";
     orthoPane.style.pointerEvents = "none";
+    const cadPane = map.createPane("explorer-cad");
+    cadPane.style.zIndex = "455";
+    cadPane.style.pointerEvents = "none";
     const measurementPane = map.createPane("explorer-measurements");
     measurementPane.style.zIndex = "460";
     measurementPane.style.pointerEvents = "none";
@@ -542,6 +714,7 @@ const pageDescription = en
 
   async function loadProject(project: any, updateUrl = true) {
     const sequence = ++loadSequence;
+    clearCadOverlays();
     coordinateMarker?.remove();
     coordinateMarker = null;
     setError(null);
@@ -589,6 +762,7 @@ const pageDescription = en
       setCompare(compareActive);
       updateSelectedMapDetails(project);
       selectedMap = project;
+      if (cadAdminReady) void loadSavedCadLayers(String(project.slug || ""));
       if (projectSelect) projectSelect.disabled = false;
       if (baseFieldset) baseFieldset.disabled = false;
       setDrawButtonsEnabled(true);
@@ -632,6 +806,14 @@ const pageDescription = en
       }
       if (records.length === 0) {
         emptyPanel?.classList.remove("hidden");
+        projectSelect.replaceChildren();
+        const emptyOption = document.createElement("option");
+        emptyOption.value = "";
+        emptyOption.textContent = copy.noMaps;
+        emptyOption.disabled = true;
+        emptyOption.selected = true;
+        projectSelect.append(emptyOption);
+        projectSelect.disabled = true;
         setStatus(copy.noMaps);
         if (retryButton) retryButton.disabled = false;
         return;
@@ -658,6 +840,328 @@ const pageDescription = en
       setError(copy.listError);
       if (projectSelect) projectSelect.disabled = true;
       if (retryButton) retryButton.disabled = false;
+    }
+  }
+
+  function clearTemporaryCadOverlay() {
+    temporaryCadOverlay?.remove();
+    temporaryCadOverlay = null;
+    if (cadClearOverlayButton) cadClearOverlayButton.hidden = true;
+    if (cadSaveLayerButton) {
+      cadSaveLayerButton.hidden = true;
+      cadSaveLayerButton.disabled = true;
+    }
+  }
+
+  function clearCadOverlays() {
+    clearTemporaryCadOverlay();
+    for (const layer of cadOverlays.values()) layer.remove();
+    cadOverlays.clear();
+  }
+
+  function createCadOverlay(data: any, colorValue: unknown): L.GeoJSON {
+    const color = typeof colorValue === "string" && /^#[0-9a-f]{6}$/i.test(colorValue) ? colorValue : "#2563eb";
+    return L.geoJSON(data, {
+      pane: "explorer-cad",
+      interactive: false,
+      style: { color, weight: 2, opacity: 0.95, fillColor: color, fillOpacity: 0.12 },
+      pointToLayer: (_feature, latlng) => L.circleMarker(latlng, {
+        pane: "explorer-cad",
+        radius: 5,
+        color: "#ffffff",
+        weight: 1.5,
+        fillColor: color,
+        fillOpacity: 0.95,
+        interactive: false,
+      }),
+    });
+  }
+
+  async function cadErrorMessage(response: Response, fallback: string): Promise<string> {
+    const payload = await response.json().catch(() => null);
+    const code = payload?.error?.code;
+    if (code === "PUBLIC_CAD_RATE_LIMITED") return cadText.rateLimited;
+    if (code === "PUBLIC_UPLOAD_TOO_LARGE") return cadText.fileTooLarge;
+    const message = payload?.error?.message || payload?.detail;
+    if (typeof message === "string" && message.length < 300) return message;
+    if (response.status === 401 || response.status === 403) return cadText.sessionExpired;
+    return `${fallback} (HTTP ${response.status})`;
+  }
+
+  async function toggleCadVisibility(layerId: string, visible: boolean, metadata?: any) {
+    if (!map || !selectedMap || !cadAdminReady) return;
+    const existing = cadOverlays.get(layerId);
+    if (!visible) {
+      existing?.remove();
+      return;
+    }
+    if (existing) {
+      existing.addTo(map);
+      return;
+    }
+
+    const projectId = encodeURIComponent(String(selectedMap.slug || ""));
+    try {
+      const response = await fetch(`/api/admin/mapas/cad/layers/${projectId}/${encodeURIComponent(layerId)}`, {
+        headers: { accept: "application/geo+json" },
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error(await cadErrorMessage(response, cadText.layerFailed));
+      const data = await response.json();
+      const layer = createCadOverlay(data, metadata?.color);
+      cadOverlays.set(layerId, layer);
+      layer.addTo(map);
+    } catch (error) {
+      setCadStatus(cadOverlayStatus, error instanceof Error ? error.message : cadText.layerFailed);
+      if (cadSavedLayers) {
+        const checkbox = cadSavedLayers.querySelector<HTMLInputElement>(`input[data-cad-layer="${CSS.escape(layerId)}"]`);
+        if (checkbox) checkbox.checked = false;
+      }
+    }
+  }
+
+  async function loadSavedCadLayers(projectId: string, showLayerId?: string) {
+    if (!cadAdminReady || !cadSavedLayers || !projectId) return;
+    cadSavedLayers.replaceChildren();
+    const loading = document.createElement("p");
+    loading.className = "text-sm text-base-content/60";
+    loading.textContent = cadText.layersLoading;
+    cadSavedLayers.append(loading);
+    try {
+      const response = await fetch(`/api/admin/mapas/cad/layers?project_id=${encodeURIComponent(projectId)}`, {
+        headers: { accept: "application/json" },
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error(await cadErrorMessage(response, cadText.layersFailed));
+      const payload = await response.json();
+      const layers = Array.isArray(payload?.data) ? payload.data : [];
+      cadSavedLayers.replaceChildren();
+      if (layers.length === 0) {
+        const empty = document.createElement("p");
+        empty.className = "text-sm text-base-content/60";
+        empty.textContent = cadText.noLayers;
+        cadSavedLayers.append(empty);
+        return;
+      }
+
+      for (const metadata of layers) {
+        if (typeof metadata?.id !== "string" || !/^[0-9a-f]{32}$/.test(metadata.id)) continue;
+        const row = document.createElement("label");
+        row.className = "flex min-h-12 min-w-0 cursor-pointer items-center gap-3 rounded-lg border border-base-300 px-3 py-2";
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.className = "checkbox checkbox-primary shrink-0";
+        checkbox.dataset.cadLayer = metadata.id;
+        checkbox.checked = metadata.id === showLayerId;
+        checkbox.setAttribute("aria-label", en ? `Show ${String(metadata.original_filename || "saved layer")}` : `Mostrar ${String(metadata.original_filename || "capa guardada")}`);
+        const color = document.createElement("span");
+        color.className = "h-3.5 w-3.5 shrink-0 rounded-full border border-base-300";
+        if (typeof metadata.color === "string" && /^#[0-9a-f]{6}$/i.test(metadata.color)) color.style.backgroundColor = metadata.color;
+        const description = document.createElement("span");
+        description.className = "min-w-0 break-words text-sm";
+        const featureCount = Number.isSafeInteger(Number(metadata.feature_count)) ? Number(metadata.feature_count) : 0;
+        description.textContent = `${String(metadata.original_filename || (en ? "Saved layer" : "Capa guardada"))} · ${featureCount} ${en ? "features" : "elementos"}`;
+        row.append(checkbox, color, description);
+        checkbox.addEventListener("change", () => void toggleCadVisibility(metadata.id, checkbox.checked, metadata));
+        cadSavedLayers.append(row);
+        if (checkbox.checked) void toggleCadVisibility(metadata.id, true, metadata);
+      }
+    } catch (error) {
+      cadSavedLayers.replaceChildren();
+      const failure = document.createElement("p");
+      failure.className = "text-sm text-error";
+      failure.textContent = error instanceof Error ? error.message : cadText.layersFailed;
+      cadSavedLayers.append(failure);
+    }
+  }
+
+  async function initializeCadAdminTools() {
+    try {
+      const response = await fetch("/api/admin/mapas/cad/status", {
+        headers: { accept: "application/json" },
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      if (!response.ok) return;
+      cadAdminReady = true;
+      cadAdminLayers?.removeAttribute("hidden");
+      if (temporaryCadOverlay && cadSaveLayerButton) {
+        cadSaveLayerButton.hidden = false;
+        cadSaveLayerButton.disabled = false;
+      }
+      if (selectedMap?.slug) void loadSavedCadLayers(String(selectedMap.slug));
+    } catch (error) {
+      console.warn("[public-cad] admin session check failed", error instanceof Error ? error.name : "UnknownError");
+    }
+  }
+
+  function setCadStatus(target: HTMLElement | null, message: string) {
+    if (target) target.textContent = message;
+  }
+
+  async function previewCadOverlay() {
+    const projectId = String(selectedMap?.slug || "");
+    const file = cadOverlayFile?.files?.[0];
+    const activeMap = map;
+    if (!projectId) return setCadStatus(cadOverlayStatus, cadText.chooseProject);
+    if (!file) return setCadStatus(cadOverlayStatus, cadText.chooseFile);
+    if (file.size > 25_000_000) return setCadStatus(cadOverlayStatus, cadText.fileTooLarge);
+    if (!activeMap) return setCadStatus(cadOverlayStatus, cadText.serviceUnavailable);
+
+    if (cadOverlaySubmit) cadOverlaySubmit.disabled = true;
+    setCadStatus(cadOverlayStatus, cadText.overlayWorking);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("source_crs", cadSourceCrs?.value || "auto");
+      formData.append("color", cadColor?.value || "#2563eb");
+      const response = await fetch("/api/mapas/cad/overlay", {
+        method: "POST",
+        headers: { accept: "application/geo+json" },
+        body: formData,
+        credentials: "omit",
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error(await cadErrorMessage(response, cadText.overlayFailed));
+      const featureCount = Number(response.headers.get("x-cad-feature-count") || 0);
+      const layerColor = response.headers.get("x-cad-layer-color") || cadColor?.value || "#2563eb";
+      const data = await response.json();
+      if (selectedMap?.slug !== projectId) throw new Error(cadText.overlayFailed);
+      clearTemporaryCadOverlay();
+      const layer = createCadOverlay(data, layerColor);
+      temporaryCadOverlay = layer;
+      layer.addTo(activeMap);
+      const bounds = layer.getBounds();
+      if (bounds.isValid()) activeMap.fitBounds(bounds, { padding: [24, 24], maxZoom: 19 });
+      if (cadClearOverlayButton) cadClearOverlayButton.hidden = false;
+      if (cadAdminReady && cadSaveLayerButton) {
+        cadSaveLayerButton.hidden = false;
+        cadSaveLayerButton.disabled = false;
+      }
+      setCadStatus(cadOverlayStatus, cadText.overlayAdded(file.name, featureCount));
+    } catch (error) {
+      setCadStatus(cadOverlayStatus, error instanceof Error ? error.message : cadText.overlayFailed);
+    } finally {
+      if (cadOverlaySubmit) cadOverlaySubmit.disabled = false;
+    }
+  }
+
+  async function saveOverlayAsOfficialLayer() {
+    const projectId = String(selectedMap?.slug || "");
+    const file = cadOverlayFile?.files?.[0];
+    const activeMap = map;
+    if (!cadAdminReady || !activeMap) return setCadStatus(cadOverlayStatus, cadText.sessionExpired);
+    if (!projectId) return setCadStatus(cadOverlayStatus, cadText.chooseProject);
+    if (!file) return setCadStatus(cadOverlayStatus, cadText.chooseFile);
+    if (file.size > 25_000_000) return setCadStatus(cadOverlayStatus, cadText.fileTooLarge);
+
+    if (cadSaveLayerButton) cadSaveLayerButton.disabled = true;
+    setCadStatus(cadOverlayStatus, cadText.savingLayer);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("source_crs", cadSourceCrs?.value || "auto");
+      formData.append("color", cadColor?.value || "#2563eb");
+      const response = await fetch(`/api/admin/mapas/cad/convert?project_id=${encodeURIComponent(projectId)}`, {
+        method: "POST",
+        headers: { accept: "application/geo+json" },
+        body: formData,
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error(await cadErrorMessage(response, cadText.overlayFailed));
+      const layerId = response.headers.get("x-cad-layer-id") || "";
+      const layerColor = response.headers.get("x-cad-layer-color") || cadColor?.value || "#2563eb";
+      const data = await response.json();
+      if (!/^[0-9a-f]{32}$/.test(layerId) || selectedMap?.slug !== projectId) throw new Error(cadText.overlayFailed);
+      clearTemporaryCadOverlay();
+      const layer = createCadOverlay(data, layerColor);
+      cadOverlays.set(layerId, layer);
+      layer.addTo(activeMap);
+      await loadSavedCadLayers(projectId, layerId);
+      setCadStatus(cadOverlayStatus, cadText.layerSaved(file.name));
+    } catch (error) {
+      setCadStatus(cadOverlayStatus, error instanceof Error ? error.message : cadText.overlayFailed);
+    } finally {
+      if (cadSaveLayerButton && temporaryCadOverlay) cadSaveLayerButton.disabled = !cadAdminReady;
+    }
+  }
+
+  function updateMediaFormats() {
+    if (!cadMediaFile || !cadMediaFormat) return;
+    const filename = cadMediaFile.files?.[0]?.name.toLowerCase() || "";
+    if (!filename) {
+      for (const option of Array.from(cadMediaFormat.options)) option.disabled = false;
+      return;
+    }
+    const extension = filename.includes(".") ? `.${filename.split(".").pop()}` : "";
+    const allowed = extension === ".pdf"
+      ? ["jpg", "png"]
+      : [".dwg", ".dxf"].includes(extension)
+        ? ["pdf", "jpg", "png", "svg", "kml", "geojson"]
+        : [".zip", ".kml", ".geojson", ".gpkg"].includes(extension)
+          ? ["kml", "geojson"]
+          : [];
+    for (const option of Array.from(cadMediaFormat.options)) option.disabled = !allowed.includes(option.value);
+    if (!allowed.includes(cadMediaFormat.value) && allowed[0]) cadMediaFormat.value = allowed[0];
+  }
+
+  function filenameFromDisposition(value: string | null, fallback: string): string {
+    if (!value) return fallback;
+    const encoded = value.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+    const plain = value.match(/filename="?([^";]+)"?/i)?.[1];
+    let filename = plain || fallback;
+    if (encoded) {
+      try {
+        filename = decodeURIComponent(encoded);
+      } catch {
+        filename = plain || fallback;
+      }
+    }
+    filename = filename.replace(/[\\/\r\n]/g, "_").trim();
+    return filename || fallback;
+  }
+
+  async function convertAndDownloadMedia() {
+    const file = cadMediaFile?.files?.[0];
+    if (!file) return setCadStatus(cadMediaStatus, cadText.chooseFile);
+    if (file.size > 25_000_000) return setCadStatus(cadMediaStatus, cadText.fileTooLarge);
+
+    if (cadMediaSubmit) cadMediaSubmit.disabled = true;
+    setCadStatus(cadMediaStatus, cadText.mediaWorking);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("target_format", cadMediaFormat?.value || "pdf");
+      formData.append("source_crs", cadMediaCrs?.value || "auto");
+      formData.append("dpi", cadMediaDpi?.value || "300");
+      const response = await fetch("/api/mapas/cad/convert-media", {
+        method: "POST",
+        headers: { accept: "*/*" },
+        body: formData,
+        credentials: "omit",
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error(await cadErrorMessage(response, cadText.mediaFailed));
+      const blob = await response.blob();
+      const fallback = `plano.${cadMediaFormat?.value || "pdf"}`;
+      const filename = filenameFromDisposition(response.headers.get("content-disposition"), fallback);
+      const downloadUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = downloadUrl;
+      anchor.download = filename;
+      anchor.hidden = true;
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 60_000);
+      setCadStatus(cadMediaStatus, cadText.mediaDone);
+    } catch (error) {
+      setCadStatus(cadMediaStatus, error instanceof Error ? error.message : cadText.mediaFailed);
+    } finally {
+      if (cadMediaSubmit) cadMediaSubmit.disabled = false;
     }
   }
 
@@ -725,8 +1229,23 @@ const pageDescription = en
     if (measureResult) measureResult.textContent = copy.cleared;
   });
   retryButton?.addEventListener("click", () => void loadCatalog());
+  cadOverlayForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    void previewCadOverlay();
+  });
+  cadSaveLayerButton?.addEventListener("click", () => void saveOverlayAsOfficialLayer());
+  cadClearOverlayButton?.addEventListener("click", () => {
+    clearTemporaryCadOverlay();
+    setCadStatus(cadOverlayStatus, cadText.overlayCleared);
+  });
+  cadMediaForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    void convertAndDownloadMedia();
+  });
+  cadMediaFile?.addEventListener("change", updateMediaFormats);
 
   setDrawButtonsEnabled(false);
+  void initializeCadAdminTools();
   void loadCatalog();
 </script>
 

@@ -10,7 +10,7 @@ import { handleAdminMapaCrear, handleAdminMapaEliminar, handleAdminMapaEstado, h
 import { handleBlogIndex, handleBlogPost, BLOG_SCHEMA, handleBlogArchivo, handleBlogTarjeta, handleBlogPostHtml, NUBE_CSS } from './blog';
 import { ARCHIVOS_BLOG } from './blog-archivos';
 import { FICHAS } from '../src/content/blog-fichas';
-import { ensureMapasTable, getPublishedMapa, handleAdminMapaUploadApi, handleMapasApi } from './mapas';
+import { ensureMapasTable, getPublishedMapa, handleAdminCadApi, handleAdminMapaUploadApi, handleMapasApi, handlePublicCadApi } from './mapas';
 
 interface Env {
   ASSETS: { fetch: (request: Request) => Promise<Response> };
@@ -2417,6 +2417,9 @@ export default {
     }
 
     if (path === '/api/mapas' || path.startsWith('/api/mapas/')) {
+      if (path === '/api/mapas/cad/overlay' || path === '/api/mapas/cad/convert-media') {
+        return handlePublicCadApi(request, env as any);
+      }
       const response = await handleMapasApi(request, env as any);
       const result = response || jsonResponse({ ok: false, error: 'method' }, method === 'GET' ? 404 : 405);
       if (method !== 'GET') return result;
@@ -2429,6 +2432,10 @@ export default {
     }
 
     if (path.startsWith('/api/admin/mapas/')) {
+      if (path === '/api/admin/mapas/cad' || path.startsWith('/api/admin/mapas/cad/')) {
+        const email = await adminAutorizado(request, env);
+        return handleAdminCadApi(request, env as any, email);
+      }
       if (method !== 'PUT') return jsonResponse({ ok: false, error: 'method' }, 405);
       const email = await adminAutorizado(request, env);
       return handleAdminMapaUploadApi(request, env as any, email);

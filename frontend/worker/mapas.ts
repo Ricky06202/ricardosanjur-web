@@ -29,6 +29,9 @@ export type MapaRow = {
 };
 
 export const MAX_MAPA_BYTES = 90_000_000;
+const MAX_CAD_REQUEST_BYTES = MAX_MAPA_BYTES + 500_000;
+const CAD_PROJECT_ID_RE = /^[a-z0-9][a-z0-9-]{0,62}$/;
+const CAD_LAYER_ID_RE = /^[0-9a-f]{32}$/;
 
 let mapasTablaLista = false;
 
@@ -58,6 +61,17 @@ export async function ensureMapasTable(db: any): Promise<void> {
   ).run();
   await db.prepare(
     'CREATE INDEX IF NOT EXISTS idx_ortomosaicos_estado_fecha ON ortomosaicos (estado, fecha_captura DESC, actualizado_en DESC)',
+  ).run();
+  await db.prepare(
+    `CREATE TABLE IF NOT EXISTS cad_public_rate_limits (
+      ip_hash TEXT PRIMARY KEY,
+      window_start INTEGER NOT NULL,
+      request_count INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )`,
+  ).run();
+  await db.prepare(
+    'CREATE INDEX IF NOT EXISTS idx_cad_public_rate_limits_updated ON cad_public_rate_limits (updated_at)',
   ).run();
   mapasTablaLista = true;
 }
@@ -282,4 +296,299 @@ export async function handleAdminMapaUploadApi(
       : 'No se pudo conectar con el servicio de mapas. Intente otra vez.';
     return jsonResponse({ error: { code: 'MAPAS_BACKEND_UNAVAILABLE', message } }, 503);
   }
+}
+
+function cadProjectId(value: string | null): string | null {
+  const projectId = String(value || '').trim().toLowerCase();
+  return CAD_PROJECT_ID_RE.test(projectId) ? projectId : null;
+}
+
+function cadProxyResponse(response: Response, cache = 'private, no-store'): Response {
+  const headers = new Headers();
+  for (const name of [
+    'content-type',
+    'content-disposition',
+    'content-length',
+    'last-modified',
+    'etag',
+    'x-cad-layer-id',
+    'x-cad-feature-count',
+    'x-cad-original-name',
+    'x-cad-layer-color',
+    'x-cad-target-crs',
+    'x-cad-export-bytes',
+  ]) {
+    const value = response.headers.get(name);
+    if (value) headers.set(name, value);
+  }
+  headers.set('cache-control', cache);
+  headers.set('x-content-type-options', 'nosniff');
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+function cadError(code: string, message: string, status: number): Response {
+  return jsonResponse({ error: { code, message } }, status, 'no-store');
+}
+
+const PUBLIC_CAD_MAX_FILE_BYTES = 25_000_000;
+const PUBLIC_CAD_MAX_BODY_BYTES = PUBLIC_CAD_MAX_FILE_BYTES + 1_000_000;
+const PUBLIC_CAD_WINDOW_MS = 15 * 60 * 1000;
+const PUBLIC_CAD_REQUEST_LIMIT = 5;
+let lastCadRateLimitCleanup = 0;
+
+async function publicCadIpHash(ip: string, secret: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`public-cad:${ip}`));
+  return Array.from(new Uint8Array(signature), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function takePublicCadSlot(
+  request: Request,
+  env: MapasEnv,
+): Promise<{ count: number; resetAt: number } | Response> {
+  const ip = String(request.headers.get('cf-connecting-ip') || '').trim();
+  const secret = String(env.MAPAS_BACKEND_SECRET || '');
+  if (!/^[0-9a-fA-F:.]{2,64}$/.test(ip)) {
+    return cadError('CLIENT_IP_UNAVAILABLE', 'No se pudo validar la conexión para esta conversión.', 503);
+  }
+  if (new TextEncoder().encode(secret).length < 32 || !env.DB) {
+    return cadError('CAD_CONVERTER_UNAVAILABLE', 'El servicio de conversión no está configurado.', 503);
+  }
+
+  const now = Date.now();
+  const windowStart = Math.floor(now / PUBLIC_CAD_WINDOW_MS) * PUBLIC_CAD_WINDOW_MS;
+  const resetAt = windowStart + PUBLIC_CAD_WINDOW_MS;
+  try {
+    await ensureMapasTable(env.DB);
+    const ipHash = await publicCadIpHash(ip, secret);
+    const row = await env.DB.prepare(
+      `INSERT INTO cad_public_rate_limits (ip_hash, window_start, request_count, updated_at)
+       VALUES (?, ?, 1, ?)
+       ON CONFLICT(ip_hash) DO UPDATE SET
+         request_count = CASE
+           WHEN cad_public_rate_limits.window_start = excluded.window_start
+           THEN cad_public_rate_limits.request_count + 1
+           ELSE 1
+         END,
+         window_start = excluded.window_start,
+         updated_at = excluded.updated_at
+       RETURNING request_count`,
+    ).bind(ipHash, windowStart, now).first();
+    const count = Number(row?.request_count);
+    if (!Number.isInteger(count) || count < 1) throw new Error('cad_rate_limit_counter_unavailable');
+
+    if (now - lastCadRateLimitCleanup > 6 * 60 * 60 * 1000) {
+      lastCadRateLimitCleanup = now;
+      try {
+        await env.DB.prepare('DELETE FROM cad_public_rate_limits WHERE updated_at < ?')
+          .bind(now - 30 * 24 * 60 * 60 * 1000).run();
+      } catch (error) {
+        console.error('[public-cad] rate-limit cleanup failed', error instanceof Error ? error.name : 'UnknownError');
+      }
+    }
+    return { count, resetAt };
+  } catch (error) {
+    console.error('[public-cad] rate-limit check failed', error instanceof Error ? error.name : 'UnknownError');
+    return cadError('CAD_CONVERTER_UNAVAILABLE', 'No se pudo validar el límite de conversiones. Intente otra vez.', 503);
+  }
+}
+
+function withPublicCadRateHeaders(response: Response, count: number, resetAt: number): Response {
+  const headers = new Headers(response.headers);
+  headers.set('x-ratelimit-limit', String(PUBLIC_CAD_REQUEST_LIMIT));
+  headers.set('x-ratelimit-remaining', String(Math.max(0, PUBLIC_CAD_REQUEST_LIMIT - count)));
+  headers.set('x-ratelimit-reset', String(Math.ceil(resetAt / 1000)));
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
+export async function handlePublicCadApi(request: Request, env: MapasEnv): Promise<Response> {
+  const url = new URL(request.url);
+  const route = url.pathname === '/api/mapas/cad/overlay'
+    ? { backendPath: '/cad/public/overlay', accept: 'application/geo+json' }
+    : url.pathname === '/api/mapas/cad/convert-media'
+      ? { backendPath: '/cad/public/convert-media', accept: '*/*' }
+      : null;
+  if (!route) return cadError('NOT_FOUND', 'Ruta de conversión no encontrada.', 404);
+  if (request.method !== 'POST') return cadError('METHOD_NOT_ALLOWED', 'Método no permitido.', 405);
+  if (!allowedOrigin(request)) return cadError('ORIGIN_REJECTED', 'Origen de solicitud no permitido.', 403);
+  if (!request.body) return cadError('EMPTY_BODY', 'No se recibió el archivo.', 400);
+
+  const contentType = request.headers.get('content-type') || '';
+  if (!contentType.toLowerCase().startsWith('multipart/form-data;')) {
+    return cadError('INVALID_CONTENT_TYPE', 'Envíe el archivo como formulario multipart.', 415);
+  }
+  const contentLength = request.headers.get('content-length');
+  if (contentLength) {
+    const length = Number(contentLength);
+    if (!Number.isSafeInteger(length) || length < 1) return cadError('INVALID_CONTENT_LENGTH', 'El tamaño del archivo no es válido.', 400);
+    if (length > PUBLIC_CAD_MAX_BODY_BYTES) return cadError('PUBLIC_UPLOAD_TOO_LARGE', 'El límite de carga pública es 25 MB.', 413);
+  }
+
+  const slot = await takePublicCadSlot(request, env);
+  if (slot instanceof Response) return slot;
+  if (slot.count > PUBLIC_CAD_REQUEST_LIMIT) {
+    const retryAfter = Math.max(1, Math.ceil((slot.resetAt - Date.now()) / 1000));
+    return new Response(JSON.stringify({
+      error: { code: 'PUBLIC_CAD_RATE_LIMITED', message: 'Límite temporal alcanzado. Intente de nuevo en unos minutos.' },
+    }), {
+      status: 429,
+      headers: {
+        'content-type': 'application/json; charset=utf-8',
+        'cache-control': 'no-store',
+        'retry-after': String(retryAfter),
+        'x-ratelimit-limit': String(PUBLIC_CAD_REQUEST_LIMIT),
+        'x-ratelimit-remaining': '0',
+        'x-ratelimit-reset': String(Math.ceil(slot.resetAt / 1000)),
+      },
+    });
+  }
+
+  try {
+    const response = await backendRequest(env, route.backendPath, {
+      method: 'POST',
+      headers: {
+        accept: route.accept,
+        'content-type': contentType,
+        ...(contentLength ? { 'content-length': contentLength } : {}),
+      },
+      body: request.body,
+      signal: AbortSignal.timeout(300_000),
+    });
+    return withPublicCadRateHeaders(cadProxyResponse(response, 'no-store'), slot.count, slot.resetAt);
+  } catch (error) {
+    const message = error instanceof Error && error.message === 'backend_not_configured'
+      ? 'El servicio de conversión todavía no está configurado.'
+      : 'No se pudo conectar con el servicio de conversión. Intente otra vez.';
+    return cadError('CAD_CONVERTER_UNAVAILABLE', message, 503);
+  }
+}
+
+async function cadProjectExists(env: MapasEnv, projectId: string): Promise<boolean> {
+  return Boolean(await getPublishedMapa(env, projectId));
+}
+
+export async function handleAdminCadApi(
+  request: Request,
+  env: MapasEnv,
+  email: string | null,
+): Promise<Response> {
+  if (!email || !emailAllowed(env, email)) {
+    return cadError('UNAUTHORIZED', 'Inicie sesión con una cuenta autorizada para usar el conversor.', 401);
+  }
+
+  const url = new URL(request.url);
+  const path = url.pathname;
+  const method = request.method.toUpperCase();
+  const basePath = '/api/admin/mapas/cad';
+
+  if (method !== 'GET' && !allowedOrigin(request)) {
+    return cadError('ORIGIN_REJECTED', 'Origen de solicitud no permitido.', 403);
+  }
+
+  if (path === `${basePath}/status`) {
+    if (method !== 'GET') return cadError('METHOD_NOT_ALLOWED', 'Método no permitido.', 405);
+    try {
+      const response = await backendRequest(env, '/cad/health', {
+        method: 'GET',
+        headers: { accept: 'application/json' },
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (!response.ok) return cadError('CAD_CONVERTER_UNAVAILABLE', 'El servicio de conversión no está disponible.', 503);
+      return jsonResponse({ ok: true }, 200, 'private, no-store');
+    } catch {
+      return cadError('CAD_CONVERTER_UNAVAILABLE', 'El servicio de conversión no está disponible.', 503);
+    }
+  }
+
+  if (path === `${basePath}/layers`) {
+    if (method !== 'GET') return cadError('METHOD_NOT_ALLOWED', 'Método no permitido.', 405);
+    const projectId = cadProjectId(url.searchParams.get('project_id'));
+    if (!projectId) return cadError('INVALID_PROJECT', 'Seleccione un proyecto publicado.', 400);
+    try {
+      if (!await cadProjectExists(env, projectId)) return cadError('PROJECT_NOT_FOUND', 'El proyecto no está publicado.', 404);
+      const response = await backendRequest(env, `/cad/saved-layers/${encodeURIComponent(projectId)}`, {
+        method: 'GET',
+        headers: { accept: 'application/json', 'x-map-project-id': projectId, 'x-admin-email': email },
+        signal: AbortSignal.timeout(30_000),
+      });
+      return cadProxyResponse(response);
+    } catch {
+      return cadError('CAD_CONVERTER_UNAVAILABLE', 'No se pudo cargar la biblioteca de capas.', 503);
+    }
+  }
+
+  const savedLayerMatch = path.match(/^\/api\/admin\/mapas\/cad\/layers\/([a-z0-9][a-z0-9-]{0,62})\/([0-9a-f]{32})$/);
+  if (savedLayerMatch) {
+    if (method !== 'GET') return cadError('METHOD_NOT_ALLOWED', 'Método no permitido.', 405);
+    const projectId = cadProjectId(savedLayerMatch[1]);
+    const layerId = savedLayerMatch[2];
+    if (!projectId || !CAD_LAYER_ID_RE.test(layerId)) return cadError('INVALID_LAYER', 'La capa indicada no es válida.', 400);
+    try {
+      if (!await cadProjectExists(env, projectId)) return cadError('PROJECT_NOT_FOUND', 'El proyecto no está publicado.', 404);
+      const response = await backendRequest(env, `/cad/saved-layers/${encodeURIComponent(projectId)}/${encodeURIComponent(layerId)}`, {
+        method: 'GET',
+        headers: { accept: 'application/geo+json', 'x-map-project-id': projectId, 'x-admin-email': email },
+        signal: AbortSignal.timeout(120_000),
+      });
+      return cadProxyResponse(response);
+    } catch {
+      return cadError('CAD_CONVERTER_UNAVAILABLE', 'No se pudo cargar la capa guardada.', 503);
+    }
+  }
+
+  if (path === `${basePath}/convert` || path === `${basePath}/convert-media`) {
+    if (method !== 'POST') return cadError('METHOD_NOT_ALLOWED', 'Método no permitido.', 405);
+    const projectId = cadProjectId(url.searchParams.get('project_id'));
+    if (!projectId) return cadError('INVALID_PROJECT', 'Seleccione un proyecto publicado.', 400);
+    const contentType = request.headers.get('content-type') || '';
+    if (!contentType.toLowerCase().startsWith('multipart/form-data;')) {
+      return cadError('INVALID_CONTENT_TYPE', 'La carga debe usar multipart/form-data.', 415);
+    }
+    const contentLengthHeader = request.headers.get('content-length');
+    if (contentLengthHeader) {
+      const contentLength = Number(contentLengthHeader);
+      if (!Number.isSafeInteger(contentLength) || contentLength < 0) {
+        return cadError('INVALID_LENGTH', 'El tamaño de la carga no es válido.', 400);
+      }
+      if (contentLength > MAX_CAD_REQUEST_BYTES) {
+        return cadError('FILE_TOO_LARGE', 'La carga supera el límite de 90 MB.', 413);
+      }
+    }
+    if (!request.body) return cadError('EMPTY_BODY', 'Seleccione un archivo para convertir.', 400);
+    try {
+      if (!await cadProjectExists(env, projectId)) return cadError('PROJECT_NOT_FOUND', 'El proyecto no está publicado.', 404);
+      const backendPath = path.endsWith('/convert-media') ? '/cad/convert-media' : '/cad/convert';
+      const accept = backendPath.endsWith('convert') ? 'application/geo+json' : '*/*';
+      const response = await backendRequest(env, backendPath, {
+        method: 'POST',
+        headers: {
+          accept,
+          'content-type': contentType,
+          'x-map-project-id': projectId,
+          'x-admin-email': email,
+          ...(contentLengthHeader ? { 'content-length': contentLengthHeader } : {}),
+        },
+        body: request.body,
+        signal: AbortSignal.timeout(300_000),
+      });
+      return cadProxyResponse(response);
+    } catch (error) {
+      const message = error instanceof Error && error.message === 'backend_not_configured'
+        ? 'El servicio de conversión todavía no está configurado.'
+        : 'No se pudo conectar con el servicio de conversión. Intente otra vez.';
+      return cadError('CAD_CONVERTER_UNAVAILABLE', message, 503);
+    }
+  }
+
+  return cadError('NOT_FOUND', 'Ruta de conversión no encontrada.', 404);
 }

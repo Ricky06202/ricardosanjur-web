@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { Hono } from 'hono';
+import { handleCadProxy } from './cad.js';
 import { inspectMbtiles, MbtilesValidationError, type MbtilesInspection } from './mbtiles.js';
 
 const DATA_DIR = process.env.MAPS_DIR || '/data/maps';
@@ -155,6 +156,8 @@ app.get('/internal/health', (c) => {
   }
   return c.json({ ok: true, service: 'ortomosaicos-api' }, 200, { 'cache-control': 'no-store' });
 });
+
+app.all('/internal/cad/*', (c) => handleCadProxy(c.req.raw));
 
 app.put('/internal/maps/:id/file', async (c) => {
   const id = c.req.param('id');

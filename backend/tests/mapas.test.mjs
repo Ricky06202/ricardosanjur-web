@@ -165,4 +165,108 @@ test('rechaza un archivo que no es MBTiles y no conserva el temporal', async () 
   assert.equal(readFileSync(configPath, 'utf8').includes(id), false);
 });
 
+test('protege el servicio CAD con el mismo secreto de la API interna', async () => {
+  const response = await app.request('/internal/cad/health');
+  assert.equal(response.status, 401);
+});
+
+test('reenvía una conversión CAD por la ruta permitida y conserva sus metadatos', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalConverterUrl = process.env.CAD_CONVERTER_URL;
+  process.env.CAD_CONVERTER_URL = 'http://cad-test:8090';
+  globalThis.fetch = async (input, init) => {
+    assert.equal(String(input), 'http://cad-test:8090/api/convert');
+    assert.equal(init?.method, 'POST');
+    const headers = new Headers(init?.headers);
+    assert.equal(headers.get('x-map-project-id'), 'pameda-2026');
+    assert.equal(headers.get('authorization'), null, 'el secreto del Worker no se reenvía al contenedor');
+    assert.match(headers.get('content-type') || '', /^multipart\/form-data;/i);
+    return new Response('{"type":"FeatureCollection","features":[]}', {
+      status: 200,
+      headers: {
+        'content-type': 'application/geo+json',
+        'x-cad-layer-id': 'a'.repeat(32),
+        'x-cad-feature-count': '0',
+      },
+    });
+  };
+
+  try {
+    const form = new FormData();
+    form.append('file', new Blob(['0\nEOF\n']), 'fixture.dxf');
+    form.append('source_crs', 'EPSG:32617');
+    const response = await app.request('/internal/cad/convert', {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${secret}`,
+        'x-map-project-id': 'pameda-2026',
+        'x-admin-email': 'admin@example.com',
+      },
+      body: form,
+    });
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('content-type'), 'application/geo+json');
+    assert.equal(response.headers.get('x-cad-layer-id'), 'a'.repeat(32));
+    assert.deepEqual(await response.json(), { type: 'FeatureCollection', features: [] });
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalConverterUrl === undefined) delete process.env.CAD_CONVERTER_URL;
+    else process.env.CAD_CONVERTER_URL = originalConverterUrl;
+  }
+});
+
+test('reenvía una conversión pública temporal sin project_id ni identidad admin', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalConverterUrl = process.env.CAD_CONVERTER_URL;
+  process.env.CAD_CONVERTER_URL = 'http://cad-test:8090';
+  globalThis.fetch = async (input, init) => {
+    assert.equal(String(input), 'http://cad-test:8090/api/convert-media');
+    assert.equal(init?.method, 'POST');
+    const headers = new Headers(init?.headers);
+    assert.equal(headers.get('x-map-project-id'), null);
+    assert.equal(headers.get('x-admin-email'), null);
+    assert.equal(headers.get('authorization'), null);
+    return new Response('temporary image', {
+      status: 200,
+      headers: {
+        'content-type': 'image/png',
+        'content-disposition': 'attachment; filename="page-1.png"',
+        'x-cad-export-bytes': '15',
+      },
+    });
+  };
+
+  try {
+    const form = new FormData();
+    form.append('file', new Blob(['%PDF-test'], { type: 'application/pdf' }), 'plan.pdf');
+    form.append('target_format', 'png');
+    const response = await app.request('/internal/cad/public/convert-media', {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${secret}`,
+        'x-map-project-id': 'should-not-forward',
+        'x-admin-email': 'forged@example.com',
+      },
+      body: form,
+    });
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('content-type'), 'image/png');
+    assert.equal(response.headers.get('content-disposition'), 'attachment; filename="page-1.png"');
+    assert.equal(response.headers.get('x-cad-export-bytes'), '15');
+    assert.equal(await response.text(), 'temporary image');
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalConverterUrl === undefined) delete process.env.CAD_CONVERTER_URL;
+    else process.env.CAD_CONVERTER_URL = originalConverterUrl;
+  }
+});
+
+test('no expone rutas CAD que no estén en la lista permitida', async () => {
+  const response = await app.request('/internal/cad/delete', {
+    method: 'DELETE',
+    headers: { authorization: `Bearer ${secret}` },
+  });
+  assert.equal(response.status, 404);
+});
+
 test.after(() => rmSync(root, { recursive: true, force: true }));
