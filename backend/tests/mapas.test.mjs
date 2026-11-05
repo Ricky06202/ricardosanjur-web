@@ -261,6 +261,55 @@ test('reenvía una conversión pública temporal sin project_id ni identidad adm
   }
 });
 
+test('rechaza un cuerpo público chunked que supera el límite sin Content-Length', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalConverterUrl = process.env.CAD_CONVERTER_URL;
+  process.env.CAD_CONVERTER_URL = 'http://cad-test:8090';
+  let forwardedBytes = 0;
+  globalThis.fetch = async (_input, init) => {
+    assert.equal(new Headers(init?.headers).get('content-length'), null);
+    const reader = init?.body?.getReader();
+    assert.ok(reader, 'el proxy transmite el cuerpo como stream');
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        forwardedBytes += value.byteLength;
+      }
+    } catch {
+      // Emula un upstream que responde 200 aunque el body stream termine truncado.
+      return new Response('upstream accepted truncated body');
+    }
+    return new Response('unexpected success');
+  };
+
+  try {
+    const request = new Request('http://localhost/internal/cad/public/convert-media', {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${secret}`,
+        'content-type': 'multipart/form-data; boundary=test-boundary',
+      },
+      body: new ReadableStream({
+        start(controller) {
+          controller.enqueue(new Uint8Array(26_000_001));
+          controller.close();
+        },
+      }),
+      duplex: 'half',
+    });
+    assert.equal(request.headers.get('content-length'), null);
+
+    const response = await app.fetch(request);
+    assert.equal(response.status, 413);
+    assert.equal(forwardedBytes, 0, 'el chunk que excede el límite nunca llega al conversor');
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalConverterUrl === undefined) delete process.env.CAD_CONVERTER_URL;
+    else process.env.CAD_CONVERTER_URL = originalConverterUrl;
+  }
+});
+
 test('no expone rutas CAD que no estén en la lista permitida', async () => {
   const response = await app.request('/internal/cad/delete', {
     method: 'DELETE',

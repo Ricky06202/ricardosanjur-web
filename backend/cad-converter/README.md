@@ -17,6 +17,7 @@ Servicio privado para convertir DWG/DXF/SHP/ZIP/KML/GeoJSON/GeoPackage a GeoJSON
 
 - El Worker expone `POST /api/mapas/cad/overlay` y `POST /api/mapas/cad/convert-media` sin login. El Hono interno exige igualmente `MAPAS_BACKEND_SECRET`; FastAPI no se expone al navegador.
 - Las conversiones públicas aceptan hasta 25 MB y 40 páginas PDF; el límite de frecuencia es 5 solicitudes por 15 minutos y dirección de conexión. El Worker guarda en D1 únicamente un HMAC de la IP para el contador, nunca la IP ni el nombre del archivo.
+- El Worker y Hono cuentan en streaming el cuerpo multipart completo (26 MB público / 90.5 MB admin), aunque no llegue `Content-Length`; devuelven 413 al superar el tope antes de pasarlo al parser.
 - Sin `X-Map-Project-ID`, FastAPI procesa los uploads y resultados en un directorio aleatorio de `/tmp`, no consulta ni escribe `/opt/mapas/archivos_clientes`, y no registra auditoría. El Worker envía `Cache-Control: no-store`; FastAPI elimina el directorio al terminar la descarga y también ante errores. El máximo público está fijado en `25000000` bytes y coincide con el control del Worker.
 - `/api/admin/mapas/cad/*` conserva el flujo separado de RS ID para guardar, listar, mostrar y eliminar capas oficiales. El modo público nunca crea ni borra capas de mapas.
 

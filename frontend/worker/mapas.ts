@@ -340,6 +340,45 @@ const PUBLIC_CAD_WINDOW_MS = 15 * 60 * 1000;
 const PUBLIC_CAD_REQUEST_LIMIT = 5;
 let lastCadRateLimitCleanup = 0;
 
+function limitCadRequestBody(
+  body: ReadableStream<Uint8Array>,
+  maxBytes: number,
+  onLimit: () => void,
+): ReadableStream<Uint8Array> {
+  let totalBytes = 0;
+  let stopped = false;
+  const reader = body.getReader();
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      if (stopped) return;
+      try {
+        const { done, value } = await reader.read();
+        if (done) {
+          stopped = true;
+          controller.close();
+          return;
+        }
+        if (value.byteLength > maxBytes - totalBytes) {
+          onLimit();
+          stopped = true;
+          controller.close();
+          void reader.cancel('CAD_REQUEST_BODY_TOO_LARGE').catch(() => undefined);
+          return;
+        }
+        totalBytes += value.byteLength;
+        controller.enqueue(value);
+      } catch (error) {
+        stopped = true;
+        controller.error(error);
+      }
+    },
+    cancel(reason) {
+      stopped = true;
+      return reader.cancel(reason);
+    },
+  });
+}
+
 async function publicCadIpHash(ip: string, secret: string): Promise<string> {
   const key = await crypto.subtle.importKey(
     'raw',
@@ -453,19 +492,37 @@ export async function handlePublicCadApi(request: Request, env: MapasEnv): Promi
     });
   }
 
+  let bodyTooLarge = false;
+  const limitedBody = limitCadRequestBody(request.body, PUBLIC_CAD_MAX_BODY_BYTES, () => {
+    bodyTooLarge = true;
+  });
   try {
     const response = await backendRequest(env, route.backendPath, {
       method: 'POST',
       headers: {
         accept: route.accept,
         'content-type': contentType,
-        ...(contentLength ? { 'content-length': contentLength } : {}),
       },
-      body: request.body,
+      body: limitedBody,
       signal: AbortSignal.timeout(300_000),
     });
+    if (bodyTooLarge) {
+      await response.body?.cancel();
+      return withPublicCadRateHeaders(
+        cadError('PUBLIC_UPLOAD_TOO_LARGE', 'El límite de carga pública es 25 MB.', 413),
+        slot.count,
+        slot.resetAt,
+      );
+    }
     return withPublicCadRateHeaders(cadProxyResponse(response, 'no-store'), slot.count, slot.resetAt);
   } catch (error) {
+    if (bodyTooLarge) {
+      return withPublicCadRateHeaders(
+        cadError('PUBLIC_UPLOAD_TOO_LARGE', 'El límite de carga pública es 25 MB.', 413),
+        slot.count,
+        slot.resetAt,
+      );
+    }
     const message = error instanceof Error && error.message === 'backend_not_configured'
       ? 'El servicio de conversión todavía no está configurado.'
       : 'No se pudo conectar con el servicio de conversión. Intente otra vez.';
@@ -565,6 +622,10 @@ export async function handleAdminCadApi(
       }
     }
     if (!request.body) return cadError('EMPTY_BODY', 'Seleccione un archivo para convertir.', 400);
+    let bodyTooLarge = false;
+    const limitedBody = limitCadRequestBody(request.body, MAX_CAD_REQUEST_BYTES, () => {
+      bodyTooLarge = true;
+    });
     try {
       if (!await cadProjectExists(env, projectId)) return cadError('PROJECT_NOT_FOUND', 'El proyecto no está publicado.', 404);
       const backendPath = path.endsWith('/convert-media') ? '/cad/convert-media' : '/cad/convert';
@@ -576,13 +637,17 @@ export async function handleAdminCadApi(
           'content-type': contentType,
           'x-map-project-id': projectId,
           'x-admin-email': email,
-          ...(contentLengthHeader ? { 'content-length': contentLengthHeader } : {}),
         },
-        body: request.body,
+        body: limitedBody,
         signal: AbortSignal.timeout(300_000),
       });
+      if (bodyTooLarge) {
+        await response.body?.cancel();
+        return cadError('FILE_TOO_LARGE', 'La carga supera el límite de 90 MB.', 413);
+      }
       return cadProxyResponse(response);
     } catch (error) {
+      if (bodyTooLarge) return cadError('FILE_TOO_LARGE', 'La carga supera el límite de 90 MB.', 413);
       const message = error instanceof Error && error.message === 'backend_not_configured'
         ? 'El servicio de conversión todavía no está configurado.'
         : 'No se pudo conectar con el servicio de conversión. Intente otra vez.';
