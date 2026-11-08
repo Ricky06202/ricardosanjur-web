@@ -41,6 +41,8 @@ export const ui = {
       locationLabel: "Chiriquí · Panamá",
       dronePhotoKicker: "Fotogrametría aérea",
       dronePhotoCaption: "Del vuelo al mapa.",
+      flightMapLead: "Explora los ortomosaicos y modelos del terreno de nuestros levantamientos en Chiriquí y Panamá.",
+      flightMapImageAlt: "Explorar ortomosaicos: afiche «Del vuelo al mapa» con un dron, un modelo del terreno y curvas de nivel.",
       metrics: [
         { value: 55, suffix: "+", label: "Años de experiencia" },
         { value: 2500, suffix: "+", label: "Proyectos entregados" },
@@ -474,6 +476,8 @@ export const ui = {
       locationLabel: "Chiriquí · Panama",
       dronePhotoKicker: "Aerial photogrammetry",
       dronePhotoCaption: "From flight to map.",
+      flightMapLead: "Explore orthomosaics and terrain models from our surveys in Chiriquí and Panama.",
+      flightMapImageAlt: "Explore orthomosaics: the Spanish ‘Del vuelo al mapa’ poster shows a drone, a terrain model and contour lines.",
       metrics: [
         { value: 55, suffix: "+", label: "Years of experience" },
         { value: 2500, suffix: "+", label: "Projects delivered" },
