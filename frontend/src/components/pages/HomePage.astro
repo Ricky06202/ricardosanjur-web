@@ -18,21 +18,14 @@ const quoteHref = `${routeHref("services", lang)}#cotizacion`;
   <section class="relative isolate overflow-hidden bg-base-100 text-base-content">
     <div class="grid-bg pointer-events-none absolute inset-0 opacity-35"></div>
     <div class="pointer-events-none absolute -right-32 -top-32 h-[34rem] w-[34rem] rounded-full bg-primary/10 blur-3xl"></div>
-    <div class="relative mx-auto grid w-full max-w-7xl gap-y-6 px-4 py-10 sm:px-6 sm:py-14 lg:min-h-[calc(100svh-5rem)] lg:grid-cols-[1fr_.82fr] lg:grid-rows-[1fr_1fr] lg:gap-x-16 lg:gap-y-0 lg:py-12">
-      <div class="max-w-3xl lg:col-start-1 lg:row-start-1 lg:self-end">
+    <div class="relative mx-auto grid w-full max-w-7xl items-center gap-10 px-4 py-14 sm:px-6 sm:py-18 lg:min-h-[calc(100svh-5rem)] lg:grid-cols-[1fr_.82fr] lg:gap-16 lg:py-16">
+      <div class="max-w-3xl">
         <p class="inline-flex min-h-10 items-center gap-3 rounded-full border border-base-300 bg-white/85 px-4 py-2 font-mono text-[10px] uppercase tracking-[.2em] text-base-content/75 sm:text-xs">
           <span class="h-2 w-2 rounded-full bg-primary"></span>{h.heroBadge}
         </p>
 
         <h1 class="mt-6 max-w-3xl font-display text-4xl font-bold leading-[1.03] tracking-tight text-base-content sm:text-6xl lg:text-7xl" set:html={h.heroTitle} />
-      </div>
-
-      <a href={mapsHref} class="mx-auto block w-full max-w-[17rem] overflow-hidden rounded-[1.75rem] border border-base-300 bg-white shadow-xl shadow-blue-900/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary sm:max-w-[26rem] lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-center">
-        <img src={flightMapPoster.src} alt={h.flightMapImageAlt} width={flightMapPoster.width} height={flightMapPoster.height} loading="eager" fetchpriority="high" decoding="async" class="h-auto w-full" />
-      </a>
-
-      <div class="max-w-3xl lg:col-start-1 lg:row-start-2 lg:self-start">
-        <p class="max-w-xl text-base leading-7 text-base-content/70 sm:text-lg sm:leading-8 lg:mt-6">{h.heroLead}</p>
+        <p class="mt-6 max-w-xl text-base leading-7 text-base-content/70 sm:text-lg sm:leading-8">{h.heroLead}</p>
 
         <div class="mt-8 flex flex-col gap-3 sm:flex-row">
           <a href={mapsHref} class="btn btn-primary min-h-12 rounded-full px-7">{h.ctaPrimary}</a>
@@ -46,6 +39,44 @@ const quoteHref = `${routeHref("services", lang)}#cotizacion`;
         </ul>
       </div>
 
+      <figure class="relative mx-auto w-full max-w-[28rem] lg:max-w-none">
+        <div class="relative aspect-[4/5] overflow-hidden rounded-[2rem] border border-base-300 bg-base-200 shadow-xl shadow-blue-900/10">
+          <img
+            src="/images/176070209_204156991250335_7340951298165577398_n.jpg"
+            alt={h.droneImageAlt}
+            width="1080"
+            height="1350"
+            loading="eager"
+            fetchpriority="high"
+            decoding="async"
+            class="h-full w-full object-cover object-center"
+          />
+          <div class="absolute left-4 right-4 top-4 flex items-center justify-between gap-3 sm:left-5 sm:right-5 sm:top-5">
+            <span class="rounded-full border border-white/80 bg-white/90 px-3 py-2 font-mono text-[10px] uppercase tracking-[.15em] text-base-content shadow-sm backdrop-blur">{h.dronePhotoLabel}</span>
+            <span class="rounded-full border border-white/80 bg-white/90 px-3 py-2 font-mono text-[10px] uppercase tracking-[.15em] text-base-content/75 shadow-sm backdrop-blur">{h.locationLabel}</span>
+          </div>
+        </div>
+        <figcaption class="mt-4 px-2">
+          <p class="font-mono text-[10px] uppercase tracking-[.2em] text-primary">{h.dronePhotoKicker}</p>
+          <p class="mt-1 font-display text-xl font-semibold leading-tight text-base-content sm:text-2xl">{h.dronePhotoCaption}</p>
+        </figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ================= DEL VUELO AL MAPA ================= -->
+  <section class="relative overflow-hidden border-y border-black/5 bg-base-200/40">
+    <div class="grid-bg pointer-events-none absolute inset-0 opacity-35"></div>
+    <div class="relative mx-auto grid max-w-7xl items-center gap-10 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-2 lg:gap-16">
+      <div class="max-w-xl">
+        <p class="font-mono text-xs uppercase tracking-[0.25em] text-primary">{h.dronePhotoKicker}</p>
+        <h2 class="mt-3 font-display text-3xl font-bold sm:text-4xl">{h.dronePhotoCaption}</h2>
+        <p class="mt-5 text-base leading-7 text-base-content/70 sm:text-lg">{h.flightMapLead}</p>
+        <a href={mapsHref} class="btn btn-primary mt-8 min-h-12 rounded-full px-7">{h.ctaPrimary}</a>
+      </div>
+      <a href={mapsHref} class="mx-auto block w-full max-w-[26rem] overflow-hidden rounded-[1.75rem] border border-base-300 bg-white shadow-xl shadow-blue-900/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary">
+        <img src={flightMapPoster.src} alt={h.flightMapImageAlt} width={flightMapPoster.width} height={flightMapPoster.height} loading="lazy" decoding="async" class="h-auto w-full" />
+      </a>
     </div>
   </section>
 
