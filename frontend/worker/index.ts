@@ -5,6 +5,7 @@
 // aditiva certificados (huella SHA-256 de documentos, pagina publica y verificacion).
 
 import RSQR from './qr.js';
+import { rsid } from './rs-id-kit.js';
 import { handleBlogLista, handleBlogForm, handleBlogGuardar, handleBlogBorrar } from './admin-blog';
 import { handleAdminMapaCrear, handleAdminMapaEliminar, handleAdminMapaEstado, handleAdminMapaForm, handleAdminMapaGuardar, handleAdminMapaLista } from './admin-mapas';
 import { handleBlogIndex, handleBlogPost, BLOG_SCHEMA, handleBlogArchivo, handleBlogTarjeta, handleBlogPostHtml, NUBE_CSS } from './blog';
@@ -1636,7 +1637,7 @@ async function handleLogin(request: Request, env: Env): Promise<Response> {
 // ricardosanjur.com NO es subdominio de rsanjur.com, asi que el regreso se hace con
 // un codigo de un solo uso, no con una cookie.
 function entrarHref(): string {
-  return 'https://id.rsanjur.com/id?volver=' + encodeURIComponent(SITE_ORIGIN + '/admin/entrar');
+  return '/admin/iniciar';
 }
 
 // Mensajes claros para el regreso del login (?error=...).
@@ -1679,31 +1680,52 @@ function adminLoginPage(aviso: string, status: number): Response {
   return page('Panel', body, status || 200, undefined, { section: 'panel', navigation: false, profile: false });
 }
 
+// Registered SSO: the verifier stays in a short-lived host-only cookie.
+async function handleAdminIniciar(request: Request, env: Env): Promise<Response> {
+  if (new URL(request.url).origin !== SITE_ORIGIN) return redirect(SITE_ORIGIN + "/admin/iniciar", 303);
+  if (!adminEmails(env).length) return adminLoginPage('sin_lista', 200);
+  const client = rsid({}, { clientId: 'ricardosanjur-web', origen: SITE_ORIGIN });
+  const attempt = await client.iniciar();
+  if (!attempt) return adminLoginPage('No se pudo iniciar sesión. Inténtalo de nuevo.', 503);
+  return new Response(null, { status: 303, headers: { location: attempt.url, 'set-cookie': attempt.cookie, 'cache-control': 'no-store' } });
+}
+
 // GET /admin/entrar?rsid=<codigo> -> canjea el codigo con el RS ID y, si el correo
 // esta autorizado, emite la cookie PROPIA del panel y abre el panel.
 async function handleAdminEntrar(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
-  const codigo = str(url.searchParams.get('rsid'));
-  if (!adminEmails(env).length) return adminLoginPage('sin_lista', 200);
-  if (!codigo) return redirect('/admin?error=sin_codigo', 303);
+  const client = rsid({}, { clientId: 'ricardosanjur-web', origen: SITE_ORIGIN });
+  const state = str(url.searchParams.get('state'));
+  const code = str(url.searchParams.get('code'));
+  const attempt = client.leerIntento(request, state);
+  const clearCookie = '__Host-rsid-sso-ricardosanjur-web=; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=0';
+  const finish = (response: Response): Response => {
+    const headers = new Headers(response.headers);
+    headers.append('set-cookie', clearCookie);
+    headers.set('cache-control', 'no-store');
+    return new Response(response.body, { status: response.status, headers });
+  };
+  if (!adminEmails(env).length) return finish(adminLoginPage('sin_lista', 200));
+  if (!code || !attempt) return finish(redirect('/admin?error=sesion_expirada', 303));
 
-  const r = await canjearRsid(env, codigo, SITE_ORIGIN);
+  const identity = await client.canjear(code, attempt);
+  const r = identity ? { email: identity.email, error: '' } : { email: '', error: 'canje_fallido' };
   if (r.error || !r.email) {
-    return redirect('/admin?error=' + encodeURIComponent(r.error || 'canje_fallido'), 303);
+    return finish(redirect('/admin?error=' + encodeURIComponent(r.error || 'canje_fallido'), 303));
   }
 
   const email = r.email.trim().toLowerCase();
   if (adminEmails(env).indexOf(email) === -1) {
-    return adminLoginPage('La cuenta ' + r.email + ' no esta autorizada para este panel.', 401);
+    return finish(adminLoginPage('La cuenta ' + r.email + ' no esta autorizada para este panel.', 401));
   }
   const adminToken = String(env.ADMIN_TOKEN || '');
-  if (!adminToken) return adminLoginPage('El panel no esta configurado (falta ADMIN_TOKEN).', 500);
+  if (!adminToken) return finish(adminLoginPage('El panel no esta configurado (falta ADMIN_TOKEN).', 500));
 
   const headers = new Headers();
   headers.set('set-cookie', await issueAdminCookie(request, env, email));
   headers.set('location', '/admin');
   headers.set('cache-control', 'no-store');
-  return new Response(null, { status: 303, headers: headers });
+  return finish(new Response(null, { status: 303, headers: headers }));
 }
 
 // GET /admin/salir -> borra la sesion propia y luego cierra RS ID globalmente.
@@ -2374,6 +2396,7 @@ export default {
     }
 
     // Regreso del login del RS ID: canjea el codigo y abre la sesion propia del panel.
+    if (method === 'GET' && path === '/admin/iniciar') return handleAdminIniciar(request, env);
     if (method === 'GET' && path === '/admin/entrar') return handleAdminEntrar(request, env);
     if (method === 'GET' && path === '/admin/salir') return handleAdminSalir(request, env);
 
